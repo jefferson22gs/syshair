@@ -1,5 +1,6 @@
 import { Crown, Scissors, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 
 const profiles = [
   {
@@ -51,7 +52,7 @@ const profiles = [
 
 export const ProfilesSection = () => {
   return (
-    <section className="py-24 relative">
+    <section id="about" className="py-24 relative">
       <div className="container px-4">
         {/* Section Header */}
         <div className="text-center max-w-2xl mx-auto mb-16">
@@ -74,7 +75,7 @@ export const ProfilesSection = () => {
             >
               {/* Gradient Top Border */}
               <div className={`absolute top-0 left-8 right-8 h-1 bg-gradient-to-r ${profile.gradient} rounded-full`} />
-              
+
               {/* Icon */}
               <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${profile.gradient} flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300`}>
                 <profile.icon className="w-8 h-8 text-white" />
@@ -104,9 +105,11 @@ export const ProfilesSection = () => {
               </ul>
 
               {/* CTA */}
-              <Button variant="gold-outline" className="w-full">
-                Saiba mais
-              </Button>
+              <Link to="/checkout">
+                <Button variant="gold-outline" className="w-full">
+                  Saiba mais
+                </Button>
+              </Link>
             </div>
           ))}
         </div>

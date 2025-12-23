@@ -1,17 +1,25 @@
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/icons/Logo";
-import { Calendar, ChevronRight, Sparkles, Users, Zap } from "lucide-react";
+import { Calendar, ChevronRight, Play, Sparkles, Users, Zap } from "lucide-react";
+import { Link } from "react-router-dom";
 
 export const HeroSection = () => {
+  const scrollToVideo = () => {
+    const videoSection = document.getElementById('video');
+    if (videoSection) {
+      videoSection.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
       {/* Background Effects */}
       <div className="absolute inset-0 bg-gradient-to-b from-background via-background to-surface-1" />
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-primary/5 rounded-full blur-3xl" />
       <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-primary/10 rounded-full blur-3xl" />
-      
+
       {/* Grid Pattern */}
-      <div 
+      <div
         className="absolute inset-0 opacity-[0.03]"
         style={{
           backgroundImage: `linear-gradient(hsl(var(--gold)) 1px, transparent 1px),
@@ -40,11 +48,14 @@ export const HeroSection = () => {
 
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16 animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
-            <Button variant="gold" size="xl" className="group">
-              Começar agora
-              <ChevronRight className="group-hover:translate-x-1 transition-transform" />
-            </Button>
-            <Button variant="glass" size="xl">
+            <Link to="/checkout">
+              <Button variant="gold" size="xl" className="group">
+                Começar agora
+                <ChevronRight className="group-hover:translate-x-1 transition-transform" />
+              </Button>
+            </Link>
+            <Button variant="glass" size="xl" onClick={scrollToVideo}>
+              <Play size={18} className="mr-2" />
               Ver demonstração
             </Button>
           </div>

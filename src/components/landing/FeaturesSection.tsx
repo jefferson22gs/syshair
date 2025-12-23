@@ -1,9 +1,9 @@
-import { 
-  Calendar, 
-  Users, 
-  Scissors, 
-  BarChart3, 
-  Bell, 
+import {
+  Calendar,
+  Users,
+  Scissors,
+  BarChart3,
+  Bell,
   Gift,
   Smartphone,
   Shield,
@@ -57,9 +57,9 @@ const highlights = [
 
 export const FeaturesSection = () => {
   return (
-    <section className="py-24 relative overflow-hidden">
+    <section id="features" className="py-24 relative overflow-hidden">
       <div className="absolute inset-0 bg-surface-1" />
-      
+
       <div className="container relative z-10 px-4">
         {/* Section Header */}
         <div className="text-center max-w-2xl mx-auto mb-16">
@@ -75,7 +75,7 @@ export const FeaturesSection = () => {
         {/* Features Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-16">
           {features.map((feature, index) => (
-            <div 
+            <div
               key={feature.title}
               className="group glass-card rounded-2xl p-6 hover:border-primary/30 transition-all duration-500 hover:-translate-y-1"
               style={{ animationDelay: `${index * 0.1}s` }}
