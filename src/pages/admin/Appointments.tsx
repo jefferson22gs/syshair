@@ -9,8 +9,9 @@ import { AdminLayout } from "@/components/layouts/AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Calendar, Clock, User, Check, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Calendar, Clock, User, Check, X, ChevronLeft, ChevronRight, MoreVertical, CheckCircle, XCircle, Edit, Ban, UserX, Phone, MessageCircle } from "lucide-react";
 import { Tables } from "@/integrations/supabase/types";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 type Appointment = Tables<"appointments"> & {
   services?: { name: string; duration_minutes: number } | null;
@@ -405,6 +406,11 @@ const Appointments = () => {
                             📞 {appointment.client_phone}
                           </p>
                         )}
+                        {appointment.notes && (
+                          <p className="text-xs text-muted-foreground mt-1 bg-secondary/50 px-2 py-1 rounded">
+                            📝 {appointment.notes}
+                          </p>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
@@ -416,26 +422,104 @@ const Appointments = () => {
                           R$ {appointment.final_price.toFixed(2)}
                         </p>
                       </div>
-                      {appointment.status === 'confirmed' && (
-                        <div className="flex gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-success"
-                            onClick={() => updateStatus(appointment.id, 'completed')}
-                          >
-                            <Check size={18} />
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreVertical size={18} />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-destructive"
-                            onClick={() => updateStatus(appointment.id, 'cancelled')}
-                          >
-                            <X size={18} />
-                          </Button>
-                        </div>
-                      )}
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48">
+                          {/* Actions based on current status */}
+                          {appointment.status === 'pending' && (
+                            <>
+                              <DropdownMenuItem
+                                onClick={() => updateStatus(appointment.id, 'confirmed')}
+                                className="text-success"
+                              >
+                                <CheckCircle size={16} className="mr-2" />
+                                Confirmar
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => updateStatus(appointment.id, 'cancelled')}
+                                className="text-destructive"
+                              >
+                                <XCircle size={16} className="mr-2" />
+                                Recusar
+                              </DropdownMenuItem>
+                            </>
+                          )}
+
+                          {appointment.status === 'confirmed' && (
+                            <>
+                              <DropdownMenuItem
+                                onClick={() => updateStatus(appointment.id, 'completed')}
+                                className="text-success"
+                              >
+                                <Check size={16} className="mr-2" />
+                                Marcar como Concluído
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => updateStatus(appointment.id, 'no_show')}
+                                className="text-warning"
+                              >
+                                <UserX size={16} className="mr-2" />
+                                Não Compareceu
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => updateStatus(appointment.id, 'cancelled')}
+                                className="text-destructive"
+                              >
+                                <Ban size={16} className="mr-2" />
+                                Cancelar
+                              </DropdownMenuItem>
+                            </>
+                          )}
+
+                          {(appointment.status === 'cancelled' || appointment.status === 'no_show') && (
+                            <DropdownMenuItem
+                              onClick={() => updateStatus(appointment.id, 'pending')}
+                            >
+                              <Edit size={16} className="mr-2" />
+                              Reabrir (Pendente)
+                            </DropdownMenuItem>
+                          )}
+
+                          {appointment.status === 'completed' && (
+                            <DropdownMenuItem
+                              onClick={() => updateStatus(appointment.id, 'confirmed')}
+                            >
+                              <Edit size={16} className="mr-2" />
+                              Voltar para Confirmado
+                            </DropdownMenuItem>
+                          )}
+
+                          <DropdownMenuSeparator />
+
+                          {/* Contact options */}
+                          {appointment.client_phone && (
+                            <>
+                              <DropdownMenuItem
+                                onClick={() => window.open(`tel:${appointment.client_phone}`, '_blank')}
+                              >
+                                <Phone size={16} className="mr-2" />
+                                Ligar
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  const phone = appointment.client_phone?.replace(/\D/g, '');
+                                  const message = encodeURIComponent(
+                                    `Olá ${appointment.client_name}! Seu agendamento está ${statusLabels[appointment.status as keyof typeof statusLabels].toLowerCase()} para ${new Date(selectedDate + 'T12:00:00').toLocaleDateString('pt-BR')} às ${appointment.start_time?.slice(0, 5)}.`
+                                  );
+                                  window.open(`https://wa.me/55${phone}?text=${message}`, '_blank');
+                                }}
+                              >
+                                <MessageCircle size={16} className="mr-2" />
+                                WhatsApp
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
                 </CardContent>

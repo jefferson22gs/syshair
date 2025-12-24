@@ -488,6 +488,46 @@ const PublicSalon = () => {
 
       if (error) throw error;
 
+      // Auto-create or update client in clients table
+      try {
+        // Check if client already exists (by phone)
+        const { data: existingClient } = await supabase
+          .from('clients')
+          .select('id, total_visits, total_spent')
+          .eq('salon_id', salon.id)
+          .eq('phone', clientPhone.trim())
+          .maybeSingle();
+
+        if (existingClient) {
+          // Update existing client
+          await supabase
+            .from('clients')
+            .update({
+              name: clientName.trim(),
+              total_visits: (existingClient.total_visits || 0) + 1,
+              total_spent: (existingClient.total_spent || 0) + finalPrice,
+              last_visit_at: new Date().toISOString(),
+            })
+            .eq('id', existingClient.id);
+        } else {
+          // Create new client
+          await supabase
+            .from('clients')
+            .insert({
+              salon_id: salon.id,
+              name: clientName.trim(),
+              phone: clientPhone.trim(),
+              notes: clientBirthday ? `Aniversário: ${clientBirthday.split('-').reverse().join('/')}` : null,
+              total_visits: 1,
+              total_spent: finalPrice,
+              last_visit_at: new Date().toISOString(),
+            });
+        }
+      } catch (clientError) {
+        console.error("Error creating/updating client:", clientError);
+        // Don't throw - appointment was created successfully
+      }
+
       // Increment coupon usage if applied
       if (couponApplied?.id) {
         const { data: couponData } = await supabase
