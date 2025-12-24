@@ -115,6 +115,7 @@ const PublicSalon = () => {
 
   const [clientName, setClientName] = useState("");
   const [clientPhone, setClientPhone] = useState("");
+  const [clientBirthday, setClientBirthday] = useState("");
 
   const [couponCode, setCouponCode] = useState("");
   const [couponApplied, setCouponApplied] = useState<{ id: string; discount: number; message: string } | null>(null);
@@ -423,7 +424,7 @@ const PublicSalon = () => {
   };
 
   const handleConfirmBooking = async () => {
-    if (cartServices.length === 0 || !selectedDate || !selectedTime || !clientName.trim() || !clientPhone.trim() || !salon) {
+    if (cartServices.length === 0 || !selectedDate || !selectedTime || !clientName.trim() || !clientPhone.trim() || !clientBirthday || !salon) {
       toast.error("Preencha todos os campos obrigatórios");
       return;
     }
@@ -464,6 +465,7 @@ const PublicSalon = () => {
           end_time: endTime,
           client_name: clientName.trim(),
           client_phone: clientPhone.trim(),
+          client_birthday: clientBirthday,
           coupon_id: couponApplied?.id || null,
           price: cartTotal,
           discount,
@@ -1087,6 +1089,19 @@ const PublicSalon = () => {
                     maxLength={20}
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="clientBirthday">Data de Nascimento *</Label>
+                  <Input
+                    id="clientBirthday"
+                    type="date"
+                    value={clientBirthday}
+                    onChange={(e) => setClientBirthday(e.target.value)}
+                    max={new Date().toISOString().split('T')[0]}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    🎂 No seu aniversário você pode ganhar um presente especial!
+                  </p>
+                </div>
               </div>
 
               {/* Coupon */}
@@ -1171,7 +1186,7 @@ const PublicSalon = () => {
             ) : (
               <Button
                 onClick={handleConfirmBooking}
-                disabled={submitting || !clientName.trim() || !clientPhone.trim()}
+                disabled={submitting || !clientName.trim() || !clientPhone.trim() || !clientBirthday}
                 style={{
                   backgroundColor: primaryColor,
                   color: 'white'
