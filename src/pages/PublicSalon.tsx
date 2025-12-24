@@ -6,21 +6,27 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
 import { toast } from "sonner";
-import { 
-  ArrowLeft, 
-  ArrowRight, 
-  Check, 
-  Clock, 
-  Scissors, 
-  User, 
-  Calendar as CalendarIcon, 
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  Clock,
+  Scissors,
+  User,
+  Calendar as CalendarIcon,
   Gift,
   Loader2,
   Phone,
   MapPin,
   MessageCircle,
-  AlertCircle
+  AlertCircle,
+  ShoppingCart,
+  Store,
+  Plus,
+  Minus,
+  Package
 } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { format, isBefore, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -68,10 +74,29 @@ interface Coupon {
   min_purchase: number | null;
 }
 
+interface Product {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number;
+  stock: number;
+  image_url: string | null;
+  category: string | null;
+}
+
+interface CartItem {
+  id: string;
+  type: 'service' | 'product';
+  name: string;
+  price: number;
+  quantity: number;
+  duration_minutes?: number;
+}
+
 const PublicSalon = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
-  
+
   const [salon, setSalon] = useState<Salon | null>(null);
   const [services, setServices] = useState<Service[]>([]);
   const [professionals, setProfessionals] = useState<Professional[]>([]);
@@ -79,16 +104,18 @@ const PublicSalon = () => {
   const [error, setError] = useState<string | null>(null);
 
   const [step, setStep] = useState(1);
-  const [selectedService, setSelectedService] = useState<string | null>(null);
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [activeTab, setActiveTab] = useState<'services' | 'products'>('services');
   const [selectedProfessional, setSelectedProfessional] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedTime, setSelectedTime] = useState<string>("");
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
-  
+
   const [clientName, setClientName] = useState("");
   const [clientPhone, setClientPhone] = useState("");
-  
+
   const [couponCode, setCouponCode] = useState("");
   const [couponApplied, setCouponApplied] = useState<{ id: string; discount: number; message: string } | null>(null);
   const [validatingCoupon, setValidatingCoupon] = useState(false);
@@ -173,6 +200,17 @@ const PublicSalon = () => {
           working_hours: p.working_hours as { start: string; end: string } | null,
         })));
       }
+
+      // Fetch products
+      const { data: productsData } = await supabase
+        .from('products')
+        .select('id, name, description, price, stock, image_url, category')
+        .eq('salon_id', salonData.id)
+        .eq('is_active', true)
+        .gt('stock', 0)
+        .order('name');
+
+      if (productsData) setProducts(productsData);
     } catch (err) {
       console.error("Error fetching salon:", err);
       setError("Erro ao carregar dados do salão");
@@ -181,17 +219,67 @@ const PublicSalon = () => {
     }
   };
 
-  const selectedServiceData = services.find(s => s.id === selectedService);
+  // Cart helper functions
+  const addToCart = (item: Service | Product, type: 'service' | 'product') => {
+    const existing = cart.find(c => c.id === item.id && c.type === type);
+    if (existing) {
+      if (type === 'product') {
+        setCart(cart.map(c =>
+          c.id === item.id && c.type === type
+            ? { ...c, quantity: c.quantity + 1 }
+            : c
+        ));
+      }
+      return;
+    }
+
+    const cartItem: CartItem = {
+      id: item.id,
+      type,
+      name: item.name,
+      price: item.price,
+      quantity: 1,
+      duration_minutes: type === 'service' ? (item as Service).duration_minutes : undefined,
+    };
+    setCart([...cart, cartItem]);
+  };
+
+  const removeFromCart = (id: string, type: 'service' | 'product') => {
+    const existing = cart.find(c => c.id === id && c.type === type);
+    if (existing && existing.quantity > 1 && type === 'product') {
+      setCart(cart.map(c =>
+        c.id === id && c.type === type
+          ? { ...c, quantity: c.quantity - 1 }
+          : c
+      ));
+    } else {
+      setCart(cart.filter(c => !(c.id === id && c.type === type)));
+    }
+  };
+
+  const isInCart = (id: string, type: 'service' | 'product') => {
+    return cart.some(c => c.id === id && c.type === type);
+  };
+
+  const getCartQuantity = (id: string, type: 'service' | 'product') => {
+    return cart.find(c => c.id === id && c.type === type)?.quantity || 0;
+  };
+
+  const cartServices = cart.filter(c => c.type === 'service');
+  const cartProducts = cart.filter(c => c.type === 'product');
+  const cartTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const cartServicesDuration = cartServices.reduce((sum, item) => sum + (item.duration_minutes || 0), 0);
+
   const selectedProfessionalData = professionals.find(p => p.id === selectedProfessional);
 
   useEffect(() => {
-    if (selectedDate && selectedService && salon) {
+    if (selectedDate && cartServices.length > 0 && salon) {
       fetchAvailableSlots();
     }
-  }, [selectedDate, selectedService, selectedProfessional]);
+  }, [selectedDate, cartServices.length, selectedProfessional]);
 
   const fetchAvailableSlots = async () => {
-    if (!selectedDate || !selectedService || !salon) return;
+    if (!selectedDate || cartServices.length === 0 || !salon) return;
 
     setLoadingSlots(true);
     setSelectedTime("");
@@ -206,14 +294,15 @@ const PublicSalon = () => {
         return;
       }
 
-      const service = services.find(s => s.id === selectedService);
-      if (!service) {
+      // Calculate total duration from all services in cart
+      const totalDuration = cartServicesDuration;
+      if (totalDuration === 0) {
         setAvailableSlots([]);
         setLoadingSlots(false);
         return;
       }
 
-      const duration = service.duration_minutes;
+      const duration = totalDuration;
       const slots: string[] = [];
       const [openHour, openMin] = salon.opening_time.split(':').map(Number);
       const [closeHour, closeMin] = salon.closing_time.split(':').map(Number);
@@ -275,7 +364,7 @@ const PublicSalon = () => {
   };
 
   const validateCoupon = async () => {
-    if (!couponCode.trim() || !selectedServiceData || !salon) return;
+    if (!couponCode.trim() || cart.length === 0 || !salon) return;
 
     setValidatingCoupon(true);
     try {
@@ -306,22 +395,22 @@ const PublicSalon = () => {
         toast.error("Cupom esgotado");
         return;
       }
-      if (couponData.min_purchase && selectedServiceData.price < couponData.min_purchase) {
+      if (couponData.min_purchase && cartTotal < couponData.min_purchase) {
         toast.error(`Valor mínimo de R$ ${couponData.min_purchase.toFixed(2)} necessário`);
         return;
       }
 
       let discount = 0;
       if (couponData.type === 'percentage') {
-        discount = selectedServiceData.price * (couponData.value / 100);
+        discount = cartTotal * (couponData.value / 100);
       } else {
-        discount = Math.min(couponData.value, selectedServiceData.price);
+        discount = Math.min(couponData.value, cartTotal);
       }
 
       setCouponApplied({
         id: couponData.id,
         discount,
-        message: couponData.type === 'percentage' 
+        message: couponData.type === 'percentage'
           ? `${couponData.value}% de desconto!`
           : `R$ ${couponData.value.toFixed(2)} de desconto!`
       });
@@ -334,7 +423,7 @@ const PublicSalon = () => {
   };
 
   const handleConfirmBooking = async () => {
-    if (!selectedService || !selectedDate || !selectedTime || !clientName.trim() || !clientPhone.trim() || !salon) {
+    if (cartServices.length === 0 || !selectedDate || !selectedTime || !clientName.trim() || !clientPhone.trim() || !salon) {
       toast.error("Preencha todos os campos obrigatórios");
       return;
     }
@@ -351,22 +440,24 @@ const PublicSalon = () => {
 
     setSubmitting(true);
     try {
-      const service = services.find(s => s.id === selectedService);
-      if (!service) throw new Error("Serviço não encontrado");
-
-      const price = service.price;
       const discount = couponApplied?.discount || 0;
-      const finalPrice = price - discount;
+      const finalPrice = cartTotal - discount;
 
       const [hours, minutes] = selectedTime.split(':').map(Number);
-      const endMinutes = hours * 60 + minutes + service.duration_minutes;
+      const endMinutes = hours * 60 + minutes + cartServicesDuration;
       const endTime = `${Math.floor(endMinutes / 60).toString().padStart(2, '0')}:${(endMinutes % 60).toString().padStart(2, '0')}`;
+
+      // Create appointment for the first service (main service)
+      // Additional services are stored in notes
+      const mainService = cartServices[0];
+      const additionalServices = cartServices.slice(1);
+      const servicesNotes = cart.map(item => `${item.name} (R$ ${item.price.toFixed(2)})`).join(', ');
 
       const { error } = await supabase
         .from('appointments')
         .insert({
           salon_id: salon.id,
-          service_id: selectedService,
+          service_id: mainService.id,
           professional_id: finalProfessionalId,
           date: format(selectedDate, 'yyyy-MM-dd'),
           start_time: selectedTime,
@@ -374,10 +465,11 @@ const PublicSalon = () => {
           client_name: clientName.trim(),
           client_phone: clientPhone.trim(),
           coupon_id: couponApplied?.id || null,
-          price,
+          price: cartTotal,
           discount,
           final_price: finalPrice,
           status: 'pending',
+          notes: additionalServices.length > 0 ? `Serviços: ${servicesNotes}` : null,
         });
 
       if (error) throw error;
@@ -389,7 +481,7 @@ const PublicSalon = () => {
           .select('uses_count')
           .eq('id', couponApplied.id)
           .single();
-        
+
         await supabase
           .from('coupons')
           .update({ uses_count: (couponData?.uses_count || 0) + 1 })
@@ -416,7 +508,7 @@ const PublicSalon = () => {
     return false;
   };
 
-  const price = selectedServiceData?.price || 0;
+  const price = cartTotal;
   const discount = couponApplied?.discount || 0;
   const finalPrice = price - discount;
 
@@ -425,10 +517,10 @@ const PublicSalon = () => {
     const dayNames = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
     const sortedDays = [...salon.working_days].sort();
     if (sortedDays.length === 0) return "Fechado";
-    
+
     const first = sortedDays[0];
     const last = sortedDays[sortedDays.length - 1];
-    
+
     if (sortedDays.length === last - first + 1) {
       return `${dayNames[first]} a ${dayNames[last]}`;
     }
@@ -464,7 +556,7 @@ const PublicSalon = () => {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="text-center max-w-md">
-          <div 
+          <div
             className="w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center"
             style={{ backgroundColor: `${primaryColor}20` }}
           >
@@ -479,8 +571,10 @@ const PublicSalon = () => {
           <div className="bg-card border border-border rounded-2xl p-6 mb-6 text-left shadow-lg">
             <div className="space-y-3">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Serviço</span>
-                <span className="font-medium text-foreground">{selectedServiceData?.name}</span>
+                <span className="text-muted-foreground">Serviços</span>
+                <span className="font-medium text-foreground text-right">
+                  {cartServices.map(s => s.name).join(', ') || 'Nenhum'}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Data</span>
@@ -508,9 +602,9 @@ const PublicSalon = () => {
               </div>
             </div>
           </div>
-          
+
           {salon.whatsapp && (
-            <a 
+            <a
               href={`https://wa.me/${salon.whatsapp.replace(/\D/g, '')}`}
               target="_blank"
               rel="noopener noreferrer"
@@ -529,9 +623,9 @@ const PublicSalon = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header with salon branding */}
-      <header 
+      <header
         className="sticky top-0 z-30 backdrop-blur-xl border-b border-border"
-        style={{ 
+        style={{
           background: `linear-gradient(135deg, ${primaryColor}10 0%, transparent 100%)`,
           borderColor: `${primaryColor}20`
         }}
@@ -542,7 +636,7 @@ const PublicSalon = () => {
               {salon.logo_url ? (
                 <img src={salon.logo_url} alt={salon.name} className="h-10 w-10 rounded-full object-cover" />
               ) : (
-                <div 
+                <div
                   className="h-10 w-10 rounded-full flex items-center justify-center text-white font-bold"
                   style={{ backgroundColor: primaryColor }}
                 >
@@ -557,7 +651,7 @@ const PublicSalon = () => {
               </div>
             </div>
             {salon.whatsapp && (
-              <a 
+              <a
                 href={`https://wa.me/${salon.whatsapp.replace(/\D/g, '')}`}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -608,18 +702,18 @@ const PublicSalon = () => {
           {steps.map((s, index) => (
             <div key={s.number} className="flex items-center">
               <div className="flex flex-col items-center">
-                <div 
+                <div
                   className="w-10 h-10 rounded-full flex items-center justify-center transition-all"
-                  style={{ 
-                    background: step >= s.number 
-                      ? `linear-gradient(135deg, ${primaryColor}, ${primaryColor}CC)` 
+                  style={{
+                    background: step >= s.number
+                      ? `linear-gradient(135deg, ${primaryColor}, ${primaryColor}CC)`
                       : 'hsl(var(--secondary))',
                     color: step >= s.number ? 'white' : 'hsl(var(--muted-foreground))'
                   }}
                 >
                   {step > s.number ? <Check size={18} /> : <s.icon size={18} />}
                 </div>
-                <span 
+                <span
                   className="text-xs mt-2"
                   style={{ color: step >= s.number ? 'hsl(var(--foreground))' : 'hsl(var(--muted-foreground))' }}
                 >
@@ -627,7 +721,7 @@ const PublicSalon = () => {
                 </span>
               </div>
               {index < steps.length - 1 && (
-                <div 
+                <div
                   className="w-12 md:w-20 h-0.5 mx-2"
                   style={{ backgroundColor: step > s.number ? primaryColor : 'hsl(var(--border))' }}
                 />
@@ -638,55 +732,170 @@ const PublicSalon = () => {
 
         {/* Step Content */}
         <div className="bg-card border border-border rounded-3xl p-6 md:p-8 shadow-lg">
-          {/* Step 1: Select Service */}
+          {/* Step 1: Select Services & Products */}
           {step === 1 && (
             <div className="animate-fade-in">
               <h2 className="font-display text-2xl font-bold text-foreground mb-2">
-                Escolha o serviço
+                Monte seu pedido
               </h2>
-              <p className="text-muted-foreground mb-6">Selecione o que você deseja fazer</p>
+              <p className="text-muted-foreground mb-6">Selecione serviços e produtos que deseja</p>
 
-              {services.length === 0 ? (
-                <div className="text-center py-12">
-                  <Scissors size={48} className="mx-auto text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">Nenhum serviço disponível</p>
-                </div>
-              ) : (
-                <div className="grid gap-3">
-                  {services.map((service) => (
-                    <button
-                      key={service.id}
-                      onClick={() => setSelectedService(service.id)}
-                      className="relative flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left"
-                      style={{
-                        borderColor: selectedService === service.id ? primaryColor : 'hsl(var(--border))',
-                        backgroundColor: selectedService === service.id ? `${primaryColor}08` : 'transparent'
-                      }}
-                    >
-                      <span className="text-2xl">{service.icon || '✂️'}</span>
-                      <div className="flex-1">
-                        <p className="font-medium text-foreground">{service.name}</p>
-                        {service.description && (
-                          <p className="text-sm text-muted-foreground line-clamp-1">{service.description}</p>
-                        )}
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
-                          <Clock size={14} />
-                          {service.duration_minutes}min
-                        </div>
-                      </div>
-                      <p className="text-lg font-bold text-foreground">
-                        R$ {service.price.toFixed(2)}
-                      </p>
-                      {selectedService === service.id && (
-                        <div 
-                          className="w-6 h-6 rounded-full flex items-center justify-center"
-                          style={{ backgroundColor: primaryColor }}
+              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'services' | 'products')} className="w-full">
+                <TabsList className="grid w-full grid-cols-2 mb-6">
+                  <TabsTrigger value="services" className="flex items-center gap-2">
+                    <Scissors size={16} />
+                    Serviços
+                  </TabsTrigger>
+                  <TabsTrigger value="products" className="flex items-center gap-2">
+                    <Store size={16} />
+                    Loja
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="services">
+                  {services.length === 0 ? (
+                    <div className="text-center py-12">
+                      <Scissors size={48} className="mx-auto text-muted-foreground mb-4" />
+                      <p className="text-muted-foreground">Nenhum serviço disponível</p>
+                    </div>
+                  ) : (
+                    <div className="grid gap-3">
+                      {services.map((service) => (
+                        <button
+                          key={service.id}
+                          onClick={() => isInCart(service.id, 'service')
+                            ? removeFromCart(service.id, 'service')
+                            : addToCart(service, 'service')
+                          }
+                          className="relative flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left"
+                          style={{
+                            borderColor: isInCart(service.id, 'service') ? primaryColor : 'hsl(var(--border))',
+                            backgroundColor: isInCart(service.id, 'service') ? `${primaryColor}08` : 'transparent'
+                          }}
                         >
-                          <Check size={14} className="text-white" />
+                          <span className="text-2xl">{service.icon || '✂️'}</span>
+                          <div className="flex-1">
+                            <p className="font-medium text-foreground">{service.name}</p>
+                            {service.description && (
+                              <p className="text-sm text-muted-foreground line-clamp-1">{service.description}</p>
+                            )}
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                              <Clock size={14} />
+                              {service.duration_minutes}min
+                            </div>
+                          </div>
+                          <p className="text-lg font-bold text-foreground">
+                            R$ {service.price.toFixed(2)}
+                          </p>
+                          <div
+                            className="w-6 h-6 rounded-full flex items-center justify-center border-2"
+                            style={{
+                              borderColor: primaryColor,
+                              backgroundColor: isInCart(service.id, 'service') ? primaryColor : 'transparent'
+                            }}
+                          >
+                            {isInCart(service.id, 'service') && (
+                              <Check size={14} className="text-white" />
+                            )}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="products">
+                  {products.length === 0 ? (
+                    <div className="text-center py-12">
+                      <Package size={48} className="mx-auto text-muted-foreground mb-4" />
+                      <p className="text-muted-foreground">Nenhum produto disponível</p>
+                    </div>
+                  ) : (
+                    <div className="grid gap-3">
+                      {products.map((product) => (
+                        <div
+                          key={product.id}
+                          className="relative flex items-center gap-4 p-4 rounded-xl border-2 transition-all"
+                          style={{
+                            borderColor: isInCart(product.id, 'product') ? primaryColor : 'hsl(var(--border))',
+                            backgroundColor: isInCart(product.id, 'product') ? `${primaryColor}08` : 'transparent'
+                          }}
+                        >
+                          {product.image_url ? (
+                            <img src={product.image_url} alt={product.name} className="w-14 h-14 rounded-lg object-cover" />
+                          ) : (
+                            <div className="w-14 h-14 rounded-lg bg-secondary flex items-center justify-center">
+                              <Package size={24} className="text-muted-foreground" />
+                            </div>
+                          )}
+                          <div className="flex-1">
+                            <p className="font-medium text-foreground">{product.name}</p>
+                            {product.description && (
+                              <p className="text-sm text-muted-foreground line-clamp-1">{product.description}</p>
+                            )}
+                            {product.category && (
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-secondary text-muted-foreground">
+                                {product.category}
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-right">
+                            <p className="text-lg font-bold text-foreground">
+                              R$ {product.price.toFixed(2)}
+                            </p>
+                            {isInCart(product.id, 'product') ? (
+                              <div className="flex items-center gap-2 mt-2">
+                                <button
+                                  onClick={() => removeFromCart(product.id, 'product')}
+                                  className="w-7 h-7 rounded-full border flex items-center justify-center hover:bg-secondary"
+                                  style={{ borderColor: primaryColor }}
+                                >
+                                  <Minus size={14} style={{ color: primaryColor }} />
+                                </button>
+                                <span className="font-medium w-6 text-center">{getCartQuantity(product.id, 'product')}</span>
+                                <button
+                                  onClick={() => addToCart(product, 'product')}
+                                  className="w-7 h-7 rounded-full flex items-center justify-center text-white"
+                                  style={{ backgroundColor: primaryColor }}
+                                >
+                                  <Plus size={14} />
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => addToCart(product, 'product')}
+                                className="mt-2 px-3 py-1 rounded-full text-sm font-medium text-white"
+                                style={{ backgroundColor: primaryColor }}
+                              >
+                                Adicionar
+                              </button>
+                            )}
+                          </div>
                         </div>
-                      )}
-                    </button>
-                  ))}
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
+              </Tabs>
+
+              {/* Cart Summary */}
+              {cart.length > 0 && (
+                <div className="mt-6 p-4 rounded-xl border-2" style={{ borderColor: primaryColor, backgroundColor: `${primaryColor}08` }}>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <ShoppingCart size={18} style={{ color: primaryColor }} />
+                      <span className="font-medium">Carrinho ({cart.length} {cart.length === 1 ? 'item' : 'itens'})</span>
+                    </div>
+                    <span className="text-lg font-bold" style={{ color: primaryColor }}>
+                      R$ {cartTotal.toFixed(2)}
+                    </span>
+                  </div>
+                  {cartServicesDuration > 0 && (
+                    <p className="text-sm text-muted-foreground">
+                      <Clock size={12} className="inline mr-1" />
+                      Tempo estimado: {cartServicesDuration} min
+                    </p>
+                  )}
                 </div>
               )}
             </div>
@@ -711,7 +920,7 @@ const PublicSalon = () => {
                       backgroundColor: selectedProfessional === pro.id ? `${primaryColor}08` : 'transparent'
                     }}
                   >
-                    <div 
+                    <div
                       className="w-14 h-14 rounded-full flex items-center justify-center text-white font-bold text-xl overflow-hidden"
                       style={{ background: `linear-gradient(135deg, ${primaryColor}, ${primaryColor}CC)` }}
                     >
@@ -728,7 +937,7 @@ const PublicSalon = () => {
                       )}
                     </div>
                     {selectedProfessional === pro.id && (
-                      <div 
+                      <div
                         className="w-6 h-6 rounded-full flex items-center justify-center"
                         style={{ backgroundColor: primaryColor }}
                       >
@@ -754,7 +963,7 @@ const PublicSalon = () => {
                     <p className="text-sm text-muted-foreground">Qualquer profissional disponível</p>
                   </div>
                   {selectedProfessional === "any" && (
-                    <div 
+                    <div
                       className="w-6 h-6 rounded-full flex items-center justify-center"
                       style={{ backgroundColor: primaryColor }}
                     >
@@ -790,7 +999,7 @@ const PublicSalon = () => {
                   <label className="block text-sm font-medium text-foreground mb-3">
                     Horários disponíveis para {format(selectedDate, "dd/MM", { locale: ptBR })}
                   </label>
-                  
+
                   {loadingSlots ? (
                     <div className="flex items-center justify-center py-8">
                       <Loader2 className="w-6 h-6 animate-spin" style={{ color: primaryColor }} />
@@ -834,8 +1043,8 @@ const PublicSalon = () => {
               <div className="bg-secondary/50 rounded-xl p-4 mb-6">
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Serviço</span>
-                    <span className="font-medium">{selectedServiceData?.name}</span>
+                    <span className="text-muted-foreground">Serviços</span>
+                    <span className="font-medium text-right">{cartServices.map(s => s.name).join(', ') || 'Nenhum'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Profissional</span>
@@ -947,11 +1156,11 @@ const PublicSalon = () => {
               <Button
                 onClick={() => setStep(step + 1)}
                 disabled={
-                  (step === 1 && !selectedService) ||
+                  (step === 1 && cartServices.length === 0) ||
                   (step === 2 && !selectedProfessional) ||
                   (step === 3 && (!selectedDate || !selectedTime))
                 }
-                style={{ 
+                style={{
                   backgroundColor: primaryColor,
                   color: 'white'
                 }}
@@ -963,7 +1172,7 @@ const PublicSalon = () => {
               <Button
                 onClick={handleConfirmBooking}
                 disabled={submitting || !clientName.trim() || !clientPhone.trim()}
-                style={{ 
+                style={{
                   backgroundColor: primaryColor,
                   color: 'white'
                 }}
