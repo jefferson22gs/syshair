@@ -17,7 +17,7 @@ const Register = () => {
     phone: "",
     password: "",
   });
-  
+
   const { signUp, user } = useAuth();
   const navigate = useNavigate();
 
@@ -34,23 +34,23 @@ const Register = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
+
     const { error } = await signUp(
-      formData.email, 
-      formData.password, 
+      formData.email,
+      formData.password,
       formData.name,
       formData.phone
     );
-    
+
     if (!error) {
       navigate('/dashboard');
     }
-    
+
     setIsLoading(false);
   };
 
   const benefits = [
-    "14 dias grátis para testar",
+    "7 dias grátis para testar",
     "Sem cartão de crédito",
     "Suporte completo",
     "Cancele quando quiser",
@@ -62,8 +62,8 @@ const Register = () => {
       <div className="flex-1 flex items-center justify-center px-4 py-12">
         <div className="w-full max-w-md">
           {/* Back Link */}
-          <Link 
-            to="/" 
+          <Link
+            to="/"
             className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-8 transition-colors"
           >
             <ArrowLeft size={16} />
@@ -235,7 +235,7 @@ const Register = () => {
             </p>
           </div>
         </div>
-        
+
         {/* Decorative Elements */}
         <div className="absolute top-20 left-20 w-40 h-40 bg-primary/10 rounded-full blur-3xl" />
         <div className="absolute bottom-20 right-20 w-60 h-60 bg-primary/10 rounded-full blur-3xl" />

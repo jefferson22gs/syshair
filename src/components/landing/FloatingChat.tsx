@@ -115,18 +115,18 @@ export const FloatingChat = () => {
                         initial={{ opacity: 0, y: 20, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 20, scale: 0.95 }}
-                        className="fixed bottom-24 right-6 z-50 w-[380px] max-w-[calc(100vw-3rem)]"
+                        className="fixed bottom-24 right-6 z-50 w-[340px] max-w-[calc(100vw-3rem)] max-h-[calc(100vh-120px)]"
                     >
-                        <div className="glass-card rounded-3xl overflow-hidden shadow-2xl border border-border/50">
+                        <div className="glass-card rounded-3xl overflow-hidden shadow-2xl border border-border/50 flex flex-col max-h-[500px]">
                             {/* Header */}
-                            <div className="bg-gradient-to-r from-primary to-gold-light p-4 flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
-                                        <Sparkles className="w-5 h-5 text-white" />
+                            <div className="bg-gradient-to-r from-primary to-gold-light p-3 flex items-center justify-between flex-shrink-0">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+                                        <Sparkles className="w-4 h-4 text-white" />
                                     </div>
                                     <div>
-                                        <p className="font-semibold text-white">SysHair Assistente</p>
-                                        <p className="text-xs text-white/70">🟢 Online agora</p>
+                                        <p className="font-semibold text-white text-sm">SysHair Assistente</p>
+                                        <p className="text-[10px] text-white/70">🟢 Online agora</p>
                                     </div>
                                 </div>
                                 <button
@@ -138,7 +138,7 @@ export const FloatingChat = () => {
                             </div>
 
                             {/* Messages */}
-                            <div className="h-[350px] overflow-y-auto p-4 space-y-4 bg-surface-1">
+                            <div className="h-[200px] overflow-y-auto p-3 space-y-3 bg-surface-1 flex-1">
                                 {messages.map((message) => (
                                     <motion.div
                                         key={message.id}
@@ -178,13 +178,13 @@ export const FloatingChat = () => {
                             </div>
 
                             {/* Quick Replies */}
-                            <div className="px-4 py-3 border-t border-border/30 bg-card/50">
-                                <div className="flex flex-wrap gap-2 mb-3">
+                            <div className="px-3 py-2 border-t border-border/30 bg-card/50 flex-shrink-0">
+                                <div className="flex flex-wrap gap-1.5 mb-2">
                                     {quickMessages.map((msg, index) => (
                                         <button
                                             key={index}
                                             onClick={() => handleSendMessage(msg)}
-                                            className="px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-xs text-primary hover:bg-primary/20 transition-colors"
+                                            className="px-2 py-1 rounded-full bg-primary/10 border border-primary/20 text-[11px] text-primary hover:bg-primary/20 transition-colors"
                                         >
                                             {msg}
                                         </button>
@@ -199,13 +199,13 @@ export const FloatingChat = () => {
                                         onChange={(e) => setInputValue(e.target.value)}
                                         onKeyPress={(e) => e.key === 'Enter' && handleSendMessage(inputValue)}
                                         placeholder="Digite sua mensagem..."
-                                        className="flex-1 px-4 py-2 rounded-full bg-background border border-border/50 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
+                                        className="flex-1 px-3 py-1.5 rounded-full bg-background border border-border/50 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
                                     />
                                     <button
                                         onClick={() => handleSendMessage(inputValue)}
-                                        className="w-10 h-10 rounded-full bg-gradient-to-r from-primary to-gold-light flex items-center justify-center text-primary-foreground"
+                                        className="w-8 h-8 rounded-full bg-gradient-to-r from-primary to-gold-light flex items-center justify-center text-primary-foreground"
                                     >
-                                        <Send size={18} />
+                                        <Send size={16} />
                                     </button>
                                 </div>
                             </div>
@@ -215,10 +215,10 @@ export const FloatingChat = () => {
                                 href={getSupportWhatsAppLink('demo')}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="block p-3 bg-green-500 text-center text-white font-medium hover:bg-green-600 transition-colors"
+                                className="block p-2 bg-green-500 text-center text-white text-sm font-medium hover:bg-green-600 transition-colors flex-shrink-0"
                             >
                                 <span className="flex items-center justify-center gap-2">
-                                    <MessageCircle size={18} />
+                                    <MessageCircle size={16} />
                                     Falar no WhatsApp ({DEVELOPER_INFO.whatsappFormatted})
                                 </span>
                             </a>

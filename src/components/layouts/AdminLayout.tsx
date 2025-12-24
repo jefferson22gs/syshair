@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { usePWA } from "@/hooks/usePWA";
 import { NotificationBell } from "@/components/admin/NotificationCenter";
 import { ThemeSelector } from "@/components/admin/ThemeSelector";
+import { FloatingActionButton } from "@/components/mobile/FloatingActionButton";
 import {
   LayoutDashboard,
   Calendar,
@@ -278,6 +279,9 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
           })}
         </div>
       </nav>
+
+      {/* Floating Action Button - Mobile Only */}
+      <FloatingActionButton />
     </div>
   );
 };

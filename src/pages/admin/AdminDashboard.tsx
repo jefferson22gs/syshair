@@ -7,10 +7,12 @@ import { AdminLayout } from "@/components/layouts/AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SalonInsights } from "@/components/admin/SalonInsights";
 import { ClientMetricsCard } from "@/components/admin/ClientMetricsCard";
-import { 
-  Calendar, 
-  DollarSign, 
-  UserCheck, 
+import { OnboardingWizard } from "@/components/admin/OnboardingWizard";
+import { SkeletonDashboard } from "@/components/ui/skeleton-card";
+import {
+  Calendar,
+  DollarSign,
+  UserCheck,
   Clock,
   TrendingUp,
   Plus,
@@ -113,34 +115,34 @@ const AdminDashboard = () => {
   const displayName = profile?.full_name || user?.email?.split('@')[0] || 'Usuário';
 
   const statsCards = [
-    { 
-      icon: Calendar, 
-      label: "Agendamentos hoje", 
-      value: stats.todayAppointments.toString(), 
+    {
+      icon: Calendar,
+      label: "Agendamentos hoje",
+      value: stats.todayAppointments.toString(),
       change: todayAppointments.length > 0 ? `${todayAppointments.filter(a => a.status === 'confirmed').length} confirmados` : "Nenhum",
       positive: true,
       color: "from-blue-500 to-cyan-500"
     },
-    { 
-      icon: DollarSign, 
-      label: "Faturamento do mês", 
-      value: `R$ ${stats.monthRevenue.toFixed(2)}`, 
+    {
+      icon: DollarSign,
+      label: "Faturamento do mês",
+      value: `R$ ${stats.monthRevenue.toFixed(2)}`,
       change: "+0%",
       positive: true,
       color: "from-green-500 to-emerald-500"
     },
-    { 
-      icon: UserCheck, 
-      label: "Clientes cadastrados", 
-      value: stats.activeClients.toString(), 
+    {
+      icon: UserCheck,
+      label: "Clientes cadastrados",
+      value: stats.activeClients.toString(),
       change: "Total",
       positive: true,
       color: "from-purple-500 to-pink-500"
     },
-    { 
-      icon: Clock, 
-      label: "Próximo horário", 
-      value: todayAppointments.length > 0 ? todayAppointments[0]?.start_time?.slice(0, 5) : "-", 
+    {
+      icon: Clock,
+      label: "Próximo horário",
+      value: todayAppointments.length > 0 ? todayAppointments[0]?.start_time?.slice(0, 5) : "-",
       change: todayAppointments.length > 0 ? todayAppointments[0]?.services?.name : "Sem agenda",
       positive: true,
       color: "from-orange-500 to-red-500"
@@ -150,9 +152,7 @@ const AdminDashboard = () => {
   if (loading) {
     return (
       <AdminLayout>
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-        </div>
+        <SkeletonDashboard />
       </AdminLayout>
     );
   }
@@ -251,8 +251,8 @@ const AdminDashboard = () => {
               ) : (
                 <div className="space-y-3">
                   {todayAppointments.slice(0, 5).map((appointment) => (
-                    <div 
-                      key={appointment.id} 
+                    <div
+                      key={appointment.id}
                       className="flex items-center justify-between p-4 rounded-xl bg-secondary/50"
                     >
                       <div className="flex items-center gap-4">
@@ -268,17 +268,16 @@ const AdminDashboard = () => {
                           </p>
                         </div>
                       </div>
-                      <span className={`text-xs font-medium px-2 py-1 rounded-full ${
-                        appointment.status === 'confirmed' 
-                          ? 'bg-success/20 text-success'
-                          : appointment.status === 'completed'
-                            ? 'bg-primary/20 text-primary'
-                            : 'bg-warning/20 text-warning'
-                      }`}>
-                        {appointment.status === 'confirmed' ? 'Confirmado' 
+                      <span className={`text-xs font-medium px-2 py-1 rounded-full ${appointment.status === 'confirmed'
+                        ? 'bg-success/20 text-success'
+                        : appointment.status === 'completed'
+                          ? 'bg-primary/20 text-primary'
+                          : 'bg-warning/20 text-warning'
+                        }`}>
+                        {appointment.status === 'confirmed' ? 'Confirmado'
                           : appointment.status === 'completed' ? 'Concluído'
-                          : appointment.status === 'pending' ? 'Pendente'
-                          : appointment.status}
+                            : appointment.status === 'pending' ? 'Pendente'
+                              : appointment.status}
                       </span>
                     </div>
                   ))}
@@ -295,47 +294,47 @@ const AdminDashboard = () => {
         {salonId && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <ClientMetricsCard salonId={salonId} />
-            
+
             {/* Quick Actions */}
             <Card className="glass-card">
               <CardHeader>
                 <CardTitle>Ações rápidas</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Button 
-                  variant="gold" 
+                <Button
+                  variant="gold"
                   className="w-full justify-start gap-3"
                   onClick={() => navigate('/admin/appointments')}
                 >
                   <Calendar size={18} />
                   Novo agendamento
                 </Button>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="w-full justify-start gap-3"
                   onClick={() => navigate('/admin/clients')}
                 >
                   <Users size={18} />
                   Ver clientes
                 </Button>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="w-full justify-start gap-3"
                   onClick={() => navigate('/admin/analytics')}
                 >
                   <TrendingUp size={18} />
                   Dashboard Analítico
                 </Button>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="w-full justify-start gap-3"
                   onClick={() => navigate('/admin/packages')}
                 >
                   <Gift size={18} />
                   Gerenciar pacotes
                 </Button>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="w-full justify-start gap-3"
                   onClick={() => navigate('/admin/products')}
                 >
@@ -358,9 +357,9 @@ const AdminDashboard = () => {
                 <p className="text-sm text-muted-foreground mb-3">
                   Configure seu salão para liberar todas as funcionalidades
                 </p>
-                <Button 
-                  variant="gold" 
-                  size="sm" 
+                <Button
+                  variant="gold"
+                  size="sm"
                   className="w-full"
                   onClick={() => navigate('/admin/settings')}
                 >

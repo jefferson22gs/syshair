@@ -23,6 +23,9 @@ import Install from "./pages/Install";
 import Checkout from "./pages/Checkout";
 import PublicBookingAdvanced from "./pages/PublicBookingAdvanced";
 
+// Lazy loaded Public Pages
+const PublicWaitlist = lazy(() => import("./pages/PublicWaitlist"));
+
 // Lazy loaded Admin Pages
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
 const SalonSettings = lazy(() => import("./pages/admin/SalonSettings"));
@@ -74,6 +77,14 @@ const App = () => (
               <Route path="/checkout" element={<Checkout />} />
               <Route path="/agendar" element={<PublicBookingAdvanced />} />
               <Route path="/agendar/:salonSlug" element={<PublicBookingAdvanced />} />
+
+              {/* Public Waitlist */}
+              <Route path="/waitlist/:salonId" element={
+                <Suspense fallback={<LoadingScreen />}>
+                  <PublicWaitlist />
+                </Suspense>
+              } />
+
               {/* Legacy dashboard redirect */}
               <Route path="/dashboard" element={
                 <ProtectedRoute>
