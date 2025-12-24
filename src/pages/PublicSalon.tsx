@@ -454,6 +454,19 @@ const PublicSalon = () => {
       const additionalServices = cartServices.slice(1);
       const servicesNotes = cart.map(item => `${item.name} (R$ ${item.price.toFixed(2)})`).join(', ');
 
+      // Build notes with birthday and services
+      const notesArray: string[] = [];
+      if (clientBirthday) {
+        notesArray.push(`Aniversário: ${clientBirthday.split('-').reverse().join('/')}`);
+      }
+      if (additionalServices.length > 0) {
+        notesArray.push(`Serviços: ${servicesNotes}`);
+      }
+      if (cartProducts.length > 0) {
+        const productsNotes = cartProducts.map(p => `${p.name} x${p.quantity}`).join(', ');
+        notesArray.push(`Produtos: ${productsNotes}`);
+      }
+
       const { error } = await supabase
         .from('appointments')
         .insert({
@@ -465,13 +478,12 @@ const PublicSalon = () => {
           end_time: endTime,
           client_name: clientName.trim(),
           client_phone: clientPhone.trim(),
-          client_birthday: clientBirthday,
           coupon_id: couponApplied?.id || null,
           price: cartTotal,
           discount,
           final_price: finalPrice,
           status: 'pending',
-          notes: additionalServices.length > 0 ? `Serviços: ${servicesNotes}` : null,
+          notes: notesArray.length > 0 ? notesArray.join(' | ') : null,
         });
 
       if (error) throw error;
