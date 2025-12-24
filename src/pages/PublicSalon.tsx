@@ -24,7 +24,8 @@ import {
   Store,
   Plus,
   Minus,
-  Package
+  Package,
+  Star
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { format, isBefore, startOfDay } from "date-fns";
@@ -93,6 +94,15 @@ interface CartItem {
   duration_minutes?: number;
 }
 
+interface PendingReview {
+  appointment_id: string;
+  professional_id: string;
+  professional_name: string;
+  service_name: string;
+  date: string;
+  client_id: string;
+}
+
 const PublicSalon = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
@@ -122,6 +132,13 @@ const PublicSalon = () => {
   const [validatingCoupon, setValidatingCoupon] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
+
+  // Review system states
+  const [pendingReviews, setPendingReviews] = useState<PendingReview[]>([]);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [currentRating, setCurrentRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState("");
+  const [submittingReview, setSubmittingReview] = useState(false);
 
   const steps = [
     { number: 1, label: "Serviço", icon: Scissors },
@@ -420,6 +437,119 @@ const PublicSalon = () => {
       toast.error("Erro ao validar cupom");
     } finally {
       setValidatingCoupon(false);
+    }
+  };
+
+  // Check for pending reviews when client enters phone
+  const checkPendingReviews = async (phone: string) => {
+    if (!salon || !phone || phone.length < 10) return;
+
+    try {
+      // Find client by phone
+      const { data: client } = await supabase
+        .from('clients')
+        .select('id')
+        .eq('salon_id', salon.id)
+        .eq('phone', phone.trim())
+        .maybeSingle();
+
+      if (!client) return;
+
+      // Find completed appointments without reviews
+      const { data: completedAppointments } = await supabase
+        .from('appointments')
+        .select(`
+          id,
+          date,
+          professional_id,
+          professionals:professional_id (name),
+          services:service_id (name)
+        `)
+        .eq('salon_id', salon.id)
+        .eq('client_phone', phone.trim())
+        .eq('status', 'completed')
+        .order('date', { ascending: false })
+        .limit(5);
+
+      if (!completedAppointments || completedAppointments.length === 0) return;
+
+      // Check which appointments don't have reviews
+      const pendingList: PendingReview[] = [];
+      for (const apt of completedAppointments) {
+        const { data: existingReview } = await supabase
+          .from('reviews')
+          .select('id')
+          .eq('appointment_id', apt.id)
+          .maybeSingle();
+
+        if (!existingReview) {
+          pendingList.push({
+            appointment_id: apt.id,
+            professional_id: apt.professional_id,
+            professional_name: (apt.professionals as any)?.name || 'Profissional',
+            service_name: (apt.services as any)?.name || 'Serviço',
+            date: apt.date,
+            client_id: client.id,
+          });
+        }
+      }
+
+      if (pendingList.length > 0) {
+        setPendingReviews(pendingList);
+        setShowReviewModal(true);
+      }
+    } catch (err) {
+      console.error("Error checking pending reviews:", err);
+    }
+  };
+
+  // Submit review for a past appointment
+  const submitReview = async () => {
+    if (pendingReviews.length === 0 || !salon) return;
+
+    const review = pendingReviews[0];
+    setSubmittingReview(true);
+
+    try {
+      const { error } = await supabase
+        .from('reviews')
+        .insert({
+          salon_id: salon.id,
+          client_id: review.client_id,
+          professional_id: review.professional_id,
+          appointment_id: review.appointment_id,
+          rating: currentRating,
+          comment: reviewComment.trim() || null,
+          is_public: true,
+        });
+
+      if (error) throw error;
+
+      toast.success("Avaliação enviada! Obrigado pelo feedback!");
+
+      // Remove this review from pending list
+      setPendingReviews(prev => prev.slice(1));
+      setCurrentRating(5);
+      setReviewComment("");
+
+      if (pendingReviews.length <= 1) {
+        setShowReviewModal(false);
+      }
+    } catch (err: any) {
+      console.error("Error submitting review:", err);
+      toast.error(err.message || "Erro ao enviar avaliação");
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
+
+  const skipReview = () => {
+    setPendingReviews(prev => prev.slice(1));
+    setCurrentRating(5);
+    setReviewComment("");
+
+    if (pendingReviews.length <= 1) {
+      setShowReviewModal(false);
     }
   };
 
@@ -1142,6 +1272,7 @@ const PublicSalon = () => {
                     id="clientPhone"
                     value={clientPhone}
                     onChange={(e) => setClientPhone(e.target.value)}
+                    onBlur={(e) => checkPendingReviews(e.target.value)}
                     placeholder="(00) 00000-0000"
                     maxLength={20}
                   />
@@ -1270,6 +1401,97 @@ const PublicSalon = () => {
           Ao agendar, você concorda com os termos de uso do estabelecimento.
         </p>
       </main>
+
+      {/* Review Modal */}
+      {showReviewModal && pendingReviews.length > 0 && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-background rounded-2xl max-w-md w-full p-6 shadow-2xl animate-scale-in">
+            <div className="text-center mb-6">
+              <div
+                className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center"
+                style={{ backgroundColor: `${primaryColor}20` }}
+              >
+                <Star size={28} style={{ color: primaryColor }} />
+              </div>
+              <h3 className="font-display text-xl font-bold text-foreground mb-2">
+                Avalie sua visita anterior
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                {pendingReviews[0].service_name} com {pendingReviews[0].professional_name}
+                <br />
+                <span className="text-xs">
+                  {new Date(pendingReviews[0].date + 'T12:00:00').toLocaleDateString('pt-BR', {
+                    day: 'numeric',
+                    month: 'long'
+                  })}
+                </span>
+              </p>
+            </div>
+
+            {/* Star Rating */}
+            <div className="flex justify-center gap-2 mb-6">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  onClick={() => setCurrentRating(star)}
+                  className="transition-transform hover:scale-110"
+                >
+                  <Star
+                    size={36}
+                    fill={star <= currentRating ? primaryColor : 'transparent'}
+                    stroke={star <= currentRating ? primaryColor : 'hsl(var(--muted-foreground))'}
+                    strokeWidth={1.5}
+                  />
+                </button>
+              ))}
+            </div>
+
+            {/* Comment */}
+            <div className="mb-6">
+              <Label htmlFor="reviewComment" className="text-sm text-muted-foreground">
+                Comentário (opcional)
+              </Label>
+              <textarea
+                id="reviewComment"
+                value={reviewComment}
+                onChange={(e) => setReviewComment(e.target.value)}
+                placeholder="Conte como foi sua experiência..."
+                className="w-full mt-2 p-3 rounded-lg bg-secondary/50 border border-border text-foreground placeholder:text-muted-foreground resize-none h-24"
+                maxLength={500}
+              />
+            </div>
+
+            {/* Buttons */}
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                onClick={skipReview}
+                className="flex-1"
+              >
+                Pular
+              </Button>
+              <Button
+                onClick={submitReview}
+                disabled={submittingReview}
+                style={{ backgroundColor: primaryColor, color: 'white' }}
+                className="flex-1"
+              >
+                {submittingReview ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  'Enviar Avaliação'
+                )}
+              </Button>
+            </div>
+
+            {pendingReviews.length > 1 && (
+              <p className="text-xs text-center text-muted-foreground mt-4">
+                +{pendingReviews.length - 1} avaliações pendentes
+              </p>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
