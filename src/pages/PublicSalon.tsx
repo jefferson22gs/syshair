@@ -488,12 +488,15 @@ const PublicSalon = () => {
 
       if (error) throw error;
 
-      // Auto-create or update client in clients table
+      // Auto-create or update client in clients table with loyalty points
+      // Rule: R$ 1 spent = 1 loyalty point
       try {
+        const pointsEarned = Math.floor(finalPrice);
+
         // Check if client already exists (by phone)
         const { data: existingClient } = await supabase
           .from('clients')
-          .select('id, total_visits, total_spent')
+          .select('id, total_visits, total_spent, loyalty_points')
           .eq('salon_id', salon.id)
           .eq('phone', clientPhone.trim())
           .maybeSingle();
@@ -506,11 +509,12 @@ const PublicSalon = () => {
               name: clientName.trim(),
               total_visits: (existingClient.total_visits || 0) + 1,
               total_spent: (existingClient.total_spent || 0) + finalPrice,
+              loyalty_points: (existingClient.loyalty_points || 0) + pointsEarned,
               last_visit_at: new Date().toISOString(),
             })
             .eq('id', existingClient.id);
         } else {
-          // Create new client
+          // Create new client with loyalty points
           await supabase
             .from('clients')
             .insert({
@@ -520,6 +524,7 @@ const PublicSalon = () => {
               notes: clientBirthday ? `Aniversário: ${clientBirthday.split('-').reverse().join('/')}` : null,
               total_visits: 1,
               total_spent: finalPrice,
+              loyalty_points: pointsEarned,
               last_visit_at: new Date().toISOString(),
             });
         }
