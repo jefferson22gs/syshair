@@ -32,6 +32,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { format, isBefore, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { usePWA } from "@/hooks/usePWA";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 
 interface Service {
   id: string;
@@ -109,6 +110,9 @@ const PublicSalon = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
   const { isInstallable, isInstalled, installApp } = usePWA();
+
+  // Push notifications - subscription será salva no banco quando cliente permitir
+  const { subscribe: subscribePush, isSupported: pushSupported, permission: pushPermission } = usePushNotifications(salon?.id);
 
   const [salon, setSalon] = useState<Salon | null>(null);
   const [services, setServices] = useState<Service[]>([]);
