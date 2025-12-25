@@ -55,6 +55,48 @@ export const usePushNotifications = (salonId?: string, clientId?: string) => {
     }
   }, [state.isSupported]);
 
+  // Salvar subscription existente quando salonId ficar disponível
+  useEffect(() => {
+    const saveExistingSubscription = async () => {
+      if (!salonId || !state.isSupported) return;
+
+      try {
+        const registration = await navigator.serviceWorker.ready;
+        const subscription = await registration.pushManager.getSubscription();
+
+        if (subscription) {
+          const subscriptionJson = subscription.toJSON();
+          const keys = subscriptionJson.keys as { p256dh: string; auth: string };
+
+          const { error } = await supabase.from('push_subscriptions').upsert({
+            salon_id: salonId,
+            client_id: clientId || null,
+            endpoint: subscription.endpoint,
+            p256dh: keys?.p256dh || '',
+            auth: keys?.auth || '',
+            device_info: {
+              userAgent: navigator.userAgent,
+              platform: navigator.platform,
+            },
+            is_active: true,
+          }, {
+            onConflict: 'endpoint'
+          });
+
+          if (!error) {
+            console.log('Existing push subscription saved to database for salon:', salonId);
+          } else {
+            console.error('Error saving subscription:', error);
+          }
+        }
+      } catch (error) {
+        console.error('Error saving existing subscription:', error);
+      }
+    };
+
+    saveExistingSubscription();
+  }, [salonId, state.isSupported, clientId]);
+
   const subscribe = useCallback(async (): Promise<PushSubscription | null> => {
     if (!state.isSupported) {
       console.warn('Push notifications not supported');
