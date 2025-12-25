@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface PushNotificationState {
   isSupported: boolean;
@@ -6,7 +7,7 @@ interface PushNotificationState {
   isSubscribed: boolean;
 }
 
-export const usePushNotifications = () => {
+export const usePushNotifications = (salonId?: string, clientId?: string) => {
   const [state, setState] = useState<PushNotificationState>({
     isSupported: false,
     permission: 'default',
@@ -16,7 +17,7 @@ export const usePushNotifications = () => {
   useEffect(() => {
     // Check if push notifications are supported
     const isSupported = 'Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window;
-    
+
     setState(prev => ({
       ...prev,
       isSupported,
@@ -65,27 +66,50 @@ export const usePushNotifications = () => {
       if (!permission) return null;
 
       const registration = await navigator.serviceWorker.ready;
-      
+
       // Subscribe to push notifications
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U',
       });
 
+      // Save subscription to database for cross-device push
+      if (salonId && subscription) {
+        const subscriptionJson = subscription.toJSON();
+        const keys = subscriptionJson.keys as { p256dh: string; auth: string };
+
+        await supabase.from('push_subscriptions').upsert({
+          salon_id: salonId,
+          client_id: clientId || null,
+          endpoint: subscription.endpoint,
+          p256dh: keys?.p256dh || '',
+          auth: keys?.auth || '',
+          device_info: {
+            userAgent: navigator.userAgent,
+            platform: navigator.platform,
+          },
+          is_active: true,
+        }, {
+          onConflict: 'endpoint'
+        });
+
+        console.log('Push subscription saved to database');
+      }
+
       setState(prev => ({ ...prev, isSubscribed: true }));
-      
+
       return subscription;
     } catch (error) {
       console.error('Error subscribing to push:', error);
       return null;
     }
-  }, [state.isSupported, requestPermission]);
+  }, [state.isSupported, requestPermission, salonId, clientId]);
 
   const unsubscribe = useCallback(async (): Promise<boolean> => {
     try {
       const registration = await navigator.serviceWorker.ready;
       const subscription = await registration.pushManager.getSubscription();
-      
+
       if (subscription) {
         await subscription.unsubscribe();
         setState(prev => ({ ...prev, isSubscribed: false }));

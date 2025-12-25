@@ -130,26 +130,31 @@ const Marketing = () => {
             }
 
             if (sendVia.push) {
-                // Send push notifications
-                if (pushPermission !== 'granted') {
-                    const granted = await requestPermission();
-                    if (!granted) {
-                        toast.error("Permissão de notificação negada");
-                    }
-                }
+                // Send push notifications via Edge Function (cross-device)
+                try {
+                    const { data, error } = await supabase.functions.invoke('send-push', {
+                        body: {
+                            salon_id: salon?.id,
+                            client_ids: selectedClients,
+                            title: title || salon?.name || 'Nova mensagem',
+                            body: message.replace('{nome}', 'Cliente'),
+                        }
+                    });
 
-                if (pushPermission === 'granted' || pushSupported) {
-                    let pushSent = 0;
-                    for (const client of selectedClientData) {
-                        const personalizedMessage = message.replace('{nome}', client.name.split(' ')[0]);
-                        const sent = await showNotification(title || 'Nova mensagem', {
-                            body: personalizedMessage,
-                            tag: `marketing-${client.id}`,
-                            data: { clientId: client.id, type: messageType }
+                    if (error) throw error;
+
+                    if (data?.sent > 0) {
+                        toast.success(`${data.sent} notificações push enviadas!`, {
+                            description: `Para dispositivos que permitiram notificações.`
                         });
-                        if (sent) pushSent++;
+                    } else {
+                        toast.info("Nenhum dispositivo encontrado para push", {
+                            description: "Os clientes precisam instalar o app e permitir notificações."
+                        });
                     }
-                    toast.success(`${pushSent} notificações push enviadas!`);
+                } catch (pushError: any) {
+                    console.error('Push error:', pushError);
+                    toast.error("Erro ao enviar push: " + (pushError.message || pushError));
                 }
             }
 
