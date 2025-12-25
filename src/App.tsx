@@ -43,6 +43,7 @@ const MultiUnits = lazy(() => import("./pages/admin/MultiUnits"));
 const Gallery = lazy(() => import("./pages/admin/Gallery"));
 const AdvancedFeatures = lazy(() => import("./pages/admin/AdvancedFeatures"));
 const SubscriptionManagement = lazy(() => import("./pages/admin/SubscriptionManagement"));
+const Marketing = lazy(() => import("./pages/admin/Marketing"));
 
 // Lazy loaded Professional Pages
 const ProfessionalDashboard = lazy(() => import("./pages/professional/ProfessionalDashboard"));
@@ -202,6 +203,13 @@ const App = () => (
                 <ProtectedRoute>
                   <Suspense fallback={<LoadingScreen />}>
                     <SubscriptionManagement />
+                  </Suspense>
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/marketing" element={
+                <ProtectedRoute>
+                  <Suspense fallback={<LoadingScreen />}>
+                    <Marketing />
                   </Suspense>
                 </ProtectedRoute>
               } />

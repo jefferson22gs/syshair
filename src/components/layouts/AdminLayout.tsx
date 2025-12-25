@@ -35,7 +35,8 @@ import {
   Clock,
   Share2,
   Brain,
-  Crown
+  Crown,
+  Megaphone
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -59,6 +60,7 @@ const menuItems = [
   { icon: Image, label: "Galeria", path: "/admin/gallery", shortLabel: "Galeria" },
   { icon: Building2, label: "Multi-Unidades", path: "/admin/multi-units", shortLabel: "Unidades" },
   { icon: Crown, label: "Minha Assinatura", path: "/admin/subscription", shortLabel: "Assinatura" },
+  { icon: Megaphone, label: "Marketing", path: "/admin/marketing", shortLabel: "Marketing", isNew: true },
   { icon: Settings, label: "Configurações", path: "/admin/settings", shortLabel: "Config" },
 ];
 
