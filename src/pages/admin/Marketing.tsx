@@ -132,16 +132,25 @@ const Marketing = () => {
             if (sendVia.push) {
                 // Send push notifications via Edge Function (cross-device)
                 try {
-                    const { data, error } = await supabase.functions.invoke('send-push', {
-                        body: {
+                    const response = await fetch('https://jfjbpjnnfnuiezchhust.supabase.co/functions/v1/send-push', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token || ''}`,
+                        },
+                        body: JSON.stringify({
                             salon_id: salon?.id,
                             client_ids: selectedClients,
                             title: title || salon?.name || 'Nova mensagem',
                             body: message.replace('{nome}', 'Cliente'),
-                        }
+                        }),
                     });
 
-                    if (error) throw error;
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(data.error || `HTTP ${response.status}`);
+                    }
 
                     if (data?.sent > 0) {
                         toast.success(`${data.sent} notificações push enviadas!`, {
