@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +21,7 @@ interface Client {
 
 const Marketing = () => {
     const { user } = useAuth();
+    const { isSupported: pushSupported, permission: pushPermission, showNotification, requestPermission } = usePushNotifications();
     const [salon, setSalon] = useState<{ id: string; name: string; whatsapp: string | null } | null>(null);
     const [clients, setClients] = useState<Client[]>([]);
     const [loading, setLoading] = useState(true);
@@ -128,10 +130,27 @@ const Marketing = () => {
             }
 
             if (sendVia.push) {
-                // Push notifications require backend - show info message
-                toast.info("Push Notifications requer integração com backend", {
-                    description: "Será implementado na fase de backend."
-                });
+                // Send push notifications
+                if (pushPermission !== 'granted') {
+                    const granted = await requestPermission();
+                    if (!granted) {
+                        toast.error("Permissão de notificação negada");
+                    }
+                }
+
+                if (pushPermission === 'granted' || pushSupported) {
+                    let pushSent = 0;
+                    for (const client of selectedClientData) {
+                        const personalizedMessage = message.replace('{nome}', client.name.split(' ')[0]);
+                        const sent = await showNotification(title || 'Nova mensagem', {
+                            body: personalizedMessage,
+                            tag: `marketing-${client.id}`,
+                            data: { clientId: client.id, type: messageType }
+                        });
+                        if (sent) pushSent++;
+                    }
+                    toast.success(`${pushSent} notificações push enviadas!`);
+                }
             }
 
             // Log the notification attempt (could save to database for history)
@@ -274,14 +293,14 @@ const Marketing = () => {
                                                 <MessageCircle size={16} className="text-green-500" />
                                                 <span>WhatsApp</span>
                                             </label>
-                                            <label className="flex items-center gap-2 cursor-pointer opacity-50" title="Requer backend">
+                                            <label className="flex items-center gap-2 cursor-pointer">
                                                 <Checkbox
                                                     checked={sendVia.push}
                                                     onCheckedChange={(checked) => setSendVia({ ...sendVia, push: !!checked })}
-                                                    disabled
+                                                    disabled={!pushSupported}
                                                 />
                                                 <Bell size={16} className="text-blue-500" />
-                                                <span>Push (em breve)</span>
+                                                <span>Push {!pushSupported ? '(não suportado)' : ''}</span>
                                             </label>
                                         </div>
                                     </div>
@@ -344,8 +363,8 @@ const Marketing = () => {
                                         <label
                                             key={client.id}
                                             className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${selectedClients.includes(client.id)
-                                                    ? 'bg-primary/10 border border-primary/30'
-                                                    : 'bg-secondary/30 hover:bg-secondary/50'
+                                                ? 'bg-primary/10 border border-primary/30'
+                                                : 'bg-secondary/30 hover:bg-secondary/50'
                                                 } ${!client.phone ? 'opacity-50 cursor-not-allowed' : ''}`}
                                         >
                                             <Checkbox
