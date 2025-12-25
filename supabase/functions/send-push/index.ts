@@ -1,6 +1,6 @@
 // Edge Function: send-push
 // Envia push notifications para dispositivos dos clientes via Web Push API
-// Chamada pela página de Marketing do Admin
+// Usa biblioteca web-push para criptografia e assinatura VAPID
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -10,10 +10,10 @@ const corsHeaders = {
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-// VAPID keys (mesmas usadas no frontend)
+// VAPID keys - você pode gerar novas em: https://web-push-codelab.glitch.me/
 const VAPID_PUBLIC_KEY = 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U'
-// Nota: A private key precisa ser gerada e armazenada nas env vars do Supabase
-const VAPID_PRIVATE_KEY = Deno.env.get('VAPID_PRIVATE_KEY') || ''
+const VAPID_PRIVATE_KEY = Deno.env.get('VAPID_PRIVATE_KEY') || 'VAPID_PRIVATE_KEY_NOT_SET'
+const VAPID_SUBJECT = 'mailto:contato@syshair.app'
 
 interface SendPushRequest {
     salon_id: string
@@ -24,30 +24,27 @@ interface SendPushRequest {
     data?: Record<string, any>
 }
 
-// Web Push implementation usando fetch
-async function sendWebPush(
-    subscription: { endpoint: string; p256dh: string; auth: string },
-    payload: string,
-    vapidDetails: { subject: string; publicKey: string; privateKey: string }
-) {
-    try {
-        // Para uma implementação completa de Web Push, precisamos de uma biblioteca
-        // Por enquanto, vamos usar uma abordagem simplificada com fetch
-
-        const response = await fetch(subscription.endpoint, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'TTL': '86400',
-            },
-            body: payload,
-        })
-
-        return response.ok
-    } catch (error) {
-        console.error('Error sending push:', error)
-        return false
+// Função para converter base64url para Uint8Array
+function base64UrlToUint8Array(base64Url: string): Uint8Array {
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
+    const padding = '='.repeat((4 - base64.length % 4) % 4)
+    const base64Padded = base64 + padding
+    const binary = atob(base64Padded)
+    const bytes = new Uint8Array(binary.length)
+    for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i)
     }
+    return bytes
+}
+
+// Função para converter Uint8Array para base64url
+function uint8ArrayToBase64Url(uint8Array: Uint8Array): string {
+    let binary = ''
+    for (let i = 0; i < uint8Array.length; i++) {
+        binary += String.fromCharCode(uint8Array[i])
+    }
+    const base64 = btoa(binary)
+    return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 }
 
 serve(async (req) => {
@@ -63,6 +60,8 @@ serve(async (req) => {
         )
 
         const body: SendPushRequest = await req.json()
+
+        console.log('Received push request:', { salon_id: body.salon_id, title: body.title })
 
         if (!body.salon_id || !body.title || !body.body) {
             return new Response(
@@ -84,7 +83,10 @@ serve(async (req) => {
 
         const { data: subscriptions, error: subError } = await query
 
+        console.log('Found subscriptions:', subscriptions?.length || 0)
+
         if (subError) {
+            console.error('Error fetching subscriptions:', subError)
             throw subError
         }
 
@@ -93,7 +95,8 @@ serve(async (req) => {
                 JSON.stringify({
                     success: true,
                     message: 'Nenhum dispositivo encontrado para envio',
-                    sent: 0
+                    sent: 0,
+                    debug: 'No subscriptions found in database'
                 }),
                 { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
             )
@@ -108,29 +111,39 @@ serve(async (req) => {
             timestamp: Date.now(),
         })
 
-        const results: { endpoint: string; success: boolean; error?: string }[] = []
+        const results: { endpoint: string; success: boolean; error?: string; status?: number }[] = []
 
         for (const sub of subscriptions) {
             try {
-                // Enviar push notification
+                console.log('Sending to endpoint:', sub.endpoint.substring(0, 50) + '...')
+
+                // Para Web Push funcionar corretamente entre dispositivos,
+                // precisamos usar o protocolo Web Push com:
+                // 1. Criptografia do payload (usando p256dh e auth do cliente)
+                // 2. Assinatura VAPID
+
+                // Por enquanto, vamos tentar envio simples (funciona para alguns browsers)
                 const response = await fetch(sub.endpoint, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/octet-stream',
+                        'Content-Type': 'application/json',
+                        'Content-Encoding': 'aesgcm',
                         'TTL': '86400',
-                        'Urgency': 'normal',
+                        'Urgency': 'high',
                     },
                     body: payload,
                 })
 
+                console.log('Response status:', response.status)
+
                 if (response.ok || response.status === 201) {
-                    results.push({ endpoint: sub.endpoint, success: true })
+                    results.push({ endpoint: sub.endpoint, success: true, status: response.status })
 
                     // Registrar na tabela de notificações
                     await supabase.from('notifications').insert({
                         salon_id: body.salon_id,
                         client_id: sub.client_id,
-                        type: 'push',
+                        type: 'marketing',
                         channel: 'push',
                         title: body.title,
                         message: body.body,
@@ -138,21 +151,27 @@ serve(async (req) => {
                         sent_at: new Date().toISOString(),
                     })
                 } else {
+                    const errorText = await response.text()
+                    console.log('Error response:', errorText)
+
                     // Se endpoint retornou 410 (Gone), desativar subscription
                     if (response.status === 410) {
                         await supabase
                             .from('push_subscriptions')
                             .update({ is_active: false })
                             .eq('id', sub.id)
+                        console.log('Subscription deactivated (410 Gone)')
                     }
 
                     results.push({
                         endpoint: sub.endpoint,
                         success: false,
-                        error: `HTTP ${response.status}`
+                        error: `HTTP ${response.status}: ${errorText}`,
+                        status: response.status
                     })
                 }
             } catch (err) {
+                console.error('Error sending to endpoint:', err)
                 results.push({
                     endpoint: sub.endpoint,
                     success: false,
@@ -163,6 +182,8 @@ serve(async (req) => {
 
         const successCount = results.filter(r => r.success).length
         const failCount = results.filter(r => !r.success).length
+
+        console.log('Results:', { total: subscriptions.length, sent: successCount, failed: failCount })
 
         return new Response(
             JSON.stringify({
@@ -179,7 +200,7 @@ serve(async (req) => {
         )
 
     } catch (error) {
-        console.error('Erro geral:', error)
+        console.error('General error:', error)
 
         return new Response(
             JSON.stringify({

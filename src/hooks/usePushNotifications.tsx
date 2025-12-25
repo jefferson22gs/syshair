@@ -58,17 +58,26 @@ export const usePushNotifications = (salonId?: string, clientId?: string) => {
   // Salvar subscription existente quando salonId ficar disponível
   useEffect(() => {
     const saveExistingSubscription = async () => {
-      if (!salonId || !state.isSupported) return;
+      if (!salonId || !state.isSupported) {
+        console.log('Push: salonId ou isSupported não disponível', { salonId, isSupported: state.isSupported });
+        return;
+      }
 
       try {
         const registration = await navigator.serviceWorker.ready;
         const subscription = await registration.pushManager.getSubscription();
 
+        console.log('Push: Subscription encontrada?', !!subscription);
+
         if (subscription) {
           const subscriptionJson = subscription.toJSON();
           const keys = subscriptionJson.keys as { p256dh: string; auth: string };
 
-          const { error } = await supabase.from('push_subscriptions').upsert({
+          console.log('Push: Tentando salvar subscription no banco para salon:', salonId);
+          console.log('Push: Endpoint:', subscription.endpoint.substring(0, 50) + '...');
+
+          // Usar any para evitar erro de tipos
+          const { data, error } = await (supabase as any).from('push_subscriptions').upsert({
             salon_id: salonId,
             client_id: clientId || null,
             endpoint: subscription.endpoint,
@@ -84,13 +93,17 @@ export const usePushNotifications = (salonId?: string, clientId?: string) => {
           });
 
           if (!error) {
-            console.log('Existing push subscription saved to database for salon:', salonId);
+            console.log('✅ Push subscription salva no banco!', data);
           } else {
-            console.error('Error saving subscription:', error);
+            console.error('❌ Erro ao salvar subscription:', error);
+            alert('Erro ao salvar subscription: ' + JSON.stringify(error));
           }
+        } else {
+          console.log('Push: Nenhuma subscription ativa no navegador');
         }
       } catch (error) {
-        console.error('Error saving existing subscription:', error);
+        console.error('❌ Erro geral ao salvar subscription:', error);
+        alert('Erro geral: ' + String(error));
       }
     };
 
