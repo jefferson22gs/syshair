@@ -25,11 +25,13 @@ import {
   Plus,
   Minus,
   Package,
-  Star
+  Star,
+  Download
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { format, isBefore, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { usePWA } from "@/hooks/usePWA";
 
 interface Service {
   id: string;
@@ -106,6 +108,7 @@ interface PendingReview {
 const PublicSalon = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
+  const { isInstallable, isInstalled, installApp } = usePWA();
 
   const [salon, setSalon] = useState<Salon | null>(null);
   const [services, setServices] = useState<Service[]>([]);
@@ -819,67 +822,112 @@ const PublicSalon = () => {
           borderColor: `${primaryColor}20`
         }}
       >
-        <div className="container px-4">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-3">
-              {salon.logo_url ? (
-                <img src={salon.logo_url} alt={salon.name} className="h-10 w-10 rounded-full object-cover" />
-              ) : (
-                <div
-                  className="h-10 w-10 rounded-full flex items-center justify-center text-white font-bold"
-                  style={{ backgroundColor: primaryColor }}
+        <div className="container px-4 py-6">
+          {/* Centered Salon Header */}
+          <div className="flex flex-col items-center text-center">
+            {/* Logo */}
+            {salon.logo_url ? (
+              <img
+                src={salon.logo_url}
+                alt={salon.name}
+                className="h-20 w-20 rounded-2xl object-cover shadow-lg mb-4 border-2"
+                style={{ borderColor: primaryColor }}
+              />
+            ) : (
+              <div
+                className="h-20 w-20 rounded-2xl flex items-center justify-center text-white text-2xl font-bold shadow-lg mb-4"
+                style={{ backgroundColor: primaryColor }}
+              >
+                {salon.name.charAt(0)}
+              </div>
+            )}
+
+            {/* Salon Name */}
+            <h1 className="font-display text-2xl font-bold text-foreground mb-1">
+              {salon.name}
+            </h1>
+
+            {/* Address */}
+            {(salon.address || salon.city) && (
+              <div className="flex items-center gap-1 text-sm text-muted-foreground mb-3">
+                <MapPin size={14} style={{ color: primaryColor }} />
+                <span>
+                  {salon.address ? `${salon.address}` : ''}
+                  {salon.address && salon.city ? ' - ' : ''}
+                  {salon.city ? `${salon.city}, ${salon.state}` : ''}
+                </span>
+              </div>
+            )}
+
+            {/* Info Pills */}
+            <div className="flex flex-wrap justify-center gap-2 mb-4">
+              {/* Working Hours */}
+              <div
+                className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium"
+                style={{ backgroundColor: `${primaryColor}15`, color: primaryColor }}
+              >
+                <Clock size={14} />
+                <span>{salon.opening_time?.slice(0, 5)} - {salon.closing_time?.slice(0, 5)} • {formatWorkingDays()}</span>
+              </div>
+
+              {/* Phone */}
+              {salon.phone && (
+                <a
+                  href={`tel:${salon.phone}`}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium bg-secondary/50 text-foreground hover:bg-secondary transition-colors"
                 >
-                  {salon.name.charAt(0)}
+                  <Phone size={14} />
+                  <span>{salon.phone}</span>
+                </a>
+              )}
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex flex-wrap justify-center gap-2">
+              {/* WhatsApp Button */}
+              {salon.whatsapp && (
+                <a
+                  href={`https://wa.me/${salon.whatsapp.replace(/\D/g, '')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-white text-sm font-medium transition-all hover:opacity-90 hover:scale-105"
+                  style={{ backgroundColor: '#25D366' }}
+                >
+                  <MessageCircle size={18} />
+                  <span>WhatsApp</span>
+                </a>
+              )}
+
+              {/* Install PWA Button */}
+              {isInstallable && !isInstalled && (
+                <button
+                  onClick={installApp}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all hover:opacity-90 hover:scale-105"
+                  style={{ backgroundColor: primaryColor, color: 'white' }}
+                >
+                  <Download size={18} />
+                  <span>Instalar App</span>
+                </button>
+              )}
+
+              {/* Already Installed Badge */}
+              {isInstalled && (
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-medium bg-secondary/50 text-muted-foreground">
+                  <Check size={14} />
+                  <span>App instalado</span>
                 </div>
               )}
-              <div>
-                <p className="font-bold text-foreground">{salon.name}</p>
-                {salon.city && (
-                  <p className="text-xs text-muted-foreground">{salon.city}, {salon.state}</p>
-                )}
-              </div>
             </div>
-            {salon.whatsapp && (
-              <a
-                href={`https://wa.me/${salon.whatsapp.replace(/\D/g, '')}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-2 rounded-full text-white"
-                style={{ backgroundColor: '#25D366' }}
-              >
-                <MessageCircle size={20} />
-              </a>
-            )}
           </div>
         </div>
       </header>
 
-      {/* Salon Info Banner */}
-      {step === 1 && (
+      {/* Salon Description (only on step 1) */}
+      {step === 1 && salon.description && (
         <div className="border-b border-border bg-card/50">
-          <div className="container px-4 py-6">
-            <div className="max-w-2xl mx-auto">
-              {salon.description && (
-                <p className="text-muted-foreground mb-4">{salon.description}</p>
-              )}
-              <div className="flex flex-wrap gap-4 text-sm">
-                {salon.address && (
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <MapPin size={16} style={{ color: primaryColor }} />
-                    <span>{salon.address}</span>
-                  </div>
-                )}
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Clock size={16} style={{ color: primaryColor }} />
-                  <span>{salon.opening_time} - {salon.closing_time} • {formatWorkingDays()}</span>
-                </div>
-                {salon.phone && (
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Phone size={16} style={{ color: primaryColor }} />
-                    <span>{salon.phone}</span>
-                  </div>
-                )}
-              </div>
+          <div className="container px-4 py-4">
+            <div className="max-w-2xl mx-auto text-center">
+              <p className="text-sm text-muted-foreground">{salon.description}</p>
             </div>
           </div>
         </div>
