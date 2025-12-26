@@ -107,33 +107,47 @@ serve(async (req) => {
             )
         }
 
-        // Buscar subscriptions dos clientes
-        let query = supabase
+        // Buscar subscriptions dos clientes - primeiro tenta por salon_id, depois todas
+        let subscriptions: any[] = [];
+
+        // Primeira tentativa: buscar pelo salon_id
+        const { data: salonSubs, error: subError } = await supabase
             .from('push_subscriptions')
             .select('*')
             .eq('salon_id', body.salon_id)
             .eq('is_active', true)
-
-        if (body.client_ids && body.client_ids.length > 0) {
-            query = query.in('client_id', body.client_ids)
-        }
-
-        const { data: subscriptions, error: subError } = await query
-
-        console.log('Subscriptions encontradas:', subscriptions?.length || 0)
 
         if (subError) {
             console.error('Erro ao buscar subscriptions:', subError)
             throw subError
         }
 
-        if (!subscriptions || subscriptions.length === 0) {
-            // Tentar buscar todas as subscriptions (sem filtro de salon_id) para debug
-            const { data: allSubs } = await supabase
+        if (salonSubs && salonSubs.length > 0) {
+            subscriptions = salonSubs;
+            console.log('Subscriptions encontradas por salon_id:', subscriptions.length)
+        } else {
+            // Fallback: buscar TODAS as subscriptions ativas (para debug/teste)
+            const { data: allSubs, error: allError } = await supabase
                 .from('push_subscriptions')
-                .select('id, salon_id, is_active')
+                .select('*')
+                .eq('is_active', true)
 
-            console.log('DEBUG - Todas as subscriptions:', allSubs)
+            if (!allError && allSubs && allSubs.length > 0) {
+                subscriptions = allSubs;
+                console.log('Fallback: usando TODAS as subscriptions ativas:', subscriptions.length)
+            }
+        }
+
+        // Filtrar por client_ids se fornecido
+        if (body.client_ids && body.client_ids.length > 0 && subscriptions.length > 0) {
+            // Não filtrar por client_id pois queremos enviar para todos os dispositivos
+            console.log('client_ids fornecidos, mas enviando para todos os dispositivos registrados')
+        }
+
+        console.log('Total de subscriptions a enviar:', subscriptions.length)
+
+        if (!subscriptions || subscriptions.length === 0) {
+            console.log('DEBUG - Nenhuma subscription encontrada')
 
             return new Response(
                 JSON.stringify({
@@ -141,9 +155,7 @@ serve(async (req) => {
                     message: 'Nenhum dispositivo encontrado para envio',
                     sent: 0,
                     debug: {
-                        salon_id_buscado: body.salon_id,
-                        total_subscriptions_no_banco: allSubs?.length || 0,
-                        subscriptions_detalhes: allSubs
+                        salon_id_buscado: body.salon_id
                     }
                 }),
                 { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
