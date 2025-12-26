@@ -43,12 +43,34 @@ const statusConfig: Record<SubscriptionStatus, { label: string; color: string; i
 };
 
 const MERCADO_PAGO_PLAN_ID = "3bc80db99eec4746a3fa82309737b066";
-const MERCADO_PAGO_CHECKOUT_URL = `https://www.mercadopago.com.br/subscriptions/checkout?preapproval_plan_id=${MERCADO_PAGO_PLAN_ID}`;
 
 const SubscriptionManagement = () => {
     const navigate = useNavigate();
     const { subscription, isLoading, checkSubscription } = useSubscription();
     const [isRefreshing, setIsRefreshing] = useState(false);
+
+    // Gera URL de checkout com external_reference para rastreabilidade
+    const getCheckoutUrl = () => {
+        const baseUrl = `https://www.mercadopago.com.br/subscriptions/checkout?preapproval_plan_id=${MERCADO_PAGO_PLAN_ID}`;
+        if (subscription?.salonId) {
+            return `${baseUrl}&external_reference=${subscription.salonId}`;
+        }
+        return baseUrl;
+    };
+
+    const handleSubscribe = async () => {
+        // Salvar external_reference no banco antes de redirecionar
+        if (subscription?.id && subscription?.salonId) {
+            const { supabase } = await import('@/integrations/supabase/client');
+            await supabase
+                .from('subscriptions')
+                .update({ mp_external_reference: subscription.salonId })
+                .eq('id', subscription.id);
+        }
+
+        // Abrir checkout do Mercado Pago
+        window.open(getCheckoutUrl(), '_blank');
+    };
 
     const handleRefresh = async () => {
         setIsRefreshing(true);
@@ -149,7 +171,7 @@ const SubscriptionManagement = () => {
                                                 variant="gold"
                                                 size="sm"
                                                 className="w-full mt-4"
-                                                onClick={() => window.open(MERCADO_PAGO_CHECKOUT_URL, '_blank')}
+                                                onClick={handleSubscribe}
                                             >
                                                 <CreditCard size={16} className="mr-2" />
                                                 Assinar agora para não perder acesso
@@ -178,7 +200,7 @@ const SubscriptionManagement = () => {
                                             variant="gold"
                                             size="sm"
                                             className="w-full mt-4"
-                                            onClick={() => window.open(MERCADO_PAGO_CHECKOUT_URL, '_blank')}
+                                            onClick={handleSubscribe}
                                         >
                                             <CreditCard size={16} className="mr-2" />
                                             Renovar assinatura
