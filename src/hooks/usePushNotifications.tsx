@@ -114,11 +114,19 @@ export const usePushNotifications = (salonId?: string, clientId?: string) => {
       return null;
     }
 
+    console.log('🔔 Subscribe iniciado, salonId:', salonId);
+
     try {
       const permission = await requestPermission();
-      if (!permission) return null;
+      if (!permission) {
+        console.log('❌ Permissão negada');
+        return null;
+      }
+
+      console.log('✅ Permissão concedida');
 
       const registration = await navigator.serviceWorker.ready;
+      console.log('✅ Service Worker pronto');
 
       // Subscribe to push notifications
       const subscription = await registration.pushManager.subscribe({
@@ -126,13 +134,18 @@ export const usePushNotifications = (salonId?: string, clientId?: string) => {
         applicationServerKey: 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U',
       });
 
+      console.log('✅ Push subscription criada:', subscription.endpoint.substring(0, 50));
+
       // Save subscription to database for cross-device push
-      if (salonId && subscription) {
+      if (subscription) {
         const subscriptionJson = subscription.toJSON();
         const keys = subscriptionJson.keys as { p256dh: string; auth: string };
 
-        await supabase.from('push_subscriptions').upsert({
-          salon_id: salonId,
+        console.log('💾 Salvando subscription no banco...');
+        console.log('   salon_id:', salonId || 'NÃO DEFINIDO');
+
+        const { data, error } = await (supabase as any).from('push_subscriptions').upsert({
+          salon_id: salonId || null,
           client_id: clientId || null,
           endpoint: subscription.endpoint,
           p256dh: keys?.p256dh || '',
@@ -146,14 +159,18 @@ export const usePushNotifications = (salonId?: string, clientId?: string) => {
           onConflict: 'endpoint'
         });
 
-        console.log('Push subscription saved to database');
+        if (error) {
+          console.error('❌ Erro ao salvar subscription:', error);
+        } else {
+          console.log('✅ Push subscription salva no banco!', data);
+        }
       }
 
       setState(prev => ({ ...prev, isSubscribed: true }));
 
       return subscription;
     } catch (error) {
-      console.error('Error subscribing to push:', error);
+      console.error('❌ Error subscribing to push:', error);
       return null;
     }
   }, [state.isSupported, requestPermission, salonId, clientId]);
