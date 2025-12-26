@@ -1,4 +1,4 @@
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       appointments: {
         Row: {
+          client_birthday: string | null
           client_id: string | null
           client_name: string | null
           client_phone: string | null
@@ -36,6 +37,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          client_birthday?: string | null
           client_id?: string | null
           client_name?: string | null
           client_phone?: string | null
@@ -56,6 +58,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          client_birthday?: string | null
           client_id?: string | null
           client_name?: string | null
           client_phone?: string | null
@@ -338,6 +341,7 @@ export type Database = {
           email: string | null
           id: string
           last_visit_at: string | null
+          loyalty_points: number
           name: string
           notes: string | null
           phone: string | null
@@ -353,6 +357,7 @@ export type Database = {
           email?: string | null
           id?: string
           last_visit_at?: string | null
+          loyalty_points?: number
           name: string
           notes?: string | null
           phone?: string | null
@@ -368,6 +373,7 @@ export type Database = {
           email?: string | null
           id?: string
           last_visit_at?: string | null
+          loyalty_points?: number
           name?: string
           notes?: string | null
           phone?: string | null
@@ -437,6 +443,79 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "coupons_salon_id_fkey"
+            columns: ["salon_id"]
+            isOneToOne: false
+            referencedRelation: "salons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          appointment_id: string | null
+          channel: string
+          client_id: string | null
+          created_at: string | null
+          error_message: string | null
+          id: string
+          message: string
+          phone: string | null
+          salon_id: string
+          scheduled_for: string | null
+          sent_at: string | null
+          status: string | null
+          title: string | null
+          type: string
+        }
+        Insert: {
+          appointment_id?: string | null
+          channel: string
+          client_id?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          message: string
+          phone?: string | null
+          salon_id: string
+          scheduled_for?: string | null
+          sent_at?: string | null
+          status?: string | null
+          title?: string | null
+          type: string
+        }
+        Update: {
+          appointment_id?: string | null
+          channel?: string
+          client_id?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          message?: string
+          phone?: string | null
+          salon_id?: string
+          scheduled_for?: string | null
+          sent_at?: string | null
+          status?: string | null
+          title?: string | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_salon_id_fkey"
             columns: ["salon_id"]
             isOneToOne: false
             referencedRelation: "salons"
@@ -773,6 +852,63 @@ export type Database = {
         }
         Relationships: []
       }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          client_id: string | null
+          created_at: string
+          device_info: Json | null
+          endpoint: string
+          id: string
+          is_active: boolean | null
+          p256dh: string
+          salon_id: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          auth: string
+          client_id?: string | null
+          created_at?: string
+          device_info?: Json | null
+          endpoint: string
+          id?: string
+          is_active?: boolean | null
+          p256dh: string
+          salon_id: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          auth?: string
+          client_id?: string | null
+          created_at?: string
+          device_info?: Json | null
+          endpoint?: string
+          id?: string
+          is_active?: boolean | null
+          p256dh?: string
+          salon_id?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_subscriptions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "push_subscriptions_salon_id_fkey"
+            columns: ["salon_id"]
+            isOneToOne: false
+            referencedRelation: "salons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reviews: {
         Row: {
           appointment_id: string | null
@@ -1000,8 +1136,6 @@ export type Database = {
           owner_id: string
           phone: string | null
           primary_color: string | null
-          public_booking_enabled: boolean | null
-          slug: string | null
           state: string | null
           updated_at: string
           whatsapp: string | null
@@ -1027,8 +1161,6 @@ export type Database = {
           owner_id: string
           phone?: string | null
           primary_color?: string | null
-          public_booking_enabled?: boolean | null
-          slug?: string | null
           state?: string | null
           updated_at?: string
           whatsapp?: string | null
@@ -1054,8 +1186,6 @@ export type Database = {
           owner_id?: string
           phone?: string | null
           primary_color?: string | null
-          public_booking_enabled?: boolean | null
-          slug?: string | null
           state?: string | null
           updated_at?: string
           whatsapp?: string | null
@@ -1176,6 +1306,146 @@ export type Database = {
           },
         ]
       }
+      subscription_payments: {
+        Row: {
+          amount: number
+          created_at: string | null
+          currency: string | null
+          id: string
+          mp_payment_id: string | null
+          mp_status: string | null
+          mp_status_detail: string | null
+          paid_at: string | null
+          payment_method: string | null
+          salon_id: string | null
+          subscription_id: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          currency?: string | null
+          id?: string
+          mp_payment_id?: string | null
+          mp_status?: string | null
+          mp_status_detail?: string | null
+          paid_at?: string | null
+          payment_method?: string | null
+          salon_id?: string | null
+          subscription_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          currency?: string | null
+          id?: string
+          mp_payment_id?: string | null
+          mp_status?: string | null
+          mp_status_detail?: string | null
+          paid_at?: string | null
+          payment_method?: string | null
+          salon_id?: string | null
+          subscription_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_payments_salon_id_fkey"
+            columns: ["salon_id"]
+            isOneToOne: false
+            referencedRelation: "salons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscription_payments_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subscriptions: {
+        Row: {
+          amount: number | null
+          cancel_reason: string | null
+          cancelled_at: string | null
+          created_at: string | null
+          currency: string | null
+          current_period_end: string | null
+          current_period_start: string | null
+          id: string
+          is_trial: boolean | null
+          last_payment_date: string | null
+          mp_external_reference: string | null
+          mp_payer_id: string | null
+          mp_preapproval_id: string | null
+          next_payment_date: string | null
+          plan_id: string | null
+          plan_name: string | null
+          salon_id: string | null
+          status: string
+          trial_end_date: string | null
+          trial_start_date: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          amount?: number | null
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          created_at?: string | null
+          currency?: string | null
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          is_trial?: boolean | null
+          last_payment_date?: string | null
+          mp_external_reference?: string | null
+          mp_payer_id?: string | null
+          mp_preapproval_id?: string | null
+          next_payment_date?: string | null
+          plan_id?: string | null
+          plan_name?: string | null
+          salon_id?: string | null
+          status?: string
+          trial_end_date?: string | null
+          trial_start_date?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          amount?: number | null
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          created_at?: string | null
+          currency?: string | null
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          is_trial?: boolean | null
+          last_payment_date?: string | null
+          mp_external_reference?: string | null
+          mp_payer_id?: string | null
+          mp_preapproval_id?: string | null
+          next_payment_date?: string | null
+          plan_id?: string | null
+          plan_name?: string | null
+          salon_id?: string | null
+          status?: string
+          trial_end_date?: string | null
+          trial_start_date?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_salon_id_fkey"
+            columns: ["salon_id"]
+            isOneToOne: false
+            referencedRelation: "salons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -1217,15 +1487,16 @@ export type Database = {
         Args: { p_client_id: string }
         Returns: undefined
       }
+      check_birthday_notifications: { Args: never; Returns: undefined }
       generate_salon_insights: {
         Args: { p_salon_id: string }
         Returns: undefined
       }
-      generate_salon_slug: { Args: { salon_name: string }; Returns: string }
       get_salon_analytics: {
         Args: { p_period?: string; p_salon_id: string }
         Returns: Json
       }
+      get_subscription_status: { Args: { p_salon_id: string }; Returns: Json }
       get_user_salon_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
@@ -1234,10 +1505,7 @@ export type Database = {
         }
         Returns: boolean
       }
-      increment_coupon_usage: {
-        Args: { coupon_id: string }
-        Returns: undefined
-      }
+      is_subscription_active: { Args: { p_salon_id: string }; Returns: boolean }
     }
     Enums: {
       appointment_status:
