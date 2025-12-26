@@ -17,6 +17,7 @@ const RatingPage = () => {
     const [hoverRating, setHoverRating] = useState(0);
     const [comment, setComment] = useState("");
     const [appointment, setAppointment] = useState<any>(null);
+    const [salonSlug, setSalonSlug] = useState<string | null>(null);
 
     useEffect(() => {
         if (appointmentId) {
@@ -32,13 +33,18 @@ const RatingPage = () => {
                     *,
                     services:service_id (name),
                     professionals:professional_id (name),
-                    salons:salon_id (name)
+                    salons:salon_id (name, slug)
                 `)
                 .eq('id', appointmentId)
                 .single();
 
             if (error) throw error;
             setAppointment(data);
+
+            // Guardar o slug do salão para redirecionamento
+            if (data?.salons?.slug) {
+                setSalonSlug(data.salons.slug);
+            }
         } catch (error) {
             console.error('Erro ao carregar agendamento:', error);
             toast.error('Agendamento não encontrado');
@@ -73,9 +79,14 @@ const RatingPage = () => {
             setSubmitted(true);
             toast.success('Avaliação enviada com sucesso!');
 
-            // Redirecionar após 3 segundos
+            // Redirecionar para página do salão após 3 segundos
             setTimeout(() => {
-                navigate('/');
+                if (salonSlug) {
+                    navigate(`/s/${salonSlug}`);
+                } else {
+                    // Fechar aba ou mostrar apenas mensagem
+                    window.close();
+                }
             }, 3000);
         } catch (error: any) {
             console.error('Erro ao enviar avaliação:', error);
@@ -110,7 +121,7 @@ const RatingPage = () => {
                 <X className="w-16 h-16 text-destructive mb-4" />
                 <h1 className="text-xl font-bold mb-2">Agendamento não encontrado</h1>
                 <p className="text-muted-foreground mb-4">Este link pode ter expirado.</p>
-                <Button onClick={() => navigate('/')}>Voltar ao início</Button>
+                <Button onClick={() => salonSlug ? navigate(`/s/${salonSlug}`) : window.close()}>Voltar</Button>
             </div>
         );
     }
@@ -146,7 +157,7 @@ const RatingPage = () => {
                         ))}
                     </div>
                     <p className="text-sm text-muted-foreground">
-                        Redirecionando...
+                        Você pode fechar esta janela.
                     </p>
                 </motion.div>
             </div>
@@ -270,7 +281,7 @@ const RatingPage = () => {
 
                 {/* Skip */}
                 <button
-                    onClick={() => navigate('/')}
+                    onClick={() => salonSlug ? navigate(`/s/${salonSlug}`) : window.close()}
                     className="w-full text-center text-sm text-muted-foreground mt-4 hover:text-foreground transition-colors"
                 >
                     Avaliar depois
