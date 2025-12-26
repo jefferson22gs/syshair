@@ -33,6 +33,7 @@ import { format, isBefore, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { usePWA } from "@/hooks/usePWA";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
+import { NotificationPrompt } from "@/components/pwa/NotificationPrompt";
 
 interface Service {
   id: string;
@@ -1545,6 +1546,9 @@ const PublicSalon = () => {
           </div>
         </div>
       )}
+
+      {/* Prompt para ativar notificações */}
+      <NotificationPrompt salonId={salon?.id} />
     </div>
   );
 };

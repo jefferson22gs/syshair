@@ -7,18 +7,20 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 
 interface NotificationPromptProps {
+  salonId?: string;
+  clientId?: string;
   onDismiss?: () => void;
 }
 
-export const NotificationPrompt = ({ onDismiss }: NotificationPromptProps) => {
-  const { 
-    isSupported, 
-    permission, 
-    isSubscribed, 
-    subscribe, 
-    unsubscribe 
-  } = usePushNotifications();
-  
+export const NotificationPrompt = ({ salonId, clientId, onDismiss }: NotificationPromptProps) => {
+  const {
+    isSupported,
+    permission,
+    isSubscribed,
+    subscribe,
+    unsubscribe
+  } = usePushNotifications(salonId, clientId);
+
   const [showPrompt, setShowPrompt] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -133,15 +135,15 @@ export const NotificationPrompt = ({ onDismiss }: NotificationPromptProps) => {
 
 // Settings component for notification management
 export const NotificationSettings = () => {
-  const { 
-    isSupported, 
-    permission, 
-    isSubscribed, 
-    subscribe, 
+  const {
+    isSupported,
+    permission,
+    isSubscribed,
+    subscribe,
     unsubscribe,
-    showNotification 
+    showNotification
   } = usePushNotifications();
-  
+
   const [loading, setLoading] = useState(false);
 
   const handleToggle = async () => {
@@ -174,7 +176,7 @@ export const NotificationSettings = () => {
       body: 'Esta é uma notificação de teste do SysHair!',
       tag: 'test-notification',
     });
-    
+
     if (success) {
       toast.success('Notificação de teste enviada!');
     } else {
@@ -218,9 +220,8 @@ export const NotificationSettings = () => {
       <CardContent className="p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-              isSubscribed ? 'bg-success/10' : 'bg-secondary'
-            }`}>
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isSubscribed ? 'bg-success/10' : 'bg-secondary'
+              }`}>
               {isSubscribed ? (
                 <Bell size={20} className="text-success" />
               ) : (
