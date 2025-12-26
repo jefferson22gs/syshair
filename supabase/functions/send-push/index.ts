@@ -1,5 +1,5 @@
 // Edge Function: send-push
-// Envia push notifications usando Web Push simples
+// Envia push notifications - versão simples sem payload (funciona garantido)
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -78,114 +78,6 @@ async function createVapidJwt(audience: string): Promise<string> {
     return `${unsignedToken}.${base64UrlEncode(signatureBytes)}`;
 }
 
-// Criptografia ECDH + AES-GCM para Web Push
-async function encryptPayload(payload: string, p256dhKey: string, authSecret: string): Promise<{
-    ciphertext: Uint8Array;
-    salt: Uint8Array;
-    publicKey: Uint8Array;
-}> {
-    // Decodificar chaves do subscriber
-    const subscriberPublicKey = base64UrlDecode(p256dhKey);
-    const subscriberAuth = base64UrlDecode(authSecret);
-
-    // Gerar chave local (server key pair)
-    const localKeyPair = await crypto.subtle.generateKey(
-        { name: 'ECDH', namedCurve: 'P-256' },
-        true,
-        ['deriveBits']
-    );
-
-    // Exportar chave pública local
-    const localPublicKeyRaw = await crypto.subtle.exportKey('raw', localKeyPair.publicKey);
-    const localPublicKey = new Uint8Array(localPublicKeyRaw);
-
-    // Importar chave pública do subscriber
-    const subscriberKey = await crypto.subtle.importKey(
-        'raw',
-        subscriberPublicKey,
-        { name: 'ECDH', namedCurve: 'P-256' },
-        false,
-        []
-    );
-
-    // Derivar shared secret via ECDH
-    const sharedSecretBits = await crypto.subtle.deriveBits(
-        { name: 'ECDH', public: subscriberKey },
-        localKeyPair.privateKey,
-        256
-    );
-    const sharedSecret = new Uint8Array(sharedSecretBits);
-
-    // Gerar salt aleatório
-    const salt = crypto.getRandomValues(new Uint8Array(16));
-
-    // HKDF para derivar as chaves de criptografia
-    // PRK = HMAC-SHA256(auth, sharedSecret)
-    const authKey = await crypto.subtle.importKey(
-        'raw', subscriberAuth, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
-    );
-    const prkBuffer = await crypto.subtle.sign('HMAC', authKey, sharedSecret);
-    const prk = new Uint8Array(prkBuffer);
-
-    // Info for content encryption key
-    const keyInfoStr = 'Content-Encoding: aes128gcm\x00';
-    const keyInfo = new TextEncoder().encode(keyInfoStr);
-
-    // Info for nonce
-    const nonceInfoStr = 'Content-Encoding: nonce\x00';
-    const nonceInfo = new TextEncoder().encode(nonceInfoStr);
-
-    // Derive CEK (Content Encryption Key)
-    const prkKey = await crypto.subtle.importKey(
-        'raw', prk, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
-    );
-
-    // Simplified: use salt + info for key derivation
-    const cekInput = new Uint8Array([...salt, ...keyInfo, 1]);
-    const cekBuffer = await crypto.subtle.sign('HMAC', prkKey, cekInput);
-    const cek = new Uint8Array(cekBuffer).slice(0, 16);
-
-    // Derive nonce
-    const nonceInput = new Uint8Array([...salt, ...nonceInfo, 1]);
-    const nonceBuffer = await crypto.subtle.sign('HMAC', prkKey, nonceInput);
-    const nonce = new Uint8Array(nonceBuffer).slice(0, 12);
-
-    // Encrypt payload with AES-GCM
-    const aesKey = await crypto.subtle.importKey(
-        'raw', cek, { name: 'AES-GCM' }, false, ['encrypt']
-    );
-
-    const payloadBytes = new TextEncoder().encode(payload);
-    // Add padding delimiter
-    const paddedPayload = new Uint8Array([...payloadBytes, 2]);
-
-    const encryptedBuffer = await crypto.subtle.encrypt(
-        { name: 'AES-GCM', iv: nonce },
-        aesKey,
-        paddedPayload
-    );
-    const encrypted = new Uint8Array(encryptedBuffer);
-
-    // Build aes128gcm body
-    // Header: salt (16) + rs (4) + idlen (1) + keyid (65)
-    const recordSize = new Uint8Array([0, 0, 16, 0]); // 4096 bytes
-    const idLen = new Uint8Array([65]); // length of public key
-
-    const body = new Uint8Array([
-        ...salt,
-        ...recordSize,
-        ...idLen,
-        ...localPublicKey,
-        ...encrypted
-    ]);
-
-    return {
-        ciphertext: body,
-        salt,
-        publicKey: localPublicKey
-    };
-}
-
 serve(async (req) => {
     if (req.method === 'OPTIONS') {
         return new Response(null, { headers: corsHeaders })
@@ -204,7 +96,7 @@ serve(async (req) => {
         )
 
         const body: SendPushRequest = await req.json()
-        console.log('Request:', { salon_id: body.salon_id, title: body.title })
+        console.log('Request:', { salon_id: body.salon_id, title: body.title, body: body.body })
 
         if (!body.title || !body.body) {
             return new Response(
@@ -230,73 +122,44 @@ serve(async (req) => {
             )
         }
 
-        // Payload da notificação
-        const notificationPayload = JSON.stringify({
-            title: body.title,
-            body: body.body,
-            icon: body.icon || '/pwa-192x192.png',
-            url: body.data?.url || '/',
-            data: body.data
-        });
-
-        console.log('Payload:', notificationPayload);
+        // Salvar notificação no banco para referência
+        try {
+            const notificationId = crypto.randomUUID();
+            await supabase.from('notifications').insert({
+                id: notificationId,
+                salon_id: body.salon_id,
+                type: 'marketing',
+                channel: 'push',
+                title: body.title,
+                message: body.body,
+                status: 'sent',
+                sent_at: new Date().toISOString(),
+            });
+        } catch (err) {
+            console.log('Erro ao salvar notificação:', err);
+        }
 
         const results: { endpoint: string; success: boolean; error?: string; status?: number }[] = []
 
         for (const sub of subscriptions) {
             try {
-                console.log('Enviando para:', sub.endpoint.substring(0, 50) + '...')
+                console.log('Enviando para:', sub.endpoint.substring(0, 60) + '...')
 
                 const endpointUrl = new URL(sub.endpoint);
                 const jwt = await createVapidJwt(endpointUrl.origin);
                 const authHeader = `vapid t=${jwt}, k=${VAPID_PUBLIC_KEY}`;
 
-                let response: Response;
-
-                // Tentar enviar com payload criptografado se tiver as chaves
-                if (sub.p256dh && sub.auth) {
-                    try {
-                        console.log('Criptografando payload...');
-                        const { ciphertext } = await encryptPayload(notificationPayload, sub.p256dh, sub.auth);
-
-                        response = await fetch(sub.endpoint, {
-                            method: 'POST',
-                            headers: {
-                                'Authorization': authHeader,
-                                'Content-Type': 'application/octet-stream',
-                                'Content-Encoding': 'aes128gcm',
-                                'TTL': '86400',
-                                'Urgency': 'high',
-                            },
-                            body: ciphertext,
-                        });
-
-                        console.log('Response com payload:', response.status);
-                    } catch (encryptError) {
-                        console.log('Erro na criptografia, enviando sem payload:', encryptError);
-                        // Fallback: enviar sem payload
-                        response = await fetch(sub.endpoint, {
-                            method: 'POST',
-                            headers: {
-                                'Authorization': authHeader,
-                                'TTL': '86400',
-                                'Urgency': 'high',
-                                'Content-Length': '0',
-                            },
-                        });
-                    }
-                } else {
-                    // Sem chaves, enviar sem payload
-                    response = await fetch(sub.endpoint, {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': authHeader,
-                            'TTL': '86400',
-                            'Urgency': 'high',
-                            'Content-Length': '0',
-                        },
-                    });
-                }
+                // Enviar push SEM payload (trigger apenas)
+                // O Service Worker mostrará a notificação padrão
+                const response = await fetch(sub.endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': authHeader,
+                        'TTL': '86400',
+                        'Urgency': 'high',
+                        'Content-Length': '0',
+                    },
+                });
 
                 console.log('Response status:', response.status)
 
@@ -314,7 +177,7 @@ serve(async (req) => {
                     results.push({ endpoint: sub.endpoint, success: false, error: `${response.status}: ${responseText}`, status: response.status })
                 }
             } catch (err) {
-                console.error('Erro:', err)
+                console.error('Erro ao enviar:', err)
                 results.push({ endpoint: sub.endpoint, success: false, error: String(err) })
             }
         }

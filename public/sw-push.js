@@ -1,6 +1,9 @@
 // Custom Service Worker for Push Notifications
 // SysHair - BelezaTech
 
+const SUPABASE_URL = 'https://jfjbpjnnfnuiezchhust.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impmamjwam5uZm51aWV6Y2hodXN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzM0MTc2NDIsImV4cCI6MjA0ODk5MzY0Mn0.pV0gHdIQHpEfyZH8xqUn1OsP5I_HwvH3gxcXmfCVuFA';
+
 // Evento de instalação
 self.addEventListener('install', (event) => {
     console.log('🔧 Service Worker instalado');
@@ -13,12 +16,34 @@ self.addEventListener('activate', (event) => {
     event.waitUntil(clients.claim());
 });
 
+// Buscar última notificação do banco
+async function fetchLatestNotification() {
+    try {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/notifications?order=created_at.desc&limit=1&status=eq.sent`, {
+            headers: {
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            }
+        });
+
+        if (response.ok) {
+            const notifications = await response.json();
+            if (notifications && notifications.length > 0) {
+                return notifications[0];
+            }
+        }
+    } catch (error) {
+        console.error('Erro ao buscar notificação:', error);
+    }
+    return null;
+}
+
 // IMPORTANTE: Evento de Push Notification
 self.addEventListener('push', (event) => {
     console.log('📱 Push recebido:', event);
 
-    // Dados padrão caso não tenha payload
-    let data = {
+    // Dados padrão
+    let notificationData = {
         title: 'SysHair',
         body: 'Você tem uma nova notificação!',
         icon: '/pwa-192x192.png',
@@ -26,49 +51,58 @@ self.addEventListener('push', (event) => {
         url: '/'
     };
 
+    // Tentar obter dados do payload primeiro
     try {
         if (event.data) {
             const payload = event.data.text();
             console.log('📦 Payload recebido:', payload);
-
-            // Tentar parsear como JSON
-            try {
-                const parsed = JSON.parse(payload);
-                data = { ...data, ...parsed };
-            } catch (e) {
-                // Se não for JSON, usar o texto como body
-                if (payload && payload.length > 0) {
-                    data.body = payload;
+            if (payload && payload.length > 0) {
+                try {
+                    const parsed = JSON.parse(payload);
+                    notificationData = { ...notificationData, ...parsed };
+                } catch (e) {
+                    notificationData.body = payload;
                 }
             }
         }
     } catch (e) {
-        console.error('Erro ao processar push:', e);
+        console.log('Sem payload, buscando do banco...');
     }
 
-    const options = {
-        body: data.body || data.message || 'Nova notificação',
-        icon: data.icon || '/pwa-192x192.png',
-        badge: data.badge || '/pwa-192x192.png',
-        vibrate: [200, 100, 200],
-        data: {
-            url: data.url || '/',
-            ...data
-        },
-        actions: [
-            { action: 'open', title: '🔔 Abrir' },
-            { action: 'close', title: '❌ Fechar' }
-        ],
-        tag: 'syshair-notification-' + Date.now(),
-        renotify: true,
-        requireInteraction: true
+    // Se não tem payload, buscar do banco
+    const showNotification = async () => {
+        if (notificationData.body === 'Você tem uma nova notificação!') {
+            const dbNotification = await fetchLatestNotification();
+            if (dbNotification) {
+                notificationData.title = dbNotification.title || 'SysHair';
+                notificationData.body = dbNotification.message || dbNotification.body || 'Nova notificação';
+                console.log('📥 Notificação do banco:', notificationData);
+            }
+        }
+
+        const options = {
+            body: notificationData.body,
+            icon: notificationData.icon || '/pwa-192x192.png',
+            badge: notificationData.badge || '/pwa-192x192.png',
+            vibrate: [200, 100, 200],
+            data: {
+                url: notificationData.url || '/',
+                ...notificationData
+            },
+            actions: [
+                { action: 'open', title: '🔔 Abrir' },
+                { action: 'close', title: '❌ Fechar' }
+            ],
+            tag: 'syshair-notification-' + Date.now(),
+            renotify: true,
+            requireInteraction: true
+        };
+
+        console.log('📣 Mostrando notificação:', notificationData.title, options.body);
+        return self.registration.showNotification(notificationData.title, options);
     };
 
-    console.log('📣 Mostrando notificação:', data.title, options);
-
-    event.waitUntil(
-        self.registration.showNotification(data.title || 'SysHair', options)
-    );
+    event.waitUntil(showNotification());
 });
 
 // Evento de clique na notificação
@@ -121,8 +155,7 @@ self.addEventListener('notificationclose', (event) => {
     console.log('❌ Notificação fechada');
 });
 
-// Evento fetch para cache básico
+// Evento fetch - não interceptar para simplificar
 self.addEventListener('fetch', (event) => {
-    // Deixar o navegador lidar com as requisições normalmente
-    // Não interceptamos para simplificar
+    // Deixar o navegador lidar normalmente
 });
