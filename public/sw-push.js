@@ -1,4 +1,5 @@
 // Custom Service Worker for Push Notifications
+// SysHair - BelezaTech
 
 // Evento de instalação
 self.addEventListener('install', (event) => {
@@ -16,11 +17,13 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('push', (event) => {
     console.log('📱 Push recebido:', event);
 
+    // Dados padrão caso não tenha payload
     let data = {
         title: 'SysHair',
         body: 'Você tem uma nova notificação!',
         icon: '/pwa-192x192.png',
-        badge: '/pwa-192x192.png'
+        badge: '/pwa-192x192.png',
+        url: '/'
     };
 
     try {
@@ -30,10 +33,13 @@ self.addEventListener('push', (event) => {
 
             // Tentar parsear como JSON
             try {
-                data = JSON.parse(payload);
+                const parsed = JSON.parse(payload);
+                data = { ...data, ...parsed };
             } catch (e) {
                 // Se não for JSON, usar o texto como body
-                data.body = payload;
+                if (payload && payload.length > 0) {
+                    data.body = payload;
+                }
             }
         }
     } catch (e) {
@@ -41,18 +47,24 @@ self.addEventListener('push', (event) => {
     }
 
     const options = {
-        body: data.body || 'Nova notificação',
+        body: data.body || data.message || 'Nova notificação',
         icon: data.icon || '/pwa-192x192.png',
         badge: data.badge || '/pwa-192x192.png',
-        vibrate: [100, 50, 100],
-        data: data.data || {},
+        vibrate: [200, 100, 200],
+        data: {
+            url: data.url || '/',
+            ...data
+        },
         actions: [
-            { action: 'open', title: 'Abrir' },
-            { action: 'close', title: 'Fechar' }
+            { action: 'open', title: '🔔 Abrir' },
+            { action: 'close', title: '❌ Fechar' }
         ],
-        tag: 'syshair-notification',
-        renotify: true
+        tag: 'syshair-notification-' + Date.now(),
+        renotify: true,
+        requireInteraction: true
     };
+
+    console.log('📣 Mostrando notificação:', data.title, options);
 
     event.waitUntil(
         self.registration.showNotification(data.title || 'SysHair', options)
@@ -63,26 +75,43 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
     console.log('🖱️ Notificação clicada:', event.action);
 
+    // Fechar a notificação
     event.notification.close();
 
+    // Se clicou em fechar, não fazer nada
     if (event.action === 'close') {
         return;
     }
+
+    // URL para abrir
+    const urlToOpen = event.notification.data?.url || '/';
+    const fullUrl = new URL(urlToOpen, self.location.origin).href;
+
+    console.log('🔗 Abrindo URL:', fullUrl);
 
     // Abrir ou focar na janela
     event.waitUntil(
         clients.matchAll({ type: 'window', includeUncontrolled: true })
             .then((clientList) => {
-                // Se já tem uma janela aberta, focar nela
+                console.log('📱 Janelas encontradas:', clientList.length);
+
+                // Se já tem uma janela aberta do site, focar nela
                 for (const client of clientList) {
-                    if ('focus' in client) {
+                    if (client.url.includes(self.location.origin) && 'focus' in client) {
+                        console.log('✅ Focando janela existente');
+                        client.navigate(fullUrl);
                         return client.focus();
                     }
                 }
+
                 // Senão, abrir nova janela
+                console.log('🆕 Abrindo nova janela:', fullUrl);
                 if (clients.openWindow) {
-                    return clients.openWindow('/');
+                    return clients.openWindow(fullUrl);
                 }
+            })
+            .catch(err => {
+                console.error('❌ Erro ao abrir janela:', err);
             })
     );
 });
@@ -92,30 +121,8 @@ self.addEventListener('notificationclose', (event) => {
     console.log('❌ Notificação fechada');
 });
 
-// Importar workbox para cache (se disponível)
-try {
-    importScripts('https://storage.googleapis.com/workbox-cdn/releases/7.0.0/workbox-sw.js');
-
-    if (workbox) {
-        console.log('Workbox carregado');
-
-        // Precache
-        workbox.precaching.precacheAndRoute(self.__WB_MANIFEST || []);
-
-        // Cache de fontes
-        workbox.routing.registerRoute(
-            /^https:\/\/fonts\.googleapis\.com\/.*/i,
-            new workbox.strategies.CacheFirst({
-                cacheName: 'google-fonts-cache',
-                plugins: [
-                    new workbox.expiration.ExpirationPlugin({
-                        maxEntries: 10,
-                        maxAgeSeconds: 60 * 60 * 24 * 365
-                    })
-                ]
-            })
-        );
-    }
-} catch (e) {
-    console.log('Workbox não disponível, usando apenas push');
-}
+// Evento fetch para cache básico
+self.addEventListener('fetch', (event) => {
+    // Deixar o navegador lidar com as requisições normalmente
+    // Não interceptamos para simplificar
+});
