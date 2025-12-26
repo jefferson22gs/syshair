@@ -7,6 +7,36 @@ interface PushNotificationState {
   isSubscribed: boolean;
 }
 
+const VAPID_PUBLIC_KEY = 'BAh0lgyspDAu3SAygLbdW7adBllZsgR2YiXfQZLUSzEZ5NeJkCZtUNYiTKcso9uJ8uDm4Nk8nq-a1XZlPbDri34';
+
+// Registrar Service Worker customizado para push
+async function registerPushServiceWorker(): Promise<ServiceWorkerRegistration | null> {
+  if (!('serviceWorker' in navigator)) {
+    console.log('Service Worker não suportado');
+    return null;
+  }
+
+  try {
+    // Verificar se já existe um SW registrado
+    const existingReg = await navigator.serviceWorker.getRegistration('/');
+
+    // Registrar o SW customizado para push
+    const registration = await navigator.serviceWorker.register('/sw-push.js', {
+      scope: '/'
+    });
+
+    console.log('✅ Service Worker sw-push.js registrado:', registration.scope);
+
+    // Aguardar o SW estar pronto
+    await navigator.serviceWorker.ready;
+
+    return registration;
+  } catch (error) {
+    console.error('❌ Erro ao registrar Service Worker:', error);
+    return null;
+  }
+}
+
 export const usePushNotifications = (salonId?: string, clientId?: string) => {
   const [state, setState] = useState<PushNotificationState>({
     isSupported: false,
@@ -25,7 +55,10 @@ export const usePushNotifications = (salonId?: string, clientId?: string) => {
     }));
 
     if (isSupported) {
-      checkSubscription();
+      // Registrar SW customizado e verificar subscription
+      registerPushServiceWorker().then(() => {
+        checkSubscription();
+      });
     }
   }, []);
 
@@ -117,6 +150,9 @@ export const usePushNotifications = (salonId?: string, clientId?: string) => {
     console.log('🔔 Subscribe iniciado, salonId:', salonId);
 
     try {
+      // Primeiro registrar o SW customizado
+      await registerPushServiceWorker();
+
       const permission = await requestPermission();
       if (!permission) {
         console.log('❌ Permissão negada');
@@ -126,12 +162,12 @@ export const usePushNotifications = (salonId?: string, clientId?: string) => {
       console.log('✅ Permissão concedida');
 
       const registration = await navigator.serviceWorker.ready;
-      console.log('✅ Service Worker pronto');
+      console.log('✅ Service Worker pronto:', registration.active?.scriptURL);
 
       // Subscribe to push notifications
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: 'BAh0lgyspDAu3SAygLbdW7adBllZsgR2YiXfQZLUSzEZ5NeJkCZtUNYiTKcso9uJ8uDm4Nk8nq-a1XZlPbDri34',
+        applicationServerKey: VAPID_PUBLIC_KEY,
       });
 
       console.log('✅ Push subscription criada:', subscription.endpoint.substring(0, 50));
