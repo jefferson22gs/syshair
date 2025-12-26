@@ -1547,8 +1547,8 @@ const PublicSalon = () => {
         </div>
       )}
 
-      {/* Prompt para ativar notificações */}
-      <NotificationPrompt salonId={salon?.id} />
+      {/* Prompt para ativar notificações - só renderiza quando salon está carregado */}
+      {salon?.id && <NotificationPrompt salonId={salon.id} />}
     </div>
   );
 };
