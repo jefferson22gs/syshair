@@ -76,6 +76,22 @@ self.addEventListener('push', (event) => {
             if (dbNotification) {
                 notificationData.title = dbNotification.title || 'SysHair';
                 notificationData.body = dbNotification.message || dbNotification.body || 'Nova notificação';
+
+                // Parsear metadata se existir
+                if (dbNotification.metadata) {
+                    try {
+                        const meta = typeof dbNotification.metadata === 'string'
+                            ? JSON.parse(dbNotification.metadata)
+                            : dbNotification.metadata;
+
+                        if (meta.url) notificationData.url = meta.url;
+                        if (meta.appointment_id) notificationData.appointment_id = meta.appointment_id;
+                        console.log('📥 Metadata:', meta);
+                    } catch (e) {
+                        console.log('Erro ao parsear metadata:', e);
+                    }
+                }
+
                 console.log('📥 Notificação do banco:', notificationData);
             }
         }
@@ -107,7 +123,7 @@ self.addEventListener('push', (event) => {
 
 // Evento de clique na notificação
 self.addEventListener('notificationclick', (event) => {
-    console.log('🖱️ Notificação clicada:', event.action);
+    console.log('🖱️ Notificação clicada:', event.action, event.notification.data);
 
     // Fechar a notificação
     event.notification.close();
@@ -117,36 +133,31 @@ self.addEventListener('notificationclick', (event) => {
         return;
     }
 
-    // URL para abrir
-    const urlToOpen = event.notification.data?.url || '/';
+    // URL para abrir - pegar do data ou usar root
+    let urlToOpen = '/';
+
+    if (event.notification.data) {
+        if (event.notification.data.url) {
+            urlToOpen = event.notification.data.url;
+        } else if (event.notification.data.appointment_id) {
+            urlToOpen = '/avaliar/' + event.notification.data.appointment_id;
+        }
+    }
+
     const fullUrl = new URL(urlToOpen, self.location.origin).href;
+    console.log('🔗 URL a abrir:', fullUrl);
 
-    console.log('🔗 Abrindo URL:', fullUrl);
-
-    // Abrir ou focar na janela
+    // Sempre abrir nova janela para garantir funcionamento
     event.waitUntil(
-        clients.matchAll({ type: 'window', includeUncontrolled: true })
-            .then((clientList) => {
-                console.log('📱 Janelas encontradas:', clientList.length);
-
-                // Se já tem uma janela aberta do site, focar nela
-                for (const client of clientList) {
-                    if (client.url.includes(self.location.origin) && 'focus' in client) {
-                        console.log('✅ Focando janela existente');
-                        client.navigate(fullUrl);
-                        return client.focus();
-                    }
+        clients.openWindow(fullUrl).catch(err => {
+            console.error('❌ Erro ao abrir janela:', err);
+            // Fallback: tentar abrir qualquer janela existente
+            return clients.matchAll({ type: 'window' }).then(windowClients => {
+                if (windowClients.length > 0) {
+                    return windowClients[0].focus();
                 }
-
-                // Senão, abrir nova janela
-                console.log('🆕 Abrindo nova janela:', fullUrl);
-                if (clients.openWindow) {
-                    return clients.openWindow(fullUrl);
-                }
-            })
-            .catch(err => {
-                console.error('❌ Erro ao abrir janela:', err);
-            })
+            });
+        })
     );
 });
 

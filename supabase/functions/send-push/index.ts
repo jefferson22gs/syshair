@@ -108,21 +108,24 @@ serve(async (req) => {
         // PRIMEIRO: Salvar notificação no banco ANTES de enviar o push
         // Isso permite que o Service Worker busque a mensagem
         const notificationId = crypto.randomUUID();
-        const { error: insertError } = await supabase.from('notifications').insert({
+        const notificationData = {
             id: notificationId,
             salon_id: body.salon_id,
-            type: 'marketing',
+            type: body.data?.type || 'marketing',
             channel: 'push',
             title: body.title,
             message: body.body,
             status: 'sent',
             sent_at: new Date().toISOString(),
-        });
+            metadata: body.data ? JSON.stringify(body.data) : null,
+        };
+
+        const { error: insertError } = await supabase.from('notifications').insert(notificationData);
 
         if (insertError) {
             console.log('Erro ao salvar notificação:', insertError);
         } else {
-            console.log('✅ Notificação salva no banco:', notificationId);
+            console.log('✅ Notificação salva no banco:', notificationId, 'metadata:', body.data);
         }
 
         // Buscar subscriptions ativas
