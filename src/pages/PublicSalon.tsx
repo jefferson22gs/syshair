@@ -111,14 +111,15 @@ const PublicSalon = () => {
   const navigate = useNavigate();
   const { isInstallable, isInstalled, installApp } = usePWA();
 
-  // Push notifications - subscription será salva no banco quando cliente permitir
-  const { subscribe: subscribePush, isSupported: pushSupported, permission: pushPermission } = usePushNotifications(salon?.id);
-
   const [salon, setSalon] = useState<Salon | null>(null);
   const [services, setServices] = useState<Service[]>([]);
   const [professionals, setProfessionals] = useState<Professional[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Push notifications - subscription será salva no banco quando cliente permitir
+  // Deve ser chamado após a declaração do estado salon
+  const { subscribe: subscribePush, isSupported: pushSupported, permission: pushPermission } = usePushNotifications(salon?.id);
 
   const [step, setStep] = useState(1);
   const [cart, setCart] = useState<CartItem[]>([]);
