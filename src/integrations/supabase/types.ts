@@ -1136,6 +1136,8 @@ export type Database = {
           owner_id: string
           phone: string | null
           primary_color: string | null
+          public_booking_enabled: boolean | null
+          slug: string | null
           state: string | null
           updated_at: string
           whatsapp: string | null
@@ -1161,6 +1163,8 @@ export type Database = {
           owner_id: string
           phone?: string | null
           primary_color?: string | null
+          public_booking_enabled?: boolean | null
+          slug?: string | null
           state?: string | null
           updated_at?: string
           whatsapp?: string | null
@@ -1186,6 +1190,8 @@ export type Database = {
           owner_id?: string
           phone?: string | null
           primary_color?: string | null
+          public_booking_enabled?: boolean | null
+          slug?: string | null
           state?: string | null
           updated_at?: string
           whatsapp?: string | null
