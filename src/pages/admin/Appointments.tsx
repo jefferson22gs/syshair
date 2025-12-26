@@ -162,6 +162,43 @@ const Appointments = () => {
 
       if (error) throw error;
       toast.success("Status atualizado!");
+
+      // Se o serviço foi concluído, enviar notificação para avaliar
+      if (status === 'completed' && salonId) {
+        const appointment = appointments.find(a => a.id === id);
+        if (appointment) {
+          // Enviar push notification para avaliação
+          try {
+            const response = await fetch(
+              `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-push`,
+              {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+                },
+                body: JSON.stringify({
+                  salon_id: salonId,
+                  title: '⭐ Como foi seu atendimento?',
+                  body: `${appointment.client_name}, avalie o serviço "${appointment.services?.name}" e ganhe pontos de fidelidade!`,
+                  data: {
+                    type: 'rating_request',
+                    appointment_id: id,
+                    url: `/avaliar/${id}`
+                  }
+                }),
+              }
+            );
+
+            if (response.ok) {
+              console.log('✅ Notificação de avaliação enviada!');
+            }
+          } catch (pushError) {
+            console.log('Erro ao enviar notificação de avaliação:', pushError);
+          }
+        }
+      }
+
       fetchData();
     } catch (error: any) {
       toast.error(error.message || "Erro ao atualizar status");
