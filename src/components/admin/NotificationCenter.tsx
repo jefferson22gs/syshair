@@ -149,7 +149,7 @@ export const NotificationCenter = ({ isOpen, onClose }: NotificationCenterProps)
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: 300 }}
                         transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                        className="fixed right-0 top-0 bottom-0 w-full max-w-md z-50 bg-card border-l border-border shadow-2xl"
+                        className="fixed right-0 top-0 bottom-0 w-full max-w-md z-50 bg-background border-l border-border shadow-2xl"
                     >
                         {/* Header */}
                         <div className="p-4 border-b border-border flex items-center justify-between">
@@ -192,24 +192,24 @@ export const NotificationCenter = ({ isOpen, onClose }: NotificationCenterProps)
                                             initial={{ opacity: 0, y: 20 }}
                                             animate={{ opacity: 1, y: 0 }}
                                             transition={{ delay: index * 0.05 }}
-                                            className={`relative p-4 rounded-xl border transition-all cursor-pointer group ${notification.read
-                                                    ? 'bg-card/50 border-border/50'
-                                                    : 'bg-primary/5 border-primary/20 hover:border-primary/40'
+                                            className={`relative p-4 rounded-xl border-2 transition-all cursor-pointer group shadow-md ${notification.read
+                                                ? 'bg-muted border-border'
+                                                : 'bg-primary/20 border-primary/60 hover:border-primary'
                                                 }`}
                                             onClick={() => markAsRead(notification.id)}
                                         >
                                             {/* Unread Indicator */}
                                             {!notification.read && (
-                                                <div className="absolute top-4 right-4 w-2 h-2 bg-primary rounded-full" />
+                                                <div className="absolute top-4 right-4 w-3 h-3 bg-primary rounded-full animate-pulse" />
                                             )}
 
                                             <div className="flex gap-3">
-                                                <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center flex-shrink-0">
+                                                <div className="w-10 h-10 rounded-xl bg-card flex items-center justify-center flex-shrink-0 border border-border shadow-sm">
                                                     {getNotificationIcon(notification.type)}
                                                 </div>
                                                 <div className="flex-1 min-w-0">
-                                                    <p className="font-medium text-foreground">{notification.title}</p>
-                                                    <p className="text-sm text-muted-foreground mt-0.5 line-clamp-2">
+                                                    <p className="font-semibold text-foreground">{notification.title}</p>
+                                                    <p className="text-sm text-foreground/90 mt-0.5 line-clamp-2">
                                                         {notification.message}
                                                     </p>
                                                     <p className="text-xs text-muted-foreground mt-2">
@@ -224,7 +224,7 @@ export const NotificationCenter = ({ isOpen, onClose }: NotificationCenterProps)
                                                     e.stopPropagation();
                                                     deleteNotification(notification.id);
                                                 }}
-                                                className="absolute top-2 right-2 w-6 h-6 rounded-full bg-destructive/10 text-destructive opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                                                className="absolute top-2 right-2 w-6 h-6 rounded-full bg-destructive/20 text-destructive opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
                                             >
                                                 <X size={12} />
                                             </button>
