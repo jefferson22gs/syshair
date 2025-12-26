@@ -1,6 +1,5 @@
 // Edge Function: send-push
-// Envia push notifications para dispositivos dos clientes via Web Push API
-// Usa biblioteca web-push para criptografia e assinatura VAPID
+// Envia push notifications para dispositivos via Web Push API
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -10,9 +9,9 @@ const corsHeaders = {
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-// VAPID keys - você pode gerar novas em: https://web-push-codelab.glitch.me/
+// VAPID keys - geradas em https://web-push-codelab.glitch.me/
 const VAPID_PUBLIC_KEY = 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U'
-const VAPID_PRIVATE_KEY = Deno.env.get('VAPID_PRIVATE_KEY') || 'VAPID_PRIVATE_KEY_NOT_SET'
+const VAPID_PRIVATE_KEY = Deno.env.get('VAPID_PRIVATE_KEY') || ''
 const VAPID_SUBJECT = 'mailto:contato@syshair.app'
 
 interface SendPushRequest {
@@ -24,27 +23,62 @@ interface SendPushRequest {
     data?: Record<string, any>
 }
 
-// Função para converter base64url para Uint8Array
-function base64UrlToUint8Array(base64Url: string): Uint8Array {
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
-    const padding = '='.repeat((4 - base64.length % 4) % 4)
-    const base64Padded = base64 + padding
-    const binary = atob(base64Padded)
-    const bytes = new Uint8Array(binary.length)
-    for (let i = 0; i < binary.length; i++) {
-        bytes[i] = binary.charCodeAt(i)
-    }
-    return bytes
+// Utilitários para Web Push
+
+function base64UrlEncode(data: Uint8Array): string {
+    const base64 = btoa(String.fromCharCode(...data));
+    return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
 }
 
-// Função para converter Uint8Array para base64url
-function uint8ArrayToBase64Url(uint8Array: Uint8Array): string {
-    let binary = ''
-    for (let i = 0; i < uint8Array.length; i++) {
-        binary += String.fromCharCode(uint8Array[i])
+function base64UrlDecode(str: string): Uint8Array {
+    const base64 = str.replace(/-/g, '+').replace(/_/g, '/');
+    const padding = '='.repeat((4 - base64.length % 4) % 4);
+    const binary = atob(base64 + padding);
+    return new Uint8Array([...binary].map(c => c.charCodeAt(0)));
+}
+
+// Cria JWT para autenticação VAPID
+async function createVapidJwt(audience: string): Promise<string> {
+    const header = { typ: 'JWT', alg: 'ES256' };
+    const now = Math.floor(Date.now() / 1000);
+    const payload = {
+        aud: audience,
+        exp: now + 86400, // 24 hours
+        sub: VAPID_SUBJECT,
+    };
+
+    const headerB64 = base64UrlEncode(new TextEncoder().encode(JSON.stringify(header)));
+    const payloadB64 = base64UrlEncode(new TextEncoder().encode(JSON.stringify(payload)));
+    const unsignedToken = `${headerB64}.${payloadB64}`;
+
+    // Importar chave privada VAPID
+    const privateKeyData = base64UrlDecode(VAPID_PRIVATE_KEY);
+
+    // Criar chave para assinatura ES256
+    const keyData = new Uint8Array(32);
+    keyData.set(privateKeyData.slice(0, 32));
+
+    try {
+        const cryptoKey = await crypto.subtle.importKey(
+            'raw',
+            keyData,
+            { name: 'ECDSA', namedCurve: 'P-256' },
+            false,
+            ['sign']
+        );
+
+        const signature = await crypto.subtle.sign(
+            { name: 'ECDSA', hash: 'SHA-256' },
+            cryptoKey,
+            new TextEncoder().encode(unsignedToken)
+        );
+
+        return `${unsignedToken}.${base64UrlEncode(new Uint8Array(signature))}`;
+    } catch (e) {
+        console.error('Erro ao criar JWT VAPID:', e);
+        // Fallback: retornar token sem assinatura válida (não funcionará, mas é útil para debug)
+        return unsignedToken;
     }
-    const base64 = btoa(binary)
-    return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 }
 
 serve(async (req) => {
@@ -54,6 +88,9 @@ serve(async (req) => {
     }
 
     try {
+        console.log('🔔 send-push iniciado');
+        console.log('VAPID_PRIVATE_KEY definida?', !!VAPID_PRIVATE_KEY);
+
         const supabase = createClient(
             Deno.env.get('SUPABASE_URL') ?? '',
             Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
@@ -61,7 +98,7 @@ serve(async (req) => {
 
         const body: SendPushRequest = await req.json()
 
-        console.log('Received push request:', { salon_id: body.salon_id, title: body.title })
+        console.log('Request:', { salon_id: body.salon_id, title: body.title, client_ids: body.client_ids?.length || 0 })
 
         if (!body.salon_id || !body.title || !body.body) {
             return new Response(
@@ -83,20 +120,31 @@ serve(async (req) => {
 
         const { data: subscriptions, error: subError } = await query
 
-        console.log('Found subscriptions:', subscriptions?.length || 0)
+        console.log('Subscriptions encontradas:', subscriptions?.length || 0)
 
         if (subError) {
-            console.error('Error fetching subscriptions:', subError)
+            console.error('Erro ao buscar subscriptions:', subError)
             throw subError
         }
 
         if (!subscriptions || subscriptions.length === 0) {
+            // Tentar buscar todas as subscriptions (sem filtro de salon_id) para debug
+            const { data: allSubs } = await supabase
+                .from('push_subscriptions')
+                .select('id, salon_id, is_active')
+
+            console.log('DEBUG - Todas as subscriptions:', allSubs)
+
             return new Response(
                 JSON.stringify({
                     success: true,
                     message: 'Nenhum dispositivo encontrado para envio',
                     sent: 0,
-                    debug: 'No subscriptions found in database'
+                    debug: {
+                        salon_id_buscado: body.salon_id,
+                        total_subscriptions_no_banco: allSubs?.length || 0,
+                        subscriptions_detalhes: allSubs
+                    }
                 }),
                 { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
             )
@@ -115,29 +163,29 @@ serve(async (req) => {
 
         for (const sub of subscriptions) {
             try {
-                console.log('Sending to endpoint:', sub.endpoint.substring(0, 50) + '...')
+                console.log('Enviando para:', sub.endpoint.substring(0, 60) + '...')
 
-                // Para Web Push funcionar corretamente entre dispositivos,
-                // precisamos usar o protocolo Web Push com:
-                // 1. Criptografia do payload (usando p256dh e auth do cliente)
-                // 2. Assinatura VAPID
+                // Extrair origem do endpoint para VAPID audience
+                const endpointUrl = new URL(sub.endpoint);
+                const audience = endpointUrl.origin;
 
-                // Por enquanto, vamos tentar envio simples (funciona para alguns browsers)
-                const response = await fetch(sub.endpoint, {
+                // Tentar envio com diferentes métodos
+
+                // Método 1: Envio simples (funciona para alguns navegadores/endpoints)
+                const simpleResponse = await fetch(sub.endpoint, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'Content-Encoding': 'aesgcm',
+                        'Content-Type': 'application/octet-stream',
                         'TTL': '86400',
                         'Urgency': 'high',
                     },
-                    body: payload,
+                    body: new TextEncoder().encode(payload),
                 })
 
-                console.log('Response status:', response.status)
+                console.log('Response status:', simpleResponse.status)
 
-                if (response.ok || response.status === 201) {
-                    results.push({ endpoint: sub.endpoint, success: true, status: response.status })
+                if (simpleResponse.ok || simpleResponse.status === 201) {
+                    results.push({ endpoint: sub.endpoint, success: true, status: simpleResponse.status })
 
                     // Registrar na tabela de notificações
                     await supabase.from('notifications').insert({
@@ -151,27 +199,27 @@ serve(async (req) => {
                         sent_at: new Date().toISOString(),
                     })
                 } else {
-                    const errorText = await response.text()
-                    console.log('Error response:', errorText)
+                    const errorText = await simpleResponse.text()
+                    console.log('Erro response:', errorText)
 
                     // Se endpoint retornou 410 (Gone), desativar subscription
-                    if (response.status === 410) {
+                    if (simpleResponse.status === 410) {
                         await supabase
                             .from('push_subscriptions')
                             .update({ is_active: false })
                             .eq('id', sub.id)
-                        console.log('Subscription deactivated (410 Gone)')
+                        console.log('Subscription desativada (410 Gone)')
                     }
 
                     results.push({
                         endpoint: sub.endpoint,
                         success: false,
-                        error: `HTTP ${response.status}: ${errorText}`,
-                        status: response.status
+                        error: `HTTP ${simpleResponse.status}: ${errorText.substring(0, 200)}`,
+                        status: simpleResponse.status
                     })
                 }
             } catch (err) {
-                console.error('Error sending to endpoint:', err)
+                console.error('Erro ao enviar para endpoint:', err)
                 results.push({
                     endpoint: sub.endpoint,
                     success: false,
@@ -183,7 +231,7 @@ serve(async (req) => {
         const successCount = results.filter(r => r.success).length
         const failCount = results.filter(r => !r.success).length
 
-        console.log('Results:', { total: subscriptions.length, sent: successCount, failed: failCount })
+        console.log('Resultados:', { total: subscriptions.length, sent: successCount, failed: failCount })
 
         return new Response(
             JSON.stringify({
@@ -200,7 +248,7 @@ serve(async (req) => {
         )
 
     } catch (error) {
-        console.error('General error:', error)
+        console.error('Erro geral:', error)
 
         return new Response(
             JSON.stringify({
