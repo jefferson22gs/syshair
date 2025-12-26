@@ -250,7 +250,7 @@ const SubscriptionManagement = () => {
                                         <Button
                                             variant="gold"
                                             className="flex-1"
-                                            onClick={() => window.open(MERCADO_PAGO_CHECKOUT_URL, '_blank')}
+                                            onClick={handleSubscribe}
                                         >
                                             <CreditCard size={18} className="mr-2" />
                                             Assinar com Mercado Pago
