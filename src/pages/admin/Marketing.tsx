@@ -26,6 +26,7 @@ const Marketing = () => {
     const [clients, setClients] = useState<Client[]>([]);
     const [loading, setLoading] = useState(true);
     const [sending, setSending] = useState(false);
+    const [pushSubscriptionsCount, setPushSubscriptionsCount] = useState(0);
 
     // Form state
     const [messageType, setMessageType] = useState<'promotional' | 'informative' | 'coupon'>('promotional');
@@ -62,6 +63,17 @@ const Marketing = () => {
 
             if (clientsError) throw clientsError;
             setClients(clientsData || []);
+
+            // Get push subscriptions count
+            const { count, error: pushError } = await (supabase as any)
+                .from('push_subscriptions')
+                .select('*', { count: 'exact', head: true })
+                .eq('salon_id', salonData.id)
+                .eq('is_active', true);
+
+            if (!pushError) {
+                setPushSubscriptionsCount(count || 0);
+            }
 
         } catch (error: any) {
             console.error("Error:", error);
@@ -311,12 +323,17 @@ const Marketing = () => {
                                                 <Checkbox
                                                     checked={sendVia.push}
                                                     onCheckedChange={(checked) => setSendVia({ ...sendVia, push: !!checked })}
-                                                    disabled={!pushSupported}
+                                                    disabled={!pushSupported || pushSubscriptionsCount === 0}
                                                 />
                                                 <Bell size={16} className="text-blue-500" />
-                                                <span>Push {!pushSupported ? '(não suportado)' : ''}</span>
+                                                <span>Push {pushSubscriptionsCount > 0 ? `(${pushSubscriptionsCount} dispositivos)` : '(0 dispositivos)'}</span>
                                             </label>
                                         </div>
+                                        {pushSubscriptionsCount === 0 && (
+                                            <p className="text-xs text-muted-foreground bg-secondary/50 p-2 rounded-lg">
+                                                ⚠️ Nenhum cliente permitiu notificações push ainda. Os clientes precisam acessar a página de agendamento ({salon?.name && <span className="text-primary">/s/{salon.name.toLowerCase().replace(/\s+/g, '')}</span>}) e clicar em "Ativar notificações".
+                                            </p>
+                                        )}
                                     </div>
                                 </div>
                             </Tabs>
