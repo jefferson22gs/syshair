@@ -1,5 +1,5 @@
 // Edge Function: send-push
-// Envia push notifications - versão simples sem payload (funciona garantido)
+// Versão estável - envia trigger e SW busca do banco
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -105,6 +105,26 @@ serve(async (req) => {
             )
         }
 
+        // PRIMEIRO: Salvar notificação no banco ANTES de enviar o push
+        // Isso permite que o Service Worker busque a mensagem
+        const notificationId = crypto.randomUUID();
+        const { error: insertError } = await supabase.from('notifications').insert({
+            id: notificationId,
+            salon_id: body.salon_id,
+            type: 'marketing',
+            channel: 'push',
+            title: body.title,
+            message: body.body,
+            status: 'sent',
+            sent_at: new Date().toISOString(),
+        });
+
+        if (insertError) {
+            console.log('Erro ao salvar notificação:', insertError);
+        } else {
+            console.log('✅ Notificação salva no banco:', notificationId);
+        }
+
         // Buscar subscriptions ativas
         const { data: subscriptions, error: subError } = await supabase
             .from('push_subscriptions')
@@ -122,23 +142,6 @@ serve(async (req) => {
             )
         }
 
-        // Salvar notificação no banco para referência
-        try {
-            const notificationId = crypto.randomUUID();
-            await supabase.from('notifications').insert({
-                id: notificationId,
-                salon_id: body.salon_id,
-                type: 'marketing',
-                channel: 'push',
-                title: body.title,
-                message: body.body,
-                status: 'sent',
-                sent_at: new Date().toISOString(),
-            });
-        } catch (err) {
-            console.log('Erro ao salvar notificação:', err);
-        }
-
         const results: { endpoint: string; success: boolean; error?: string; status?: number }[] = []
 
         for (const sub of subscriptions) {
@@ -150,7 +153,6 @@ serve(async (req) => {
                 const authHeader = `vapid t=${jwt}, k=${VAPID_PUBLIC_KEY}`;
 
                 // Enviar push SEM payload (trigger apenas)
-                // O Service Worker mostrará a notificação padrão
                 const response = await fetch(sub.endpoint, {
                     method: 'POST',
                     headers: {
