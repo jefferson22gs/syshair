@@ -96,14 +96,12 @@ export const usePushNotifications = (salonId?: string, clientId?: string) => {
             console.log('✅ Push subscription salva no banco!', data);
           } else {
             console.error('❌ Erro ao salvar subscription:', error);
-            alert('Erro ao salvar subscription: ' + JSON.stringify(error));
           }
         } else {
           console.log('Push: Nenhuma subscription ativa no navegador');
         }
       } catch (error) {
         console.error('❌ Erro geral ao salvar subscription:', error);
-        alert('Erro geral: ' + String(error));
       }
     };
 
