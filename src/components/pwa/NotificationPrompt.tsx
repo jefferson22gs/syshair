@@ -25,15 +25,25 @@ export const NotificationPrompt = ({ salonId, clientId, onDismiss }: Notificatio
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    console.log('📱 NotificationPrompt montado');
+    console.log('   salonId recebido:', salonId || 'undefined');
+    console.log('   isSupported:', isSupported);
+    console.log('   permission:', permission);
+
     // Show prompt after a delay if notifications are supported and not decided
     if (isSupported && permission === 'default') {
       const dismissed = localStorage.getItem('notification-prompt-dismissed');
+      console.log('   dismissed?:', dismissed ? 'sim' : 'não');
       if (!dismissed) {
-        const timer = setTimeout(() => setShowPrompt(true), 5000);
+        console.log('   ⏰ Timer de 5s iniciado para mostrar prompt');
+        const timer = setTimeout(() => {
+          console.log('   ✅ Mostrando prompt de notificações');
+          setShowPrompt(true);
+        }, 5000);
         return () => clearTimeout(timer);
       }
     }
-  }, [isSupported, permission]);
+  }, [isSupported, permission, salonId]);
 
   const handleEnable = async () => {
     setLoading(true);
