@@ -25,6 +25,7 @@ import PublicBookingAdvanced from "./pages/PublicBookingAdvanced";
 
 // Lazy loaded Public Pages
 const PublicWaitlist = lazy(() => import("./pages/PublicWaitlist"));
+const RatingPage = lazy(() => import("./pages/RatingPage"));
 
 // Lazy loaded Admin Pages
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
@@ -78,6 +79,7 @@ const App = () => (
               <Route path="/checkout" element={<Checkout />} />
               <Route path="/agendar" element={<PublicBookingAdvanced />} />
               <Route path="/agendar/:salonSlug" element={<PublicBookingAdvanced />} />
+              <Route path="/avaliar/:appointmentId" element={<Suspense fallback={<LoadingScreen />}><RatingPage /></Suspense>} />
 
               {/* Public Waitlist */}
               <Route path="/waitlist/:salonId" element={
