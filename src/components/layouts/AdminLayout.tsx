@@ -8,6 +8,7 @@ import { usePWA } from "@/hooks/usePWA";
 import { NotificationBell } from "@/components/admin/NotificationCenter";
 import { ThemeSelector } from "@/components/admin/ThemeSelector";
 import { FloatingActionButton } from "@/components/mobile/FloatingActionButton";
+import { SubscriptionWarningBanner } from "@/components/subscription/SubscriptionWarningBanner";
 import {
   LayoutDashboard,
   Calendar,
@@ -250,6 +251,9 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
             </div>
           </div>
         </header>
+
+        {/* Subscription Warning Banner */}
+        <SubscriptionWarningBanner />
 
         {/* Page Content */}
         <main className="flex-1 p-4 lg:p-8 overflow-auto">
