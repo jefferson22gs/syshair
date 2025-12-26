@@ -4,9 +4,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RealLoyaltySystem } from "@/components/admin/RealLoyaltySystem";
 import { RealWaitlistManager } from "@/components/admin/RealWaitlistManager";
 import { RealGoalsManager } from "@/components/admin/RealGoalsManager";
-import { ReferralProgram } from "@/components/admin/ReferralProgram";
+import { RealReferralProgram } from "@/components/admin/RealReferralProgram";
+import { RealBIPredictive } from "@/components/admin/RealBIPredictive";
 import { Lookbook } from "@/components/admin/Lookbook";
-import { BIPredictive } from "@/components/admin/BIPredictive";
 import { supabase } from "@/integrations/supabase/client";
 import {
     Trophy,
@@ -66,7 +66,7 @@ const AdvancedFeatures = () => {
                         Recursos Avançados
                     </h1>
                     <p className="text-muted-foreground mt-1">
-                        Ferramentas inteligentes para maximizar seu negócio
+                        Ferramentas inteligentes com dados reais do seu salão
                     </p>
                 </div>
 
@@ -119,7 +119,13 @@ const AdvancedFeatures = () => {
 
                     <div className="mt-6">
                         <TabsContent value="bi" className="mt-0">
-                            <BIPredictive />
+                            {salonId ? (
+                                <RealBIPredictive salonId={salonId} />
+                            ) : (
+                                <p className="text-center text-muted-foreground py-8">
+                                    Salão não encontrado
+                                </p>
+                            )}
                         </TabsContent>
 
                         <TabsContent value="loyalty" className="mt-0">
@@ -143,12 +149,13 @@ const AdvancedFeatures = () => {
                         </TabsContent>
 
                         <TabsContent value="referral" className="mt-0">
-                            <div className="max-w-2xl mx-auto">
-                                <ReferralProgram
-                                    clientName="Maria Silva"
-                                    referralCode="MARIA2024"
-                                />
-                            </div>
+                            {salonId ? (
+                                <RealReferralProgram salonId={salonId} />
+                            ) : (
+                                <p className="text-center text-muted-foreground py-8">
+                                    Salão não encontrado
+                                </p>
+                            )}
                         </TabsContent>
 
                         <TabsContent value="lookbook" className="mt-0">
