@@ -185,7 +185,7 @@ serve(async (req) => {
         }
 
         // Buscar tokens FCM ativos
-        const { data: subscriptions, error: subError } = await supabase
+        const { data: fcmSubscriptions, error: subError } = await supabase
             .from('push_subscriptions')
             .select('*')
             .eq('is_active', true)
@@ -193,15 +193,49 @@ serve(async (req) => {
 
         if (subError) throw subError
 
-        console.log('Total de subscriptions FCM:', subscriptions?.length || 0)
+        console.log('Total de subscriptions FCM:', fcmSubscriptions?.length || 0)
 
-        if (!subscriptions || subscriptions.length === 0) {
-            // Fallback: tentar subscriptions antigas (VAPID)
+        // Se não houver FCM tokens, tentar VAPID (sistema antigo)
+        if (!fcmSubscriptions || fcmSubscriptions.length === 0) {
+            console.log('Nenhum FCM token - tentando VAPID...');
+
+            // Buscar subscriptions VAPID ativas
+            const { data: vapidSubs } = await supabase
+                .from('push_subscriptions')
+                .select('*')
+                .eq('is_active', true)
+                .not('endpoint', 'is', null);
+
+            if (vapidSubs && vapidSubs.length > 0) {
+                console.log('Encontradas', vapidSubs.length, 'subscriptions VAPID - chamando send-push antigo...');
+
+                // Chamar a função send-push antiga que usa VAPID
+                const vapidResponse = await fetch(
+                    `${Deno.env.get('SUPABASE_URL')}/functions/v1/send-push`,
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+                        },
+                        body: JSON.stringify(body)
+                    }
+                );
+
+                const vapidResult = await vapidResponse.json();
+                return new Response(
+                    JSON.stringify({ success: true, method: 'vapid_fallback', ...vapidResult }),
+                    { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+                );
+            }
+
             return new Response(
-                JSON.stringify({ success: true, message: 'Nenhum dispositivo FCM', sent: 0 }),
+                JSON.stringify({ success: true, message: 'Nenhum dispositivo encontrado', sent: 0 }),
                 { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
             )
         }
+
+        const subscriptions = fcmSubscriptions;
 
         // Obter access token do Google
         const accessToken = await getAccessToken();
