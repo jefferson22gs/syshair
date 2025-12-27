@@ -38,6 +38,24 @@ export const getMessagingInstance = async () => {
 // Request permission and get FCM token
 export const requestFCMToken = async (): Promise<string | null> => {
     try {
+        // Primeiro registrar o Service Worker do Firebase
+        let swRegistration: ServiceWorkerRegistration | null = null;
+
+        if ('serviceWorker' in navigator) {
+            try {
+                // Registrar o SW específico do Firebase Messaging
+                swRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
+                    scope: '/'
+                });
+                console.log('✅ Firebase SW registrado:', swRegistration.scope);
+
+                // Aguardar SW estar ativo
+                await navigator.serviceWorker.ready;
+            } catch (err) {
+                console.error('Erro ao registrar Firebase SW:', err);
+            }
+        }
+
         const messaging = await getMessagingInstance();
         if (!messaging) return null;
 
@@ -48,12 +66,13 @@ export const requestFCMToken = async (): Promise<string | null> => {
             return null;
         }
 
-        // Get FCM token
+        // Get FCM token com o SW registrado
         const token = await getToken(messaging, {
             vapidKey: VAPID_KEY,
+            serviceWorkerRegistration: swRegistration || undefined,
         });
 
-        console.log("FCM Token obtido:", token);
+        console.log("✅ FCM Token obtido:", token?.substring(0, 30) + '...');
         return token;
     } catch (error) {
         console.error("Erro ao obter FCM token:", error);
