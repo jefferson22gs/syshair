@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { usePushNotifications } from '@/hooks/usePushNotifications';
+import { usePushNotificationsFCM } from '@/hooks/usePushNotificationsFCM';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Bell, BellOff, X, Check, AlertCircle } from 'lucide-react';
@@ -19,7 +19,7 @@ export const NotificationPrompt = ({ salonId, clientId, onDismiss }: Notificatio
     isSubscribed,
     subscribe,
     unsubscribe
-  } = usePushNotifications(salonId, clientId);
+  } = usePushNotificationsFCM(salonId, clientId);
 
   const [showPrompt, setShowPrompt] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -151,8 +151,7 @@ export const NotificationSettings = () => {
     isSubscribed,
     subscribe,
     unsubscribe,
-    showNotification
-  } = usePushNotifications();
+  } = usePushNotificationsFCM();
 
   const [loading, setLoading] = useState(false);
 
@@ -166,12 +165,7 @@ export const NotificationSettings = () => {
         const subscription = await subscribe();
         if (subscription) {
           toast.success('Notificações ativadas!');
-          // Show a test notification
-          setTimeout(() => {
-            showNotification('SysHair', {
-              body: 'Notificações ativadas com sucesso! Você receberá lembretes de agendamentos.',
-            });
-          }, 1000);
+          // O FCM vai mostrar uma notificação de teste automaticamente
         }
       }
     } catch (error) {
@@ -182,16 +176,10 @@ export const NotificationSettings = () => {
   };
 
   const handleTestNotification = async () => {
-    const success = await showNotification('Teste de Notificação', {
-      body: 'Esta é uma notificação de teste do SysHair!',
-      tag: 'test-notification',
+    // Mostrar toast como feedback - notificação real virá via push
+    toast.info('Notificações estão ativadas!', {
+      description: 'Você receberá notificações do salão.',
     });
-
-    if (success) {
-      toast.success('Notificação de teste enviada!');
-    } else {
-      toast.error('Não foi possível enviar a notificação');
-    }
   };
 
   if (!isSupported) {
