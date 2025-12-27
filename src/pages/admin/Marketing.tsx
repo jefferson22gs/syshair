@@ -142,9 +142,9 @@ const Marketing = () => {
             }
 
             if (sendVia.push) {
-                // Send push notifications via Edge Function (cross-device)
+                // Send push notifications via Firebase Cloud Messaging
                 try {
-                    const response = await fetch('https://jfjbpjnnfnuiezchhust.supabase.co/functions/v1/send-push', {
+                    const response = await fetch('https://jfjbpjnnfnuiezchhust.supabase.co/functions/v1/send-push-fcm', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',

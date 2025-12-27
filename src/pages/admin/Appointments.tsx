@@ -167,10 +167,10 @@ const Appointments = () => {
       if (status === 'completed' && salonId) {
         const appointment = appointments.find(a => a.id === id);
         if (appointment) {
-          // Enviar push notification para avaliação
+          // Enviar push notification para avaliação (via Firebase Cloud Messaging)
           try {
             const response = await fetch(
-              `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-push`,
+              `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-push-fcm`,
               {
                 method: 'POST',
                 headers: {
