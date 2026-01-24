@@ -36,6 +36,8 @@ import { ptBR } from "date-fns/locale";
 import { usePWA } from "@/hooks/usePWA";
 import { usePushNotificationsFCM } from "@/hooks/usePushNotificationsFCM";
 import { NotificationPrompt } from "@/components/pwa/NotificationPrompt";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 
 interface Service {
   id: string;
@@ -153,6 +155,8 @@ const PublicSalon = () => {
   const [couponCode, setCouponCode] = useState("");
   const [couponApplied, setCouponApplied] = useState<{ id: string; discount: number; message: string } | null>(null);
   const [validatingCoupon, setValidatingCoupon] = useState(false);
+  const [allowPhotos, setAllowPhotos] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
 
@@ -647,6 +651,11 @@ const PublicSalon = () => {
       if (cartProducts.length > 0) {
         const productsNotes = cartProducts.map(p => `${p.name} x${p.quantity}`).join(', ');
         notesArray.push(`Produtos: ${productsNotes}`);
+      }
+
+      // Add photo consent to notes
+      if (allowPhotos) {
+        notesArray.push('✅ CLIENTE AUTORIZOU FOTOS ANTES/DEPOIS');
       }
 
       const { error } = await supabase
@@ -1422,25 +1431,20 @@ const PublicSalon = () => {
                     id="clientName"
                     value={clientName}
                     onChange={(e) => setClientName(e.target.value)}
-                    placeholder="Como prefere ser chamado"
-                    maxLength={100}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="clientPhone">Telefone / WhatsApp *</Label>
+                <div>
+                  <Label>WhatsApp *</Label>
                   <Input
-                    id="clientPhone"
+                    placeholder="(00) 00000-0000"
                     value={clientPhone}
                     onChange={(e) => setClientPhone(e.target.value)}
                     onBlur={(e) => checkPendingReviews(e.target.value)}
-                    placeholder="(00) 00000-0000"
-                    maxLength={20}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="clientBirthday">Data de Nascimento *</Label>
+                <div>
+                  <Label>Data de nascimento (Opcional)</Label>
                   <Input
-                    id="clientBirthday"
                     type="date"
                     value={clientBirthday}
                     onChange={(e) => setClientBirthday(e.target.value)}
@@ -1450,212 +1454,269 @@ const PublicSalon = () => {
                     🎂 No seu aniversário você pode ganhar um presente especial!
                   </p>
                 </div>
+
+                {/* Photo Consent Checkbox */}
+                <div className="flex items-start space-x-3 pt-4 border-t border-border mt-4">
+                  <Checkbox
+                    id="photos"
+                    checked={allowPhotos}
+                    onCheckedChange={(checked) => setAllowPhotos(checked as boolean)}
+                  />
+                  <div className="grid gap-1.5 leading-none">
+                    <label
+                      htmlFor="photos"
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    >
+                      Autorizo tirar fotos de "Antes e Depois"
+                    </label>
+                    <p className="text-sm text-muted-foreground">
+                      Concordo que o salão tire fotos do meu procedimento para compor o portfólio (Galeria),
+                      conforme os <button onClick={() => setShowTerms(true)} className="text-primary underline hover:text-primary/80">Termos de Uso de Imagem</button>.
+                    </p>
+                  </div>
+                </div>
+
+                <Dialog open={showTerms} onOpenChange={setShowTerms}>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Termo de Autorização de Uso de Imagem</DialogTitle>
+                      <DialogDescription>
+                        Ao marcar a opção de autorização, você concorda com os seguintes termos:
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="max-h-[60vh] overflow-y-auto space-y-4 text-sm text-muted-foreground">
+                      <p>
+                        1. <strong>Objeto:</strong> Autorizo o uso da minha imagem (fotografia e vídeo) capturada durante o procedimento estético realizado neste estabelecimento.
+                      </p>
+                      <p>
+                        2. <strong>Finalidade:</strong> As imagens serão utilizadas exclusivamente para fins de divulgação do trabalho profissional (portfólio), podendo ser veiculadas em:
+                        <ul className="list-disc pl-5 mt-1">
+                          <li>Redes sociais do salão e profissionais (Instagram, Facebook, etc.);</li>
+                          <li>Site oficial e aplicativos do salão;</li>
+                          <li>Materiais impressos de divulgação interna.</li>
+                        </ul>
+                      </p>
+                      <p>
+                        3. <strong>Gratuidade:</strong> A presente autorização é concedida a título gratuito, não havendo nada a ser reclamado a título de direitos autorais ou conexos.
+                      </p>
+                      <p>
+                        4. <strong>Vigência:</strong> Esta autorização é válida por tempo indeterminado e pode ser revogada a qualquer momento mediante solicitação por escrito.
+                      </p>
+                    </div>
+                    <div className="flex justify-end pt-4">
+                      <Button onClick={() => setShowTerms(false)}>Entendi</Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </div>
+            </div>
 
               {/* Coupon */}
-              <div className="mb-6">
-                <Label className="flex items-center gap-2 mb-2">
-                  <Gift size={16} style={{ color: primaryColor }} />
-                  Cupom de desconto
-                </Label>
-                <div className="flex gap-2">
-                  <Input
-                    value={couponCode}
-                    onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                    placeholder="Digite o código"
-                    disabled={!!couponApplied}
-                    maxLength={30}
-                  />
-                  <Button
-                    onClick={validateCoupon}
-                    disabled={validatingCoupon || !couponCode.trim() || !!couponApplied}
-                    variant="outline"
-                    style={{ borderColor: primaryColor, color: primaryColor }}
-                  >
-                    {validatingCoupon ? <Loader2 className="w-4 h-4 animate-spin" /> : "Aplicar"}
-                  </Button>
-                </div>
-                {couponApplied && (
-                  <p className="text-sm mt-2" style={{ color: primaryColor }}>
-                    ✓ {couponApplied.message}
-                  </p>
-                )}
-              </div>
+          <div className="mb-6">
+            <Label className="flex items-center gap-2 mb-2">
+              <Gift size={16} style={{ color: primaryColor }} />
+              Cupom de desconto
+            </Label>
+            <div className="flex gap-2">
+              <Input
+                value={couponCode}
+                onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                placeholder="Digite o código"
+                disabled={!!couponApplied}
+                maxLength={30}
+              />
+              <Button
+                onClick={validateCoupon}
+                disabled={validatingCoupon || !couponCode.trim() || !!couponApplied}
+                variant="outline"
+                style={{ borderColor: primaryColor, color: primaryColor }}
+              >
+                {validatingCoupon ? <Loader2 className="w-4 h-4 animate-spin" /> : "Aplicar"}
+              </Button>
+            </div>
+            {couponApplied && (
+              <p className="text-sm mt-2" style={{ color: primaryColor }}>
+                ✓ {couponApplied.message}
+              </p>
+            )}
+          </div>
 
-              {/* Price Summary */}
-              <div className="border-t border-border pt-4">
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Subtotal</span>
-                    <span>R$ {price.toFixed(2)}</span>
-                  </div>
-                  {discount > 0 && (
-                    <div className="flex justify-between text-sm" style={{ color: primaryColor }}>
-                      <span>Desconto</span>
-                      <span>- R$ {discount.toFixed(2)}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between text-lg font-bold pt-2">
-                    <span>Total</span>
-                    <span style={{ color: primaryColor }}>R$ {finalPrice.toFixed(2)}</span>
-                  </div>
+          {/* Price Summary */}
+          <div className="border-t border-border pt-4">
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Subtotal</span>
+                <span>R$ {price.toFixed(2)}</span>
+              </div>
+              {discount > 0 && (
+                <div className="flex justify-between text-sm" style={{ color: primaryColor }}>
+                  <span>Desconto</span>
+                  <span>- R$ {discount.toFixed(2)}</span>
                 </div>
+              )}
+              <div className="flex justify-between text-lg font-bold pt-2">
+                <span>Total</span>
+                <span style={{ color: primaryColor }}>R$ {finalPrice.toFixed(2)}</span>
               </div>
             </div>
+          </div>
+        </div>
           )}
 
-          {/* Navigation Buttons */}
-          <div className="flex justify-between mt-8">
-            {step > 1 ? (
-              <Button variant="outline" onClick={() => setStep(step - 1)}>
-                <ArrowLeft size={18} className="mr-2" />
-                Voltar
-              </Button>
-            ) : (
-              <div />
-            )}
+        {/* Navigation Buttons */}
+        <div className="flex justify-between mt-8">
+          {step > 1 ? (
+            <Button variant="outline" onClick={() => setStep(step - 1)}>
+              <ArrowLeft size={18} className="mr-2" />
+              Voltar
+            </Button>
+          ) : (
+            <div />
+          )}
 
-            {step < 4 ? (
-              <Button
-                onClick={() => setStep(step + 1)}
-                disabled={
-                  (step === 1 && cartServices.length === 0) ||
-                  (step === 2 && !selectedProfessional) ||
-                  (step === 3 && (!selectedDate || !selectedTime))
-                }
-                style={{
-                  backgroundColor: primaryColor,
-                  color: 'white'
-                }}
-              >
-                Próximo
-                <ArrowRight size={18} className="ml-2" />
-              </Button>
-            ) : (
-              <Button
-                onClick={handleConfirmBooking}
-                disabled={submitting || !clientName.trim() || !clientPhone.trim() || !clientBirthday}
-                style={{
-                  backgroundColor: primaryColor,
-                  color: 'white'
-                }}
-              >
-                {submitting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                    Agendando...
-                  </>
-                ) : (
-                  <>
-                    <Check size={18} className="mr-2" />
-                    Confirmar Agendamento
-                  </>
-                )}
-              </Button>
-            )}
-          </div>
+          {step < 4 ? (
+            <Button
+              onClick={() => setStep(step + 1)}
+              disabled={
+                (step === 1 && cartServices.length === 0) ||
+                (step === 2 && !selectedProfessional) ||
+                (step === 3 && (!selectedDate || !selectedTime))
+              }
+              style={{
+                backgroundColor: primaryColor,
+                color: 'white'
+              }}
+            >
+              Próximo
+              <ArrowRight size={18} className="ml-2" />
+            </Button>
+          ) : (
+            <Button
+              onClick={handleConfirmBooking}
+              disabled={submitting || !clientName.trim() || !clientPhone.trim() || !clientBirthday}
+              style={{
+                backgroundColor: primaryColor,
+                color: 'white'
+              }}
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  Agendando...
+                </>
+              ) : (
+                <>
+                  <Check size={18} className="mr-2" />
+                  Confirmar Agendamento
+                </>
+              )}
+            </Button>
+          )}
         </div>
-
-        {/* Footer */}
-        <p className="text-center text-xs text-muted-foreground mt-8">
-          Ao agendar, você concorda com os termos de uso do estabelecimento.
-        </p>
-      </main>
-
-      {/* Review Modal */}
-      {showReviewModal && pendingReviews.length > 0 && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-background rounded-2xl max-w-md w-full p-6 shadow-2xl animate-scale-in">
-            <div className="text-center mb-6">
-              <div
-                className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center"
-                style={{ backgroundColor: `${primaryColor}20` }}
-              >
-                <Star size={28} style={{ color: primaryColor }} />
-              </div>
-              <h3 className="font-display text-xl font-bold text-foreground mb-2">
-                Avalie sua visita anterior
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                {pendingReviews[0].service_name} com {pendingReviews[0].professional_name}
-                <br />
-                <span className="text-xs">
-                  {new Date(pendingReviews[0].date + 'T12:00:00').toLocaleDateString('pt-BR', {
-                    day: 'numeric',
-                    month: 'long'
-                  })}
-                </span>
-              </p>
-            </div>
-
-            {/* Star Rating */}
-            <div className="flex justify-center gap-2 mb-6">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <button
-                  key={star}
-                  onClick={() => setCurrentRating(star)}
-                  className="transition-transform hover:scale-110"
-                >
-                  <Star
-                    size={36}
-                    fill={star <= currentRating ? primaryColor : 'transparent'}
-                    stroke={star <= currentRating ? primaryColor : 'hsl(var(--muted-foreground))'}
-                    strokeWidth={1.5}
-                  />
-                </button>
-              ))}
-            </div>
-
-            {/* Comment */}
-            <div className="mb-6">
-              <Label htmlFor="reviewComment" className="text-sm text-muted-foreground">
-                Comentário (opcional)
-              </Label>
-              <textarea
-                id="reviewComment"
-                value={reviewComment}
-                onChange={(e) => setReviewComment(e.target.value)}
-                placeholder="Conte como foi sua experiência..."
-                className="w-full mt-2 p-3 rounded-lg bg-secondary/50 border border-border text-foreground placeholder:text-muted-foreground resize-none h-24"
-                maxLength={500}
-              />
-            </div>
-
-            {/* Buttons */}
-            <div className="flex gap-3">
-              <Button
-                variant="outline"
-                onClick={skipReview}
-                className="flex-1"
-              >
-                Pular
-              </Button>
-              <Button
-                onClick={submitReview}
-                disabled={submittingReview}
-                style={{ backgroundColor: primaryColor, color: 'white' }}
-                className="flex-1"
-              >
-                {submittingReview ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  'Enviar Avaliação'
-                )}
-              </Button>
-            </div>
-
-            {pendingReviews.length > 1 && (
-              <p className="text-xs text-center text-muted-foreground mt-4">
-                +{pendingReviews.length - 1} avaliações pendentes
-              </p>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Prompt para ativar notificações - só renderiza quando salon está carregado */}
-      {salon?.id && <NotificationPrompt salonId={salon.id} />}
     </div>
+
+        {/* Footer */ }
+  <p className="text-center text-xs text-muted-foreground mt-8">
+    Ao agendar, você concorda com os termos de uso do estabelecimento.
+  </p>
+      </main >
+
+  {/* Review Modal */ }
+{
+  showReviewModal && pendingReviews.length > 0 && (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div className="bg-background rounded-2xl max-w-md w-full p-6 shadow-2xl animate-scale-in">
+        <div className="text-center mb-6">
+          <div
+            className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center"
+            style={{ backgroundColor: `${primaryColor}20` }}
+          >
+            <Star size={28} style={{ color: primaryColor }} />
+          </div>
+          <h3 className="font-display text-xl font-bold text-foreground mb-2">
+            Avalie sua visita anterior
+          </h3>
+          <p className="text-sm text-muted-foreground">
+            {pendingReviews[0].service_name} com {pendingReviews[0].professional_name}
+            <br />
+            <span className="text-xs">
+              {new Date(pendingReviews[0].date + 'T12:00:00').toLocaleDateString('pt-BR', {
+                day: 'numeric',
+                month: 'long'
+              })}
+            </span>
+          </p>
+        </div>
+
+        {/* Star Rating */}
+        <div className="flex justify-center gap-2 mb-6">
+          {[1, 2, 3, 4, 5].map((star) => (
+            <button
+              key={star}
+              onClick={() => setCurrentRating(star)}
+              className="transition-transform hover:scale-110"
+            >
+              <Star
+                size={36}
+                fill={star <= currentRating ? primaryColor : 'transparent'}
+                stroke={star <= currentRating ? primaryColor : 'hsl(var(--muted-foreground))'}
+                strokeWidth={1.5}
+              />
+            </button>
+          ))}
+        </div>
+
+        {/* Comment */}
+        <div className="mb-6">
+          <Label htmlFor="reviewComment" className="text-sm text-muted-foreground">
+            Comentário (opcional)
+          </Label>
+          <textarea
+            id="reviewComment"
+            value={reviewComment}
+            onChange={(e) => setReviewComment(e.target.value)}
+            placeholder="Conte como foi sua experiência..."
+            className="w-full mt-2 p-3 rounded-lg bg-secondary/50 border border-border text-foreground placeholder:text-muted-foreground resize-none h-24"
+            maxLength={500}
+          />
+        </div>
+
+        {/* Buttons */}
+        <div className="flex gap-3">
+          <Button
+            variant="outline"
+            onClick={skipReview}
+            className="flex-1"
+          >
+            Pular
+          </Button>
+          <Button
+            onClick={submitReview}
+            disabled={submittingReview}
+            style={{ backgroundColor: primaryColor, color: 'white' }}
+            className="flex-1"
+          >
+            {submittingReview ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              'Enviar Avaliação'
+            )}
+          </Button>
+        </div>
+
+        {pendingReviews.length > 1 && (
+          <p className="text-xs text-center text-muted-foreground mt-4">
+            +{pendingReviews.length - 1} avaliações pendentes
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+{/* Prompt para ativar notificações - só renderiza quando salon está carregado */ }
+{ salon?.id && <NotificationPrompt salonId={salon.id} /> }
+    </div >
   );
 };
 

@@ -28,6 +28,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { format, isBefore, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 
 interface Professional {
     id: string;
@@ -101,6 +103,8 @@ const PublicProfessional = () => {
     const [clientName, setClientName] = useState("");
     const [clientPhone, setClientPhone] = useState("");
     const [clientBirthday, setClientBirthday] = useState("");
+    const [allowPhotos, setAllowPhotos] = useState(false);
+    const [showTerms, setShowTerms] = useState(false);
 
     const [submitting, setSubmitting] = useState(false);
 
@@ -335,9 +339,15 @@ const PublicProfessional = () => {
             const endTime = `${Math.floor(endMinutes / 60).toString().padStart(2, '0')}:${(endMinutes % 60).toString().padStart(2, '0')}`;
 
             const mainService = cart[0];
-            const additionalNotes = cart.length > 1
-                ? `Serviços: ${cart.map(s => s.name).join(', ')}`
-                : null;
+            const additionalNotesArray = [];
+            if (cart.length > 1) {
+                additionalNotesArray.push(`Serviços: ${cart.map(s => s.name).join(', ')}`);
+            }
+            if (allowPhotos) {
+                additionalNotesArray.push('✅ CLIENTE AUTORIZOU FOTOS ANTES/DEPOIS');
+            }
+
+            const additionalNotes = additionalNotesArray.length > 0 ? additionalNotesArray.join(' | ') : null;
 
             const { error } = await supabase
                 .from('appointments')
@@ -919,6 +929,60 @@ const PublicProfessional = () => {
                                         onChange={(e) => setClientBirthday(e.target.value)}
                                     />
                                 </div>
+
+                                {/* Photo Consent Checkbox */}
+                                <div className="flex items-start space-x-3 pt-4 border-t border-border mt-4">
+                                    <Checkbox
+                                        id="photos"
+                                        checked={allowPhotos}
+                                        onCheckedChange={(checked) => setAllowPhotos(checked as boolean)}
+                                    />
+                                    <div className="grid gap-1.5 leading-none">
+                                        <label
+                                            htmlFor="photos"
+                                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                        >
+                                            Autorizo tirar fotos de "Antes e Depois"
+                                        </label>
+                                        <p className="text-sm text-muted-foreground">
+                                            Concordo que o profissional tire fotos do meu procedimento para compor o portfólio,
+                                            conforme os <button onClick={() => setShowTerms(true)} className="text-primary underline hover:text-primary/80">Termos de Uso de Imagem</button>.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <Dialog open={showTerms} onOpenChange={setShowTerms}>
+                                    <DialogContent>
+                                        <DialogHeader>
+                                            <DialogTitle>Termo de Autorização de Uso de Imagem</DialogTitle>
+                                            <DialogDescription>
+                                                Ao marcar a opção de autorização, você concorda com os seguintes termos:
+                                            </DialogDescription>
+                                        </DialogHeader>
+                                        <div className="max-h-[60vh] overflow-y-auto space-y-4 text-sm text-muted-foreground">
+                                            <p>
+                                                1. <strong>Objeto:</strong> Autorizo o uso da minha imagem (fotografia e vídeo) capturada durante o procedimento estético realizado por este profissional.
+                                            </p>
+                                            <p>
+                                                2. <strong>Finalidade:</strong> As imagens serão utilizadas exclusivamente para fins de divulgação do trabalho profissional (portfólio), podendo ser veiculadas em:
+                                                <ul className="list-disc pl-5 mt-1">
+                                                    <li>Redes sociais do profissional e do salão (Instagram, Facebook, etc.);</li>
+                                                    <li>Site oficial;</li>
+                                                    <li>Materiais impressos de divulgação.</li>
+                                                </ul>
+                                            </p>
+                                            <p>
+                                                3. <strong>Gratuidade:</strong> A presente autorização é concedida a título gratuito.
+                                            </p>
+                                            <p>
+                                                4. <strong>Vigência:</strong> Esta autorização é válida por tempo indeterminado e pode ser revogada a qualquer momento.
+                                            </p>
+                                        </div>
+                                        <div className="flex justify-end pt-4">
+                                            <Button onClick={() => setShowTerms(false)}>Entendi</Button>
+                                        </div>
+                                    </DialogContent>
+                                </Dialog>
                             </div>
 
                             <Button
