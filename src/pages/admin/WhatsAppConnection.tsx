@@ -37,6 +37,7 @@ import { cn } from "@/lib/utils";
 // Configuração da Evolution API
 const EVOLUTION_API_URL = 'https://api.tubaraoemprestimo.com.br';
 const EVOLUTION_API_KEY = 'B8959800-F546-407C-99E8-C40306E747F5';
+const SUPABASE_WEBHOOK_URL = 'https://jfjbpjnnfnuiezchhust.supabase.co/functions/v1/evolution-webhook';
 
 interface WhatsAppInstance {
     id?: string;
@@ -193,7 +194,7 @@ const WhatsAppConnection = () => {
         setIsCreating(true);
 
         try {
-            // Criar instância na Evolution API
+            // Criar instância na Evolution API com webhook já configurado
             const response = await fetch(`${EVOLUTION_API_URL}/instance/create`, {
                 method: 'POST',
                 headers: {
@@ -204,17 +205,22 @@ const WhatsAppConnection = () => {
                     instanceName: instanceName,
                     integration: 'WHATSAPP-BAILEYS',
                     qrcode: true,
-                    // Webhook para receber mensagens
+                    // Webhook automaticamente configurado para nossa Edge Function
                     webhook: {
                         enabled: true,
-                        url: `${window.location.origin}/api/evolution-webhook`,
+                        url: SUPABASE_WEBHOOK_URL,
                         webhookByEvents: true,
                         events: [
                             'MESSAGES_UPSERT',
                             'MESSAGES_UPDATE',
                             'CONNECTION_UPDATE',
+                            'QRCODE_UPDATED',
                         ],
                     },
+                    // Configurações extras para melhor integração
+                    chatwoot: { enabled: false },
+                    rabbitmq: { enabled: false },
+                    sqs: { enabled: false },
                 }),
             });
 
@@ -225,13 +231,16 @@ const WhatsAppConnection = () => {
 
             const data = await response.json();
 
+            // Configurar webhook novamente via endpoint separado (garantia)
+            await configureWebhook(instanceName);
+
             // Salvar no banco
             const newInstance: Omit<WhatsAppInstance, 'id'> = {
                 salon_id: salonId,
                 instance_name: instanceName,
                 instance_token: data.hash,
                 status: 'disconnected',
-                webhook_url: `${window.location.origin}/api/evolution-webhook`,
+                webhook_url: SUPABASE_WEBHOOK_URL,
             };
 
             const { data: savedInstance, error } = await supabase
@@ -247,7 +256,7 @@ const WhatsAppConnection = () => {
 
             toast({
                 title: "Instância criada!",
-                description: "Agora você pode conectar seu WhatsApp.",
+                description: "Webhook configurado automaticamente. Agora você pode conectar seu WhatsApp.",
             });
 
         } catch (error: any) {
@@ -258,6 +267,38 @@ const WhatsAppConnection = () => {
             });
         } finally {
             setIsCreating(false);
+        }
+    };
+
+    // Função para configurar/atualizar webhook de uma instância
+    const configureWebhook = async (instanceNameParam: string) => {
+        try {
+            const response = await fetch(`${EVOLUTION_API_URL}/webhook/set/${instanceNameParam}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': EVOLUTION_API_KEY,
+                },
+                body: JSON.stringify({
+                    enabled: true,
+                    url: SUPABASE_WEBHOOK_URL,
+                    webhookByEvents: true,
+                    events: [
+                        'MESSAGES_UPSERT',
+                        'MESSAGES_UPDATE',
+                        'CONNECTION_UPDATE',
+                        'QRCODE_UPDATED',
+                    ],
+                }),
+            });
+
+            if (!response.ok) {
+                console.warn('Aviso: Não foi possível configurar webhook via endpoint separado');
+            } else {
+                console.log('Webhook configurado com sucesso para:', instanceNameParam);
+            }
+        } catch (error) {
+            console.warn('Erro ao configurar webhook:', error);
         }
     };
 
