@@ -96,7 +96,7 @@ interface KnowledgeItem {
 // Provedores de IA disponíveis
 const AI_PROVIDERS = [
     { id: 'openai', name: 'OpenAI', models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'] },
-    { id: 'gemini', name: 'Google Gemini', models: ['gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.5-flash'] },
+    { id: 'gemini', name: 'Google Gemini', models: ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-1.5-pro'] },
     { id: 'grok', name: 'xAI Grok', models: ['grok-2', 'grok-2-mini'] },
     { id: 'perplexity', name: 'Perplexity', models: ['llama-3.1-sonar-large', 'llama-3.1-sonar-small'] },
 ];

@@ -26,7 +26,9 @@ import {
   Minus,
   Package,
   Star,
-  Download
+  Download,
+  Image,
+  Camera
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { format, isBefore, startOfDay } from "date-fns";
@@ -107,6 +109,16 @@ interface PendingReview {
   client_id: string;
 }
 
+interface GalleryImage {
+  id: string;
+  before_image_url: string | null;
+  after_image_url: string | null;
+  description: string | null;
+  created_at: string;
+  professional_name?: string;
+  service_name?: string;
+}
+
 const PublicSalon = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
@@ -126,7 +138,8 @@ const PublicSalon = () => {
   const [step, setStep] = useState(1);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
-  const [activeTab, setActiveTab] = useState<'services' | 'products'>('services');
+  const [gallery, setGallery] = useState<GalleryImage[]>([]);
+  const [activeTab, setActiveTab] = useState<'services' | 'products' | 'gallery'>('services');
   const [selectedProfessional, setSelectedProfessional] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedTime, setSelectedTime] = useState<string>("");
@@ -239,6 +252,35 @@ const PublicSalon = () => {
         .order('name');
 
       if (productsData) setProducts(productsData);
+
+      // Fetch public gallery images
+      const { data: galleryData } = await supabase
+        .from('client_gallery')
+        .select(`
+          id,
+          before_image_url,
+          after_image_url,
+          description,
+          created_at,
+          professionals:professional_id (name),
+          services:service_id (name)
+        `)
+        .eq('salon_id', salonData.id)
+        .eq('visibility', 'public')
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      if (galleryData) {
+        setGallery(galleryData.map(g => ({
+          id: g.id,
+          before_image_url: g.before_image_url,
+          after_image_url: g.after_image_url,
+          description: g.description,
+          created_at: g.created_at,
+          professional_name: (g.professionals as any)?.name,
+          service_name: (g.services as any)?.name,
+        })));
+      }
     } catch (err) {
       console.error("Error fetching salon:", err);
       setError("Erro ao carregar dados do salão");
@@ -984,8 +1026,8 @@ const PublicSalon = () => {
               </h2>
               <p className="text-muted-foreground mb-6">Selecione serviços e produtos que deseja</p>
 
-              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'services' | 'products')} className="w-full">
-                <TabsList className="grid w-full grid-cols-2 mb-6">
+              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'services' | 'products' | 'gallery')} className="w-full">
+                <TabsList className="grid w-full grid-cols-3 mb-6">
                   <TabsTrigger value="services" className="flex items-center gap-2">
                     <Scissors size={16} />
                     Serviços
@@ -993,6 +1035,10 @@ const PublicSalon = () => {
                   <TabsTrigger value="products" className="flex items-center gap-2">
                     <Store size={16} />
                     Loja
+                  </TabsTrigger>
+                  <TabsTrigger value="gallery" className="flex items-center gap-2">
+                    <Camera size={16} />
+                    Galeria
                   </TabsTrigger>
                 </TabsList>
 
@@ -1115,6 +1161,65 @@ const PublicSalon = () => {
                               </button>
                             )}
                           </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="gallery">
+                  {gallery.length === 0 ? (
+                    <div className="text-center py-12">
+                      <Camera size={48} className="mx-auto text-muted-foreground mb-4" />
+                      <p className="text-muted-foreground">Nenhuma foto na galeria ainda</p>
+                      <p className="text-sm text-muted-foreground mt-1">Em breve, fotos de trabalhos realizados!</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                      {gallery.map((photo) => (
+                        <div key={photo.id} className="space-y-2">
+                          {photo.after_image_url ? (
+                            <div className="relative group">
+                              <img
+                                src={photo.after_image_url}
+                                alt={photo.description || 'Trabalho realizado'}
+                                className="w-full aspect-square object-cover rounded-xl border border-border"
+                              />
+                              {photo.before_image_url && (
+                                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex items-center justify-center">
+                                  <div className="text-center text-white p-2">
+                                    <p className="text-xs mb-1">Antes</p>
+                                    <img
+                                      src={photo.before_image_url}
+                                      alt="Antes"
+                                      className="w-16 h-16 object-cover rounded-lg mx-auto"
+                                    />
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          ) : photo.before_image_url && (
+                            <img
+                              src={photo.before_image_url}
+                              alt={photo.description || 'Trabalho realizado'}
+                              className="w-full aspect-square object-cover rounded-xl border border-border"
+                            />
+                          )}
+                          {(photo.service_name || photo.professional_name) && (
+                            <div className="text-center">
+                              {photo.service_name && (
+                                <p className="text-sm font-medium text-foreground">{photo.service_name}</p>
+                              )}
+                              {photo.professional_name && (
+                                <p className="text-xs text-muted-foreground">por {photo.professional_name}</p>
+                              )}
+                            </div>
+                          )}
+                          {photo.description && (
+                            <p className="text-xs text-muted-foreground text-center line-clamp-2">
+                              {photo.description}
+                            </p>
+                          )}
                         </div>
                       ))}
                     </div>
