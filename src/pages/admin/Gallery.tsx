@@ -8,8 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Image, Plus, Eye, EyeOff, Link, Copy, Trash2 } from "lucide-react";
+import { Image, Plus, Eye, EyeOff, Link, Copy, Trash2, Camera } from "lucide-react";
 
 interface GalleryItem {
   id: string;
@@ -36,7 +37,17 @@ const GalleryPage = () => {
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  
+  const [uploading, setUploading] = useState(false);
+  const [activeTab, setActiveTab] = useState("link");
+
+  // Camera refs
+  const videoRef = useState<HTMLVideoElement | null>(null);
+  const canvasRef = useState<HTMLCanvasElement | null>(null);
+  const [stream, setStream] = useState<MediaStream | null>(null);
+  const [cameraActive, setCameraActive] = useState(false);
+  const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [cameraType, setCameraType] = useState<"before" | "after">("after");
+
   const [formData, setFormData] = useState({
     client_id: '',
     before_image_url: '',
@@ -56,6 +67,13 @@ const GalleryPage = () => {
     }
   }, [salonId]);
 
+  // Clean up camera stream on unmount or dialog close
+  useEffect(() => {
+    if (!isDialogOpen && stream) {
+      stopCamera();
+    }
+  }, [isDialogOpen]);
+
   const fetchSalonId = async () => {
     if (!user) return;
     const { data } = await supabase
@@ -63,14 +81,14 @@ const GalleryPage = () => {
       .select('id')
       .eq('owner_id', user.id)
       .maybeSingle();
-    
+
     if (data) setSalonId(data.id);
     setLoading(false);
   };
 
   const fetchGallery = async () => {
     if (!salonId) return;
-    
+
     const { data, error } = await supabase
       .from('client_gallery')
       .select(`
@@ -91,7 +109,7 @@ const GalleryPage = () => {
 
   const fetchClients = async () => {
     if (!salonId) return;
-    
+
     const { data } = await supabase
       .from('clients')
       .select('id, name')
@@ -104,9 +122,124 @@ const GalleryPage = () => {
     return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
   };
 
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, type: 'before' | 'after') => {
+    if (!event.target.files || event.target.files.length === 0 || !salonId) return;
+
+    const file = event.target.files[0];
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${salonId}/${Date.now()}-${type}.${fileExt}`;
+
+    setUploading(true);
+    try {
+      const { error: uploadError, data } = await supabase.storage
+        .from('gallery')
+        .upload(fileName, file);
+
+      if (uploadError) {
+        // Se bucket não existir, tenta criar ou avisa (geralmente deve ser criado no painel)
+        throw uploadError;
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('gallery')
+        .getPublicUrl(fileName);
+
+      setFormData(prev => ({
+        ...prev,
+        [type === 'before' ? 'before_image_url' : 'after_image_url']: publicUrl
+      }));
+
+      toast.success("Imagem enviada com sucesso!");
+    } catch (error: any) {
+      console.error("Error uploading file:", error);
+      toast.error("Erro ao enviar imagem. Verifique se o bucket 'gallery' existe no Storage.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const startCamera = async (type: "before" | "after") => {
+    setCameraType(type);
+    setCameraActive(true);
+    try {
+      const mediaStream = await navigator.mediaDevices.getUserMedia({ video: true });
+      setStream(mediaStream);
+      // Logic to attach stream to video element is handled in ref callback or useEffect
+      // But since we are using simple state for now, we will assume the video element picks it up
+      // In a real implementation with Refs:
+      const videoElement = document.getElementById('camera-video') as HTMLVideoElement;
+      if (videoElement) {
+        videoElement.srcObject = mediaStream;
+      }
+    } catch (err) {
+      console.error("Error accessing camera:", err);
+      toast.error("Erro ao acessar a câmera");
+      setCameraActive(false);
+    }
+  };
+
+  const stopCamera = () => {
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+      setStream(null);
+    }
+    setCameraActive(false);
+  };
+
+  const capturePhoto = () => {
+    const videoElement = document.getElementById('camera-video') as HTMLVideoElement;
+    const canvasElement = document.createElement('canvas'); // Create temp canvas
+    if (videoElement && stream) {
+      canvasElement.width = videoElement.videoWidth;
+      canvasElement.height = videoElement.videoHeight;
+      const ctx = canvasElement.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(videoElement, 0, 0);
+
+        canvasElement.toBlob(async (blob) => {
+          if (!blob || !salonId) return;
+
+          const fileName = `${salonId}/${Date.now()}-${cameraType}.jpg`;
+          setUploading(true);
+
+          try {
+            const { error: uploadError } = await supabase.storage
+              .from('gallery')
+              .upload(fileName, blob, { contentType: 'image/jpeg' });
+
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = supabase.storage
+              .from('gallery')
+              .getPublicUrl(fileName);
+
+            setFormData(prev => ({
+              ...prev,
+              [cameraType === 'before' ? 'before_image_url' : 'after_image_url']: publicUrl
+            }));
+
+            toast.success("Foto capturada e salva!");
+            stopCamera();
+          } catch (error) {
+            console.error("Error uploading capture:", error);
+            toast.error("Erro ao salvar foto capturada.");
+          } finally {
+            setUploading(false);
+          }
+        }, 'image/jpeg');
+      }
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!salonId || !formData.client_id) return;
+
+    // Validar se tem pelo menos uma imagem
+    if (!formData.before_image_url && !formData.after_image_url) {
+      toast.error("Adicione pelo menos uma imagem (Antes ou Depois)");
+      return;
+    }
 
     try {
       const { error } = await supabase
@@ -122,7 +255,7 @@ const GalleryPage = () => {
         });
 
       if (error) throw error;
-      
+
       toast.success("Imagem adicionada!");
       setIsDialogOpen(false);
       resetForm();
@@ -135,7 +268,7 @@ const GalleryPage = () => {
 
   const toggleVisibility = async (id: string, currentVisibility: string) => {
     const newVisibility = currentVisibility === 'public' ? 'private' : 'public';
-    
+
     try {
       const { error } = await supabase
         .from('client_gallery')
@@ -143,7 +276,7 @@ const GalleryPage = () => {
         .eq('id', id);
 
       if (error) throw error;
-      
+
       toast.success(`Visibilidade alterada para ${newVisibility === 'public' ? 'pública' : 'privada'}`);
       fetchGallery();
     } catch (error) {
@@ -184,6 +317,9 @@ const GalleryPage = () => {
       description: '',
       visibility: 'private'
     });
+    setActiveTab("link");
+    setCapturedImage(null);
+    stopCamera();
   };
 
   if (loading) {
@@ -209,7 +345,7 @@ const GalleryPage = () => {
               Documente transformações e compartilhe resultados
             </p>
           </div>
-          
+
           <Dialog open={isDialogOpen} onOpenChange={(open) => {
             setIsDialogOpen(open);
             if (!open) resetForm();
@@ -220,7 +356,7 @@ const GalleryPage = () => {
                 Nova Transformação
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-md">
+            <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Adicionar Transformação</DialogTitle>
               </DialogHeader>
@@ -244,22 +380,121 @@ const GalleryPage = () => {
                   </Select>
                 </div>
 
-                <div className="space-y-2">
-                  <Label>URL Imagem Antes</Label>
-                  <Input
-                    value={formData.before_image_url}
-                    onChange={(e) => setFormData({ ...formData, before_image_url: e.target.value })}
-                    placeholder="https://..."
-                  />
-                </div>
+                <div className="space-y-4 border p-4 rounded-lg bg-secondary/10">
+                  <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                    <TabsList className="grid w-full grid-cols-3 mb-4">
+                      <TabsTrigger value="link">Link</TabsTrigger>
+                      <TabsTrigger value="upload">Upload</TabsTrigger>
+                      <TabsTrigger value="camera">Câmera</TabsTrigger>
+                    </TabsList>
 
-                <div className="space-y-2">
-                  <Label>URL Imagem Depois</Label>
-                  <Input
-                    value={formData.after_image_url}
-                    onChange={(e) => setFormData({ ...formData, after_image_url: e.target.value })}
-                    placeholder="https://..."
-                  />
+                    <TabsContent value="link" className="space-y-4">
+                      <div className="space-y-2">
+                        <Label>Link Imagem Antes</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            value={formData.before_image_url}
+                            onChange={(e) => setFormData({ ...formData, before_image_url: e.target.value })}
+                            placeholder="https://..."
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Link Imagem Depois</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            value={formData.after_image_url}
+                            onChange={(e) => setFormData({ ...formData, after_image_url: e.target.value })}
+                            placeholder="https://..."
+                          />
+                        </div>
+                      </div>
+                    </TabsContent>
+
+                    <TabsContent value="upload" className="space-y-4">
+                      <div className="space-y-2">
+                        <Label>Upload "Antes"</Label>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handleFileUpload(e, 'before')}
+                            disabled={uploading}
+                          />
+                        </div>
+                        {formData.before_image_url && <p className="text-xs text-green-500">Imagem carregada!</p>}
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Upload "Depois"</Label>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handleFileUpload(e, 'after')}
+                            disabled={uploading}
+                          />
+                        </div>
+                        {formData.after_image_url && <p className="text-xs text-green-500">Imagem carregada!</p>}
+                      </div>
+                    </TabsContent>
+
+                    <TabsContent value="camera" className="space-y-4">
+                      {!cameraActive ? (
+                        <div className="grid grid-cols-2 gap-4">
+                          <Button type="button" variant="outline" onClick={() => startCamera('before')} className="h-24 flex flex-col gap-2">
+                            <Camera size={24} />
+                            Capturar "Antes"
+                          </Button>
+                          <Button type="button" variant="outline" onClick={() => startCamera('after')} className="h-24 flex flex-col gap-2">
+                            <Camera size={24} />
+                            Capturar "Depois"
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          <div className="relative aspect-video bg-black rounded-lg overflow-hidden">
+                            <video id="camera-video" autoPlay playsInline className="w-full h-full object-cover"></video>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button type="button" variant="destructive" onClick={stopCamera} className="flex-1">
+                              Cancelar
+                            </Button>
+                            <Button type="button" variant="default" onClick={capturePhoto} className="flex-1">
+                              Capturar Foto
+                            </Button>
+                          </div>
+                          <p className="text-center text-sm font-medium">Capturando: {cameraType === 'before' ? 'Antes' : 'Depois'}</p>
+                        </div>
+                      )}
+
+                      <div className="flex gap-4 mt-4 text-xs">
+                        <div>
+                          <span className="font-bold">Antes:</span> {formData.before_image_url ? '✅ Definida' : '❌ Pendente'}
+                        </div>
+                        <div>
+                          <span className="font-bold">Depois:</span> {formData.after_image_url ? '✅ Definida' : '❌ Pendente'}
+                        </div>
+                      </div>
+                    </TabsContent>
+                  </Tabs>
+
+                  {/* Previews */}
+                  {(formData.before_image_url || formData.after_image_url) && (
+                    <div className="grid grid-cols-2 gap-2 mt-2">
+                      {formData.before_image_url && (
+                        <div className="relative aspect-square rounded overflow-hidden border">
+                          <img src={formData.before_image_url} alt="Antes" className="w-full h-full object-cover" />
+                          <div className="absolute bottom-0 left-0 bg-black/50 text-white text-xs px-1 w-full">Antes</div>
+                        </div>
+                      )}
+                      {formData.after_image_url && (
+                        <div className="relative aspect-square rounded overflow-hidden border">
+                          <img src={formData.after_image_url} alt="Depois" className="w-full h-full object-cover" />
+                          <div className="absolute bottom-0 left-0 bg-black/50 text-white text-xs px-1 w-full">Depois</div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -292,8 +527,8 @@ const GalleryPage = () => {
                   <Button type="button" variant="outline" className="flex-1" onClick={() => setIsDialogOpen(false)}>
                     Cancelar
                   </Button>
-                  <Button type="submit" variant="gold" className="flex-1">
-                    Adicionar
+                  <Button type="submit" variant="gold" className="flex-1" disabled={uploading}>
+                    {uploading ? 'Enviando...' : 'Adicionar'}
                   </Button>
                 </div>
               </form>
@@ -317,10 +552,10 @@ const GalleryPage = () => {
             {gallery.map((item) => (
               <Card key={item.id} className="glass-card overflow-hidden">
                 <div className="grid grid-cols-2 gap-1">
-                  <div className="aspect-square bg-secondary/50 flex items-center justify-center">
+                  <div className="aspect-square bg-secondary/50 flex items-center justify-center relative group">
                     {item.before_image_url ? (
-                      <img 
-                        src={item.before_image_url} 
+                      <img
+                        src={item.before_image_url}
                         alt="Antes"
                         className="w-full h-full object-cover"
                       />
@@ -330,11 +565,12 @@ const GalleryPage = () => {
                         <span className="text-xs text-muted-foreground">Antes</span>
                       </div>
                     )}
+                    <span className="absolute bottom-1 left-1 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded">Antes</span>
                   </div>
-                  <div className="aspect-square bg-secondary/50 flex items-center justify-center">
+                  <div className="aspect-square bg-secondary/50 flex items-center justify-center relative group">
                     {item.after_image_url ? (
-                      <img 
-                        src={item.after_image_url} 
+                      <img
+                        src={item.after_image_url}
                         alt="Depois"
                         className="w-full h-full object-cover"
                       />
@@ -344,6 +580,7 @@ const GalleryPage = () => {
                         <span className="text-xs text-muted-foreground">Depois</span>
                       </div>
                     )}
+                    <span className="absolute bottom-1 left-1 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded">Depois</span>
                   </div>
                 </div>
                 <CardContent className="p-4">
@@ -355,9 +592,9 @@ const GalleryPage = () => {
                       </p>
                     </div>
                     <div className="flex gap-1">
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         className="h-8 w-8"
                         onClick={() => toggleVisibility(item.id, item.visibility)}
                       >
@@ -368,18 +605,18 @@ const GalleryPage = () => {
                         )}
                       </Button>
                       {item.share_token && (
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           className="h-8 w-8"
                           onClick={() => copyShareLink(item.share_token!)}
                         >
                           <Copy size={14} />
                         </Button>
                       )}
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         className="h-8 w-8"
                         onClick={() => handleDelete(item.id)}
                       >
@@ -388,16 +625,15 @@ const GalleryPage = () => {
                     </div>
                   </div>
                   {item.description && (
-                    <p className="text-sm text-muted-foreground">{item.description}</p>
+                    <p className="text-sm text-muted-foreground line-clamp-2">{item.description}</p>
                   )}
                   <div className="flex items-center gap-2 mt-2">
-                    <span className={`text-xs px-2 py-1 rounded-full ${
-                      item.visibility === 'public' 
-                        ? 'bg-success/20 text-success'
-                        : item.visibility === 'link'
+                    <span className={`text-xs px-2 py-1 rounded-full ${item.visibility === 'public'
+                      ? 'bg-success/20 text-success'
+                      : item.visibility === 'link'
                         ? 'bg-primary/20 text-primary'
                         : 'bg-muted text-muted-foreground'
-                    }`}>
+                      }`}>
                       {item.visibility === 'public' && 'Pública'}
                       {item.visibility === 'private' && 'Privada'}
                       {item.visibility === 'link' && 'Link'}
