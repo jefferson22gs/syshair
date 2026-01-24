@@ -10,8 +10,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { AdminLayout } from "@/components/layouts/AdminLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Save, Upload, Building2, Link2, Copy, ExternalLink, Globe, Bell } from "lucide-react";
+import { Save, Upload, Building2, Link2, Copy, ExternalLink, Globe, Bell, Camera } from "lucide-react";
 import { NotificationSettings } from "@/components/pwa/NotificationPrompt";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 interface SalonData {
   id?: string;
@@ -73,23 +74,35 @@ const SalonSettings = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [isNew, setIsNew] = useState(true);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [activeLogoTab, setActiveLogoTab] = useState("link");
+
+  // Camera refs for logo
+  const [stream, setStream] = useState<MediaStream | null>(null);
+  const [cameraActive, setCameraActive] = useState(false);
 
   useEffect(() => {
     fetchSalon();
+    return () => {
+      // Cleanup camera on unmount
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+    };
   }, [user]);
 
   const fetchSalon = async () => {
     if (!user) return;
-    
+
     try {
       const { data, error } = await supabase
         .from('salons')
         .select('*')
         .eq('owner_id', user.id)
         .maybeSingle();
-      
+
       if (error) throw error;
-      
+
       if (data) {
         setSalon({
           id: data.id,
@@ -124,7 +137,7 @@ const SalonSettings = () => {
 
   const handleSave = async () => {
     if (!user) return;
-    
+
     if (!salon.name.trim()) {
       toast.error("Nome do salão é obrigatório");
       return;
@@ -160,15 +173,15 @@ const SalonSettings = () => {
           .insert(salonData)
           .select()
           .single();
-        
+
         if (error) throw error;
-        
+
         // Update user role to admin
         await supabase
           .from('user_roles')
           .update({ role: 'admin', salon_id: data.id })
           .eq('user_id', user.id);
-        
+
         setSalon({ ...salon, id: data.id });
         setIsNew(false);
         toast.success("Salão criado com sucesso!");
@@ -177,7 +190,7 @@ const SalonSettings = () => {
           .from('salons')
           .update(salonData)
           .eq('id', salon.id);
-        
+
         if (error) throw error;
         toast.success("Configurações salvas com sucesso!");
       }
@@ -186,6 +199,106 @@ const SalonSettings = () => {
       toast.error(error.message || "Erro ao salvar configurações");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files || event.target.files.length === 0 || !salon.id) return;
+
+    const file = event.target.files[0];
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${salon.id}/logo-${Date.now()}.${fileExt}`;
+
+    setUploadingLogo(true);
+    try {
+      // Ensure bucket exists (handled by policies or manual creation, here we assume it exists or use 'gallery' or 'public')
+      // Let's use 'gallery' bucket for consistency as created before, or a 'logos' bucket if preferred.
+      // Re-using 'gallery' for simplicity since it is public.
+      const { error: uploadError } = await supabase.storage
+        .from('gallery')
+        .upload(fileName, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('gallery')
+        .getPublicUrl(fileName);
+
+      setSalon(prev => ({ ...prev, logo_url: publicUrl }));
+      toast.success("Logo enviado com sucesso!");
+    } catch (error: any) {
+      console.error("Error uploading logo:", error);
+      toast.error("Erro ao enviar logo. Verifique se o bucket 'gallery' existe.");
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
+  const startCamera = async () => {
+    setCameraActive(true);
+    try {
+      const mediaStream = await navigator.mediaDevices.getUserMedia({ video: true });
+      setStream(mediaStream);
+      // Wait a bit for the video element to be available in DOM
+      setTimeout(() => {
+        const videoElement = document.getElementById('logo-camera-video') as HTMLVideoElement;
+        if (videoElement) {
+          videoElement.srcObject = mediaStream;
+        }
+      }, 100);
+    } catch (err) {
+      console.error("Error accessing camera:", err);
+      toast.error("Erro ao acessar a câmera");
+      setCameraActive(false);
+    }
+  };
+
+  const stopCamera = () => {
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+      setStream(null);
+    }
+    setCameraActive(false);
+  };
+
+  const capturePhoto = () => {
+    const videoElement = document.getElementById('logo-camera-video') as HTMLVideoElement;
+    const canvasElement = document.createElement('canvas');
+    if (videoElement && stream) {
+      canvasElement.width = videoElement.videoWidth;
+      canvasElement.height = videoElement.videoHeight;
+      const ctx = canvasElement.getContext('2d');
+      if (ctx && salon.id) {
+        ctx.drawImage(videoElement, 0, 0);
+
+        canvasElement.toBlob(async (blob) => {
+          if (!blob) return;
+
+          const fileName = `${salon.id}/logo-capture-${Date.now()}.jpg`;
+          setUploadingLogo(true);
+
+          try {
+            const { error: uploadError } = await supabase.storage
+              .from('gallery')
+              .upload(fileName, blob, { contentType: 'image/jpeg', upsert: true });
+
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = supabase.storage
+              .from('gallery')
+              .getPublicUrl(fileName);
+
+            setSalon(prev => ({ ...prev, logo_url: publicUrl }));
+            toast.success("Foto do logo capturada!");
+            stopCamera();
+          } catch (error) {
+            console.error("Error uploading capture:", error);
+            toast.error("Erro ao salvar foto.");
+          } finally {
+            setUploadingLogo(false);
+          }
+        }, 'image/jpeg');
+      }
     }
   };
 
@@ -267,16 +380,16 @@ const SalonSettings = () => {
                 <Button variant="outline" size="icon" onClick={copyLink} title="Copiar link">
                   <Copy size={18} />
                 </Button>
-                <Button 
-                  variant="outline" 
-                  size="icon" 
+                <Button
+                  variant="outline"
+                  size="icon"
                   onClick={() => window.open(getPublicLink(), '_blank')}
                   title="Abrir em nova aba"
                 >
                   <ExternalLink size={18} />
                 </Button>
               </div>
-              
+
               <div className="flex items-center justify-between">
                 <div className="space-y-1">
                   <Label htmlFor="public_booking">Agendamento Online Ativo</Label>
@@ -312,8 +425,8 @@ const SalonSettings = () => {
                   value={salon.name}
                   onChange={(e) => {
                     const newName = e.target.value;
-                    setSalon({ 
-                      ...salon, 
+                    setSalon({
+                      ...salon,
                       name: newName,
                       slug: salon.slug || generateSlug(newName)
                     });
@@ -524,25 +637,68 @@ const SalonSettings = () => {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="logo_url">Logo (URL)</Label>
-                <Input
-                  id="logo_url"
-                  value={salon.logo_url}
-                  onChange={(e) => setSalon({ ...salon, logo_url: e.target.value })}
-                  placeholder="https://..."
-                />
-                {salon.logo_url && (
-                  <div className="mt-2 p-4 bg-secondary rounded-lg">
-                    <img 
-                      src={salon.logo_url} 
-                      alt="Logo preview" 
-                      className="max-h-24 mx-auto object-contain"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = 'none';
-                      }}
-                    />
-                  </div>
-                )}
+                <Label htmlFor="logo_url">Logo do Salão</Label>
+
+                <div className="p-4 border rounded-lg bg-secondary/10">
+                  <Tabs value={activeLogoTab} onValueChange={setActiveLogoTab}>
+                    <TabsList className="grid w-full grid-cols-3 mb-4">
+                      <TabsTrigger value="link">Link URL</TabsTrigger>
+                      <TabsTrigger value="upload">Upload</TabsTrigger>
+                      <TabsTrigger value="camera">Câmera</TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="link" className="space-y-2">
+                      <Input
+                        id="logo_url"
+                        value={salon.logo_url}
+                        onChange={(e) => setSalon({ ...salon, logo_url: e.target.value })}
+                        placeholder="https://..."
+                      />
+                    </TabsContent>
+
+                    <TabsContent value="upload" className="space-y-2">
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleLogoUpload}
+                        disabled={uploadingLogo}
+                      />
+                      {uploadingLogo && <p className="text-xs text-muted-foreground">Enviando...</p>}
+                    </TabsContent>
+
+                    <TabsContent value="camera" className="space-y-2">
+                      {!cameraActive ? (
+                        <Button type="button" variant="outline" onClick={startCamera} className="w-full">
+                          <Camera size={18} className="mr-2" />
+                          Abrir Câmera
+                        </Button>
+                      ) : (
+                        <div className="space-y-2">
+                          <div className="relative aspect-video bg-black rounded-lg overflow-hidden">
+                            <video id="logo-camera-video" autoPlay playsInline className="w-full h-full object-cover"></video>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button type="button" variant="ghost" onClick={stopCamera} className="flex-1">Cancelar</Button>
+                            <Button type="button" onClick={capturePhoto} className="flex-1">Capturar</Button>
+                          </div>
+                        </div>
+                      )}
+                    </TabsContent>
+                  </Tabs>
+
+                  {salon.logo_url && (
+                    <div className="mt-4 p-4 bg-secondary rounded-lg flex items-center justify-center">
+                      <img
+                        src={salon.logo_url}
+                        alt="Logo preview"
+                        className="max-h-32 object-contain"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = 'none';
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>
