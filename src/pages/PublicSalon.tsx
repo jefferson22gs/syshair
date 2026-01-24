@@ -1509,213 +1509,213 @@ const PublicSalon = () => {
                   </DialogContent>
                 </Dialog>
               </div>
-            </div>
+
 
               {/* Coupon */}
-          <div className="mb-6">
-            <Label className="flex items-center gap-2 mb-2">
-              <Gift size={16} style={{ color: primaryColor }} />
-              Cupom de desconto
-            </Label>
-            <div className="flex gap-2">
-              <Input
-                value={couponCode}
-                onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                placeholder="Digite o código"
-                disabled={!!couponApplied}
-                maxLength={30}
-              />
-              <Button
-                onClick={validateCoupon}
-                disabled={validatingCoupon || !couponCode.trim() || !!couponApplied}
-                variant="outline"
-                style={{ borderColor: primaryColor, color: primaryColor }}
-              >
-                {validatingCoupon ? <Loader2 className="w-4 h-4 animate-spin" /> : "Aplicar"}
-              </Button>
+              <div className="mb-6">
+                <Label className="flex items-center gap-2 mb-2">
+                  <Gift size={16} style={{ color: primaryColor }} />
+                  Cupom de desconto
+                </Label>
+                <div className="flex gap-2">
+                  <Input
+                    value={couponCode}
+                    onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                    placeholder="Digite o código"
+                    disabled={!!couponApplied}
+                    maxLength={30}
+                  />
+                  <Button
+                    onClick={validateCoupon}
+                    disabled={validatingCoupon || !couponCode.trim() || !!couponApplied}
+                    variant="outline"
+                    style={{ borderColor: primaryColor, color: primaryColor }}
+                  >
+                    {validatingCoupon ? <Loader2 className="w-4 h-4 animate-spin" /> : "Aplicar"}
+                  </Button>
+                </div>
+                {couponApplied && (
+                  <p className="text-sm mt-2" style={{ color: primaryColor }}>
+                    ✓ {couponApplied.message}
+                  </p>
+                )}
+              </div>
+
+              {/* Price Summary */}
+              <div className="border-t border-border pt-4">
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Subtotal</span>
+                    <span>R$ {price.toFixed(2)}</span>
+                  </div>
+                  {discount > 0 && (
+                    <div className="flex justify-between text-sm" style={{ color: primaryColor }}>
+                      <span>Desconto</span>
+                      <span>- R$ {discount.toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-lg font-bold pt-2">
+                    <span>Total</span>
+                    <span style={{ color: primaryColor }}>R$ {finalPrice.toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
             </div>
-            {couponApplied && (
-              <p className="text-sm mt-2" style={{ color: primaryColor }}>
-                ✓ {couponApplied.message}
-              </p>
+          )}
+
+          {/* Navigation Buttons */}
+          <div className="flex justify-between mt-8">
+            {step > 1 ? (
+              <Button variant="outline" onClick={() => setStep(step - 1)}>
+                <ArrowLeft size={18} className="mr-2" />
+                Voltar
+              </Button>
+            ) : (
+              <div />
+            )}
+
+            {step < 4 ? (
+              <Button
+                onClick={() => setStep(step + 1)}
+                disabled={
+                  (step === 1 && cartServices.length === 0) ||
+                  (step === 2 && !selectedProfessional) ||
+                  (step === 3 && (!selectedDate || !selectedTime))
+                }
+                style={{
+                  backgroundColor: primaryColor,
+                  color: 'white'
+                }}
+              >
+                Próximo
+                <ArrowRight size={18} className="ml-2" />
+              </Button>
+            ) : (
+              <Button
+                onClick={handleConfirmBooking}
+                disabled={submitting || !clientName.trim() || !clientPhone.trim() || !clientBirthday}
+                style={{
+                  backgroundColor: primaryColor,
+                  color: 'white'
+                }}
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    Agendando...
+                  </>
+                ) : (
+                  <>
+                    <Check size={18} className="mr-2" />
+                    Confirmar Agendamento
+                  </>
+                )}
+              </Button>
             )}
           </div>
-
-          {/* Price Summary */}
-          <div className="border-t border-border pt-4">
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Subtotal</span>
-                <span>R$ {price.toFixed(2)}</span>
-              </div>
-              {discount > 0 && (
-                <div className="flex justify-between text-sm" style={{ color: primaryColor }}>
-                  <span>Desconto</span>
-                  <span>- R$ {discount.toFixed(2)}</span>
-                </div>
-              )}
-              <div className="flex justify-between text-lg font-bold pt-2">
-                <span>Total</span>
-                <span style={{ color: primaryColor }}>R$ {finalPrice.toFixed(2)}</span>
-              </div>
-            </div>
-          </div>
         </div>
-          )}
 
-        {/* Navigation Buttons */}
-        <div className="flex justify-between mt-8">
-          {step > 1 ? (
-            <Button variant="outline" onClick={() => setStep(step - 1)}>
-              <ArrowLeft size={18} className="mr-2" />
-              Voltar
-            </Button>
-          ) : (
-            <div />
-          )}
-
-          {step < 4 ? (
-            <Button
-              onClick={() => setStep(step + 1)}
-              disabled={
-                (step === 1 && cartServices.length === 0) ||
-                (step === 2 && !selectedProfessional) ||
-                (step === 3 && (!selectedDate || !selectedTime))
-              }
-              style={{
-                backgroundColor: primaryColor,
-                color: 'white'
-              }}
-            >
-              Próximo
-              <ArrowRight size={18} className="ml-2" />
-            </Button>
-          ) : (
-            <Button
-              onClick={handleConfirmBooking}
-              disabled={submitting || !clientName.trim() || !clientPhone.trim() || !clientBirthday}
-              style={{
-                backgroundColor: primaryColor,
-                color: 'white'
-              }}
-            >
-              {submitting ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  Agendando...
-                </>
-              ) : (
-                <>
-                  <Check size={18} className="mr-2" />
-                  Confirmar Agendamento
-                </>
-              )}
-            </Button>
-          )}
-        </div>
-    </div>
-
-        {/* Footer */ }
-  <p className="text-center text-xs text-muted-foreground mt-8">
-    Ao agendar, você concorda com os termos de uso do estabelecimento.
-  </p>
+        {/* Footer */}
+        <p className="text-center text-xs text-muted-foreground mt-8">
+          Ao agendar, você concorda com os termos de uso do estabelecimento.
+        </p>
       </main >
 
-  {/* Review Modal */ }
-{
-  showReviewModal && pendingReviews.length > 0 && (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-background rounded-2xl max-w-md w-full p-6 shadow-2xl animate-scale-in">
-        <div className="text-center mb-6">
-          <div
-            className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center"
-            style={{ backgroundColor: `${primaryColor}20` }}
-          >
-            <Star size={28} style={{ color: primaryColor }} />
+      {/* Review Modal */}
+      {
+        showReviewModal && pendingReviews.length > 0 && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div className="bg-background rounded-2xl max-w-md w-full p-6 shadow-2xl animate-scale-in">
+              <div className="text-center mb-6">
+                <div
+                  className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center"
+                  style={{ backgroundColor: `${primaryColor}20` }}
+                >
+                  <Star size={28} style={{ color: primaryColor }} />
+                </div>
+                <h3 className="font-display text-xl font-bold text-foreground mb-2">
+                  Avalie sua visita anterior
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  {pendingReviews[0].service_name} com {pendingReviews[0].professional_name}
+                  <br />
+                  <span className="text-xs">
+                    {new Date(pendingReviews[0].date + 'T12:00:00').toLocaleDateString('pt-BR', {
+                      day: 'numeric',
+                      month: 'long'
+                    })}
+                  </span>
+                </p>
+              </div>
+
+              {/* Star Rating */}
+              <div className="flex justify-center gap-2 mb-6">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    onClick={() => setCurrentRating(star)}
+                    className="transition-transform hover:scale-110"
+                  >
+                    <Star
+                      size={36}
+                      fill={star <= currentRating ? primaryColor : 'transparent'}
+                      stroke={star <= currentRating ? primaryColor : 'hsl(var(--muted-foreground))'}
+                      strokeWidth={1.5}
+                    />
+                  </button>
+                ))}
+              </div>
+
+              {/* Comment */}
+              <div className="mb-6">
+                <Label htmlFor="reviewComment" className="text-sm text-muted-foreground">
+                  Comentário (opcional)
+                </Label>
+                <textarea
+                  id="reviewComment"
+                  value={reviewComment}
+                  onChange={(e) => setReviewComment(e.target.value)}
+                  placeholder="Conte como foi sua experiência..."
+                  className="w-full mt-2 p-3 rounded-lg bg-secondary/50 border border-border text-foreground placeholder:text-muted-foreground resize-none h-24"
+                  maxLength={500}
+                />
+              </div>
+
+              {/* Buttons */}
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  onClick={skipReview}
+                  className="flex-1"
+                >
+                  Pular
+                </Button>
+                <Button
+                  onClick={submitReview}
+                  disabled={submittingReview}
+                  style={{ backgroundColor: primaryColor, color: 'white' }}
+                  className="flex-1"
+                >
+                  {submittingReview ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    'Enviar Avaliação'
+                  )}
+                </Button>
+              </div>
+
+              {pendingReviews.length > 1 && (
+                <p className="text-xs text-center text-muted-foreground mt-4">
+                  +{pendingReviews.length - 1} avaliações pendentes
+                </p>
+              )}
+            </div>
           </div>
-          <h3 className="font-display text-xl font-bold text-foreground mb-2">
-            Avalie sua visita anterior
-          </h3>
-          <p className="text-sm text-muted-foreground">
-            {pendingReviews[0].service_name} com {pendingReviews[0].professional_name}
-            <br />
-            <span className="text-xs">
-              {new Date(pendingReviews[0].date + 'T12:00:00').toLocaleDateString('pt-BR', {
-                day: 'numeric',
-                month: 'long'
-              })}
-            </span>
-          </p>
-        </div>
+        )
+      }
 
-        {/* Star Rating */}
-        <div className="flex justify-center gap-2 mb-6">
-          {[1, 2, 3, 4, 5].map((star) => (
-            <button
-              key={star}
-              onClick={() => setCurrentRating(star)}
-              className="transition-transform hover:scale-110"
-            >
-              <Star
-                size={36}
-                fill={star <= currentRating ? primaryColor : 'transparent'}
-                stroke={star <= currentRating ? primaryColor : 'hsl(var(--muted-foreground))'}
-                strokeWidth={1.5}
-              />
-            </button>
-          ))}
-        </div>
-
-        {/* Comment */}
-        <div className="mb-6">
-          <Label htmlFor="reviewComment" className="text-sm text-muted-foreground">
-            Comentário (opcional)
-          </Label>
-          <textarea
-            id="reviewComment"
-            value={reviewComment}
-            onChange={(e) => setReviewComment(e.target.value)}
-            placeholder="Conte como foi sua experiência..."
-            className="w-full mt-2 p-3 rounded-lg bg-secondary/50 border border-border text-foreground placeholder:text-muted-foreground resize-none h-24"
-            maxLength={500}
-          />
-        </div>
-
-        {/* Buttons */}
-        <div className="flex gap-3">
-          <Button
-            variant="outline"
-            onClick={skipReview}
-            className="flex-1"
-          >
-            Pular
-          </Button>
-          <Button
-            onClick={submitReview}
-            disabled={submittingReview}
-            style={{ backgroundColor: primaryColor, color: 'white' }}
-            className="flex-1"
-          >
-            {submittingReview ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              'Enviar Avaliação'
-            )}
-          </Button>
-        </div>
-
-        {pendingReviews.length > 1 && (
-          <p className="text-xs text-center text-muted-foreground mt-4">
-            +{pendingReviews.length - 1} avaliações pendentes
-          </p>
-        )}
-      </div>
-    </div>
-  )
-}
-
-{/* Prompt para ativar notificações - só renderiza quando salon está carregado */ }
-{ salon?.id && <NotificationPrompt salonId={salon.id} /> }
+      {/* Prompt para ativar notificações - só renderiza quando salon está carregado */}
+      {salon?.id && <NotificationPrompt salonId={salon.id} />}
     </div >
   );
 };
