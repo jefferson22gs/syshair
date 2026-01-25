@@ -40,7 +40,8 @@ import {
   Megaphone,
   Bot,
   CalendarDays,
-  Smartphone
+  Smartphone,
+  Send
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -61,6 +62,7 @@ const menuItems = [
   { icon: Smartphone, label: "WhatsApp", path: "/admin/whatsapp", shortLabel: "WhatsApp", isNew: true },
   { icon: Bot, label: "Chatbot IA", path: "/admin/chatbot", shortLabel: "Chatbot", isNew: true },
   { icon: CalendarDays, label: "Agendador Status", path: "/admin/status-scheduler", shortLabel: "Status", isNew: true },
+  { icon: Send, label: "Disparador", path: "/admin/broadcast", shortLabel: "Disparo", isNew: true },
   { icon: Brain, label: "Recursos Avançados", path: "/admin/advanced", shortLabel: "Avançado" },
   { icon: ShoppingBag, label: "Produtos", path: "/admin/products", shortLabel: "Produtos" },
   { icon: Star, label: "Avaliações", path: "/admin/reviews", shortLabel: "Avaliações" },

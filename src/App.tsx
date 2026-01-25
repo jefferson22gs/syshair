@@ -49,6 +49,7 @@ const Marketing = lazy(() => import("./pages/admin/Marketing"));
 const ChatbotIA = lazy(() => import("./pages/admin/ChatbotIA"));
 const StatusScheduler = lazy(() => import("./pages/admin/StatusScheduler"));
 const WhatsAppConnection = lazy(() => import("./pages/admin/WhatsAppConnection"));
+const BroadcastMessages = lazy(() => import("./pages/admin/BroadcastMessages"));
 
 // Lazy loaded Professional Pages
 const ProfessionalDashboard = lazy(() => import("./pages/professional/ProfessionalDashboard"));
@@ -239,6 +240,13 @@ const App = () => (
                 <ProtectedRoute>
                   <Suspense fallback={<LoadingScreen />}>
                     <WhatsAppConnection />
+                  </Suspense>
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/broadcast" element={
+                <ProtectedRoute>
+                  <Suspense fallback={<LoadingScreen />}>
+                    <BroadcastMessages />
                   </Suspense>
                 </ProtectedRoute>
               } />
