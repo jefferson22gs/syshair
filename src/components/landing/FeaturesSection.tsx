@@ -7,7 +7,12 @@ import {
   Gift,
   Smartphone,
   Shield,
-  Clock
+  Clock,
+  MessageSquare,
+  Sparkles,
+  Share2,
+  Bot,
+  ImagePlus
 } from "lucide-react";
 
 const features = [
@@ -18,22 +23,43 @@ const features = [
     gradient: "from-blue-500 to-cyan-500",
   },
   {
+    icon: Bot,
+    title: "Chatbot IA WhatsApp",
+    description: "Atendimento automático 24/7 que responde dúvidas e agenda clientes sozinho.",
+    gradient: "from-green-500 to-emerald-500",
+    isNew: true,
+  },
+  {
+    icon: ImagePlus,
+    title: "Status com IA",
+    description: "Agende posts para Status do WhatsApp com legendas geradas por Inteligência Artificial.",
+    gradient: "from-purple-500 to-pink-500",
+    isNew: true,
+  },
+  {
+    icon: Share2,
+    title: "Página Pública",
+    description: "Cada profissional tem sua página exclusiva para compartilhar com clientes.",
+    gradient: "from-orange-500 to-red-500",
+    isNew: true,
+  },
+  {
     icon: Users,
     title: "Gestão de Clientes",
     description: "Histórico completo, preferências e perfil de beleza de cada cliente.",
-    gradient: "from-purple-500 to-pink-500",
+    gradient: "from-cyan-500 to-blue-500",
   },
   {
     icon: Scissors,
     title: "Controle de Profissionais",
     description: "Agenda individual, comissões automáticas e performance em tempo real.",
-    gradient: "from-orange-500 to-red-500",
+    gradient: "from-rose-500 to-pink-500",
   },
   {
     icon: BarChart3,
     title: "Dashboard Financeiro",
     description: "Faturamento, ticket médio e serviços mais vendidos em um só lugar.",
-    gradient: "from-green-500 to-emerald-500",
+    gradient: "from-amber-500 to-orange-500",
   },
   {
     icon: Bell,
@@ -53,6 +79,7 @@ const highlights = [
   { icon: Smartphone, text: "100% Mobile" },
   { icon: Shield, text: "Dados Seguros" },
   { icon: Clock, text: "Setup em 5min" },
+  { icon: Sparkles, text: "IA Integrada" },
 ];
 
 export const FeaturesSection = () => {
@@ -77,9 +104,14 @@ export const FeaturesSection = () => {
           {features.map((feature, index) => (
             <div
               key={feature.title}
-              className="group glass-card rounded-2xl p-6 hover:border-primary/30 transition-all duration-500 hover:-translate-y-1"
+              className="group glass-card rounded-2xl p-6 hover:border-primary/30 transition-all duration-500 hover:-translate-y-1 relative overflow-hidden"
               style={{ animationDelay: `${index * 0.1}s` }}
             >
+              {feature.isNew && (
+                <div className="absolute top-3 right-3 px-2 py-1 bg-gradient-to-r from-primary to-amber-500 text-white text-xs font-bold rounded-full animate-pulse">
+                  NOVO
+                </div>
+              )}
               <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${feature.gradient} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300`}>
                 <feature.icon className="w-6 h-6 text-white" />
               </div>
