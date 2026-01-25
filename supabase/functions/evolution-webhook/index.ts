@@ -94,6 +94,15 @@ serve(async (req) => {
 
         const instanceName = payload.instance;
         const remoteJid = payload.data.key?.remoteJid;
+
+        // IMPORTANTE: Ignorar mensagens de grupos (grupos têm @g.us, conversas individuais têm @s.whatsapp.net)
+        if (remoteJid?.includes("@g.us")) {
+            console.log("Ignoring group message from:", remoteJid);
+            return new Response(JSON.stringify({ status: "ignored", reason: "group message" }), {
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+        }
+
         const messageContent = payload.data.message?.conversation ||
             payload.data.message?.extendedTextMessage?.text || "";
         const senderName = payload.data.pushName || "Cliente";
