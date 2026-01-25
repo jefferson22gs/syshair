@@ -18,7 +18,17 @@ serve(async (req) => {
     }
 
     try {
-        const { imageUrl, imageBase64, context } = await req.json();
+        console.log("Starting generate-image-caption function...");
+
+        const body = await req.json();
+        const { imageUrl, imageBase64, context } = body;
+
+        console.log("Received request:", {
+            hasImageUrl: !!imageUrl,
+            hasImageBase64: !!imageBase64,
+            imageBase64Length: imageBase64?.length || 0,
+            context
+        });
 
         if (!imageUrl && !imageBase64) {
             return new Response(
@@ -27,34 +37,48 @@ serve(async (req) => {
             );
         }
 
-        // Se temos URL, precisamos baixar a imagem e converter para base64
+        // Extrair base64 puro se vier com data URI
         let base64Data = imageBase64;
         let mimeType = "image/jpeg";
 
+        if (imageBase64 && imageBase64.startsWith('data:')) {
+            const matches = imageBase64.match(/^data:([^;]+);base64,(.+)$/);
+            if (matches) {
+                mimeType = matches[1];
+                base64Data = matches[2];
+                console.log("Extracted base64, mimeType:", mimeType, "dataLength:", base64Data.length);
+            }
+        }
+
+        // Se temos URL em vez de base64, usar URL diretamente
+        let imageContent;
         if (imageUrl && !imageBase64) {
+            console.log("Using image URL:", imageUrl);
+            // Gemini pode aceitar URLs públicas diretamente
+            // Mas vamos baixar e converter para garantir
             try {
                 const imageResponse = await fetch(imageUrl);
+                if (!imageResponse.ok) {
+                    throw new Error(`Failed to fetch image: ${imageResponse.status}`);
+                }
                 const arrayBuffer = await imageResponse.arrayBuffer();
                 const uint8Array = new Uint8Array(arrayBuffer);
-                base64Data = btoa(String.fromCharCode(...uint8Array));
 
-                // Detectar mime type
+                // Converter para base64
+                let binary = '';
+                for (let i = 0; i < uint8Array.length; i++) {
+                    binary += String.fromCharCode(uint8Array[i]);
+                }
+                base64Data = btoa(binary);
+
                 const contentType = imageResponse.headers.get("content-type");
                 if (contentType) {
                     mimeType = contentType.split(";")[0];
                 }
+                console.log("Downloaded image, size:", base64Data.length, "mimeType:", mimeType);
             } catch (fetchError) {
                 console.error("Error fetching image:", fetchError);
                 throw new Error("Não foi possível baixar a imagem");
-            }
-        } else if (imageBase64) {
-            // Extrair base64 puro se vier com data URI
-            if (imageBase64.startsWith('data:')) {
-                const matches = imageBase64.match(/^data:([^;]+);base64,(.+)$/);
-                if (matches) {
-                    mimeType = matches[1];
-                    base64Data = matches[2];
-                }
             }
         }
 
@@ -74,6 +98,8 @@ Diretrizes:
 Contexto: ${context || 'Salão de beleza/barbearia'}
 
 Retorne APENAS a legenda, sem explicações, aspas ou formatação adicional.`;
+
+        console.log("Calling Gemini API...");
 
         // Chamar Gemini API
         const response = await fetch(
@@ -105,17 +131,22 @@ Retorne APENAS a legenda, sem explicações, aspas ou formatação adicional.`;
             }
         );
 
+        console.log("Gemini response status:", response.status);
+
         if (!response.ok) {
-            const error = await response.json();
-            console.error("Gemini API error:", error);
-            throw new Error(error.error?.message || "Failed to generate caption");
+            const errorText = await response.text();
+            console.error("Gemini API error:", errorText);
+            throw new Error(`Gemini API error: ${response.status} - ${errorText.substring(0, 200)}`);
         }
 
         const data = await response.json();
+        console.log("Gemini response data:", JSON.stringify(data).substring(0, 500));
+
         const caption = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
 
         if (!caption) {
-            throw new Error("No caption generated");
+            console.error("No caption in response:", data);
+            throw new Error("A IA não conseguiu gerar uma legenda para esta imagem");
         }
 
         console.log("Generated caption:", caption);
@@ -133,7 +164,7 @@ Retorne APENAS a legenda, sem explicações, aspas ou formatação adicional.`;
         return new Response(
             JSON.stringify({
                 success: false,
-                error: error.message
+                error: error.message || "Erro desconhecido"
             }),
             { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );

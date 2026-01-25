@@ -35,3 +35,6 @@ double_confirm_changes = true
 
 [auth.sms]
 enable_signup = false
+
+[functions.generate-image-caption]
+verify_jwt = false
