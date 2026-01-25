@@ -21,7 +21,8 @@ import {
     CalendarDays,
     Repeat,
     Send,
-    Eye
+    Eye,
+    Sparkles
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -105,6 +106,7 @@ const StatusScheduler = () => {
     // Estados do modal de criação
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [generatingCaption, setGeneratingCaption] = useState(false);
     const [editingPost, setEditingPost] = useState<ScheduledPost | null>(null);
 
     // Estados do formulário
@@ -204,6 +206,51 @@ const StatusScheduler = () => {
             }));
         };
         reader.readAsDataURL(file);
+    };
+
+    const generateCaption = async () => {
+        if (!formData.media_preview && !editingPost?.media_url) {
+            toast({
+                title: "Nenhuma imagem",
+                description: "Adicione uma imagem primeiro para gerar a legenda.",
+                variant: "destructive",
+            });
+            return;
+        }
+
+        setGeneratingCaption(true);
+        try {
+            const response = await supabase.functions.invoke('generate-image-caption', {
+                body: {
+                    imageBase64: formData.media_preview || null,
+                    imageUrl: editingPost?.media_url || null,
+                    context: 'Salão de beleza e barbearia - transformações e resultados'
+                }
+            });
+
+            if (response.error) {
+                throw new Error(response.error.message);
+            }
+
+            if (response.data?.caption) {
+                setFormData(prev => ({ ...prev, text_content: response.data.caption }));
+                toast({
+                    title: "✨ Legenda gerada!",
+                    description: "A IA criou uma legenda para sua imagem.",
+                });
+            } else {
+                throw new Error("Não foi possível gerar a legenda");
+            }
+        } catch (error: any) {
+            console.error("Error generating caption:", error);
+            toast({
+                title: "Erro ao gerar legenda",
+                description: error.message || "Tente novamente.",
+                variant: "destructive",
+            });
+        } finally {
+            setGeneratingCaption(false);
+        }
     };
 
     const handleSubmit = async () => {
@@ -740,9 +787,33 @@ const StatusScheduler = () => {
 
                             {/* Texto/Legenda */}
                             <div className="space-y-2">
-                                <Label>{formData.content_type === 'text' ? 'Texto do Status' : 'Legenda (opcional)'}</Label>
+                                <div className="flex items-center justify-between">
+                                    <Label>{formData.content_type === 'text' ? 'Texto do Status' : 'Legenda (opcional)'}</Label>
+                                    {formData.content_type !== 'text' && (formData.media_preview || editingPost?.media_url) && (
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={generateCaption}
+                                            disabled={generatingCaption}
+                                            className="text-xs gap-1 border-primary/50 hover:bg-primary/10"
+                                        >
+                                            {generatingCaption ? (
+                                                <>
+                                                    <Loader2 size={14} className="animate-spin" />
+                                                    Gerando...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Sparkles size={14} className="text-primary" />
+                                                    Gerar com IA
+                                                </>
+                                            )}
+                                        </Button>
+                                    )}
+                                </div>
                                 <Textarea
-                                    placeholder="Digite o texto..."
+                                    placeholder={formData.content_type === 'text' ? 'Digite o texto do status...' : 'Digite uma legenda ou clique em "Gerar com IA"...'}
                                     value={formData.text_content}
                                     onChange={(e) => setFormData(prev => ({ ...prev, text_content: e.target.value }))}
                                     rows={3}
