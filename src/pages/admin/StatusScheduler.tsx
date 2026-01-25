@@ -265,7 +265,7 @@ const StatusScheduler = () => {
             `;
 
             // Chamar Gemini API diretamente
-            const GEMINI_API_KEY = "AIzaSyCnkj3bq6Tn7Nlxmw67AtIxNNHTlB9PPPI";
+            const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "AIzaSyC1NOIGT7MLTpKoqJF6VqqkdJkt0e6Yci4";
             const response = await fetch(
                 `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
                 {
