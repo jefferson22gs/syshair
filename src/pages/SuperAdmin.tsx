@@ -148,71 +148,90 @@ const SuperAdmin = () => {
             // Carregar todos os salões
             const { data: salonsData, error: salonsError } = await supabase
                 .from("salons")
-                .select(`
-                    *,
-                    profiles:owner_id (
-                        full_name,
-                        email
-                    )
-                `)
+                .select("*")
                 .order("created_at", { ascending: false });
 
-            if (salonsError) throw salonsError;
+            if (salonsError) {
+                console.error("Error loading salons:", salonsError);
+                throw salonsError;
+            }
 
-            // Enriquecer dados dos salões
+            // Enriquecer dados dos salões (com tratamento de erro individual)
             const enrichedSalons = await Promise.all(
                 (salonsData || []).map(async (salon: any) => {
-                    // Contar agendamentos
-                    const { count: appointmentsCount } = await supabase
-                        .from("appointments")
-                        .select("*", { count: "exact", head: true })
-                        .eq("salon_id", salon.id);
+                    let appointmentsCount = 0;
+                    let clientsCount = 0;
+                    let professionalsCount = 0;
+                    let whatsappConnected = false;
+                    let chatbotEnabled = false;
+                    let subscriptionStatus = "trial";
+                    let subscriptionPlan = "free";
 
-                    // Contar clientes
-                    const { count: clientsCount } = await supabase
-                        .from("clients")
-                        .select("*", { count: "exact", head: true })
-                        .eq("salon_id", salon.id);
+                    try {
+                        const { count } = await supabase
+                            .from("appointments")
+                            .select("*", { count: "exact", head: true })
+                            .eq("salon_id", salon.id);
+                        appointmentsCount = count || 0;
+                    } catch (e) { /* ignore */ }
 
-                    // Contar profissionais
-                    const { count: professionalsCount } = await supabase
-                        .from("professionals")
-                        .select("*", { count: "exact", head: true })
-                        .eq("salon_id", salon.id);
+                    try {
+                        const { count } = await supabase
+                            .from("clients")
+                            .select("*", { count: "exact", head: true })
+                            .eq("salon_id", salon.id);
+                        clientsCount = count || 0;
+                    } catch (e) { /* ignore */ }
 
-                    // Verificar WhatsApp
-                    const { data: whatsapp } = await supabase
-                        .from("whatsapp_instances")
-                        .select("status")
-                        .eq("salon_id", salon.id)
-                        .single();
+                    try {
+                        const { count } = await supabase
+                            .from("professionals")
+                            .select("*", { count: "exact", head: true })
+                            .eq("salon_id", salon.id);
+                        professionalsCount = count || 0;
+                    } catch (e) { /* ignore */ }
 
-                    // Verificar Chatbot
-                    const { data: chatbot } = await supabase
-                        .from("chatbot_settings")
-                        .select("enabled")
-                        .eq("salon_id", salon.id)
-                        .single();
+                    try {
+                        const { data: whatsapp } = await supabase
+                            .from("whatsapp_instances")
+                            .select("status")
+                            .eq("salon_id", salon.id)
+                            .maybeSingle();
+                        whatsappConnected = whatsapp?.status === "connected";
+                    } catch (e) { /* ignore */ }
 
-                    // Verificar assinatura
-                    const { data: subscription } = await supabase
-                        .from("subscriptions")
-                        .select("status, plan_id, trial_ends_at")
-                        .eq("salon_id", salon.id)
-                        .single();
+                    try {
+                        const { data: chatbot } = await supabase
+                            .from("chatbot_settings")
+                            .select("enabled")
+                            .eq("salon_id", salon.id)
+                            .maybeSingle();
+                        chatbotEnabled = chatbot?.enabled || false;
+                    } catch (e) { /* ignore */ }
+
+                    try {
+                        const { data: subscription } = await supabase
+                            .from("subscriptions")
+                            .select("status, plan_id")
+                            .eq("salon_id", salon.id)
+                            .maybeSingle();
+                        if (subscription) {
+                            subscriptionStatus = subscription.status || "trial";
+                            subscriptionPlan = subscription.plan_id || "free";
+                        }
+                    } catch (e) { /* ignore */ }
 
                     return {
                         ...salon,
-                        owner_email: salon.profiles?.email,
-                        owner_name: salon.profiles?.full_name,
-                        appointments_count: appointmentsCount || 0,
-                        clients_count: clientsCount || 0,
-                        professionals_count: professionalsCount || 0,
-                        whatsapp_connected: whatsapp?.status === "connected",
-                        chatbot_enabled: chatbot?.enabled || false,
-                        subscription_status: subscription?.status || "trial",
-                        subscription_plan: subscription?.plan_id || "free",
-                        trial_ends_at: subscription?.trial_ends_at,
+                        owner_email: salon.owner_email || "",
+                        owner_name: salon.owner_name || "",
+                        appointments_count: appointmentsCount,
+                        clients_count: clientsCount,
+                        professionals_count: professionalsCount,
+                        whatsapp_connected: whatsappConnected,
+                        chatbot_enabled: chatbotEnabled,
+                        subscription_status: subscriptionStatus,
+                        subscription_plan: subscriptionPlan,
                     };
                 })
             );
@@ -227,45 +246,29 @@ const SuperAdmin = () => {
                 s => new Date(s.created_at) >= startOfMonth
             ).length;
 
-            // Contar agendamentos do mês
-            const { count: appointmentsThisMonth } = await supabase
-                .from("appointments")
-                .select("*", { count: "exact", head: true })
-                .gte("created_at", startOfMonth.toISOString());
-
-            // Total de clientes
-            const { count: totalClients } = await supabase
-                .from("clients")
-                .select("*", { count: "exact", head: true });
-
-            // Total de profissionais
-            const { count: totalProfessionals } = await supabase
-                .from("professionals")
-                .select("*", { count: "exact", head: true });
-
-            // Total de agendamentos
-            const { count: totalAppointments } = await supabase
-                .from("appointments")
-                .select("*", { count: "exact", head: true });
+            // Totais (calculados dos salões carregados)
+            const totalAppointments = enrichedSalons.reduce((acc, s) => acc + (s.appointments_count || 0), 0);
+            const totalClients = enrichedSalons.reduce((acc, s) => acc + (s.clients_count || 0), 0);
+            const totalProfessionals = enrichedSalons.reduce((acc, s) => acc + (s.professionals_count || 0), 0);
 
             setStats({
                 totalSalons: enrichedSalons.length,
                 activeSalons: enrichedSalons.filter(s => s.is_active !== false).length,
-                totalAppointments: totalAppointments || 0,
-                totalClients: totalClients || 0,
-                totalProfessionals: totalProfessionals || 0,
+                totalAppointments,
+                totalClients,
+                totalProfessionals,
                 trialSalons: enrichedSalons.filter(s => s.subscription_status === "trial").length,
                 paidSalons: enrichedSalons.filter(s => s.subscription_status === "active").length,
-                monthlyRevenue: 0, // TODO: calcular com base nas assinaturas
+                monthlyRevenue: 0,
                 newSalonsThisMonth,
-                appointmentsThisMonth: appointmentsThisMonth || 0,
+                appointmentsThisMonth: 0,
             });
 
         } catch (error) {
             console.error("Error loading data:", error);
             toast({
                 title: "Erro ao carregar dados",
-                description: "Tente novamente.",
+                description: "Verifique se você tem permissão de Super Admin.",
                 variant: "destructive",
             });
         } finally {
