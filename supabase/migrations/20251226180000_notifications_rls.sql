@@ -5,13 +5,16 @@
 ALTER TABLE IF EXISTS public.notifications ENABLE ROW LEVEL SECURITY;
 
 -- Permitir leitura pública de notificações enviadas
-CREATE POLICY IF NOT EXISTS "Anyone can read sent notifications" 
+-- Permitir leitura pública de notificações enviadas
+DROP POLICY IF EXISTS "Anyone can read sent notifications" ON public.notifications;
+CREATE POLICY "Anyone can read sent notifications" 
 ON public.notifications 
 FOR SELECT 
 USING (status = 'sent');
 
 -- Permitir que salões gerenciem suas notificações
-CREATE POLICY IF NOT EXISTS "Salon owners can manage notifications"
+DROP POLICY IF EXISTS "Salon owners can manage notifications" ON public.notifications;
+CREATE POLICY "Salon owners can manage notifications"
 ON public.notifications
 FOR ALL
 USING (
