@@ -57,6 +57,9 @@ const ProfessionalDashboard = lazy(() => import("./pages/professional/Profession
 // Lazy loaded Client Pages
 const ClientProfile = lazy(() => import("./pages/client/ClientProfile"));
 
+// Super Admin
+const SuperAdmin = lazy(() => import("./pages/SuperAdmin"));
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -87,6 +90,13 @@ const App = () => (
               <Route path="/agendar" element={<PublicBookingAdvanced />} />
               <Route path="/agendar/:salonSlug" element={<PublicBookingAdvanced />} />
               <Route path="/avaliar/:appointmentId" element={<Suspense fallback={<LoadingScreen />}><RatingPage /></Suspense>} />
+
+              {/* Super Admin */}
+              <Route path="/super-admin" element={
+                <Suspense fallback={<LoadingScreen />}>
+                  <SuperAdmin />
+                </Suspense>
+              } />
 
               {/* Public Waitlist */}
               <Route path="/waitlist/:salonId" element={
