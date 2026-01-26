@@ -186,7 +186,7 @@ const PublicSalon = () => {
         .from('salons')
         .select('*')
         .eq('slug', slug)
-        .eq('is_active', true)
+        .neq('is_active', false)
         .maybeSingle();
 
       if (salonError) throw salonError;
