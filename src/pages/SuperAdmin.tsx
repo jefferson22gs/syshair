@@ -476,7 +476,8 @@ const SuperAdmin = () => {
             await supabase.from("subscriptions").upsert({
                 salon_id: selectedSalon.id,
                 status: "trialing",
-                trial_ends_at: newTrialEnd.toISOString()
+                is_trial: true,
+                trial_end_date: newTrialEnd.toISOString()
             }, { onConflict: "salon_id" });
             toast({ title: "Trial estendido", description: `+${trialDays} dias para ${selectedSalon.name}` });
             setShowExtendTrialDialog(false);
@@ -495,6 +496,7 @@ const SuperAdmin = () => {
             await supabase.from("subscriptions").upsert({
                 salon_id: selectedSalon.id,
                 status: "active",
+                is_trial: false,
                 plan_id: plan
             }, { onConflict: "salon_id" });
             toast({ title: "Marcado como pago", description: `Plano ${plan} ativado` });
