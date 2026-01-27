@@ -26,7 +26,20 @@ import {
     Smartphone,
     Bot,
     MessageSquare,
-    LogOut
+    LogOut,
+    Ban,
+    Edit,
+    Bell,
+    Send,
+    Mail,
+    Key,
+    Trash2,
+    MoreVertical,
+    Play,
+    Pause,
+    CreditCard,
+    AlertOctagon,
+    Megaphone
 } from "lucide-react";
 import {
     Table,
@@ -50,6 +63,25 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -109,6 +141,21 @@ const SuperAdmin = () => {
     const [selectedSalon, setSelectedSalon] = useState<Salon | null>(null);
     const [showSalonDetails, setShowSalonDetails] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
+
+    // Admin Actions States
+    const [showBlockDialog, setShowBlockDialog] = useState(false);
+    const [showEditDialog, setShowEditDialog] = useState(false);
+    const [showNotificationDialog, setShowNotificationDialog] = useState(false);
+    const [showBroadcastDialog, setShowBroadcastDialog] = useState(false);
+    const [showExtendTrialDialog, setShowExtendTrialDialog] = useState(false);
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+    const [actionLoading, setActionLoading] = useState(false);
+
+    // Form States
+    const [editForm, setEditForm] = useState({ name: "", phone: "", city: "", state: "" });
+    const [notificationForm, setNotificationForm] = useState({ title: "", message: "" });
+    const [broadcastForm, setBroadcastForm] = useState({ title: "", message: "" });
+    const [trialDays, setTrialDays] = useState(7);
 
     useEffect(() => {
         checkAuthorization();
@@ -192,7 +239,7 @@ const SuperAdmin = () => {
                     } catch (e) { /* ignore */ }
 
                     try {
-                        const { data: whatsapp } = await supabase
+                        const { data: whatsapp } = await (supabase as any)
                             .from("whatsapp_instances")
                             .select("status")
                             .eq("salon_id", salon.id)
@@ -201,7 +248,7 @@ const SuperAdmin = () => {
                     } catch (e) { /* ignore */ }
 
                     try {
-                        const { data: chatbot } = await supabase
+                        const { data: chatbot } = await (supabase as any)
                             .from("chatbot_settings")
                             .select("enabled")
                             .eq("salon_id", salon.id)
@@ -335,6 +382,201 @@ const SuperAdmin = () => {
         navigate("/login");
     };
 
+    // ===== ADMIN ACTIONS =====
+    const handleBlockSalon = async () => {
+        if (!selectedSalon) return;
+        setActionLoading(true);
+        try {
+            const isBlocked = selectedSalon.is_active === false;
+            await supabase.from("salons").update({ is_active: !isBlocked }).eq("id", selectedSalon.id);
+            toast({
+                title: isBlocked ? "Salão desbloqueado" : "Salão bloqueado",
+                description: `${selectedSalon.name} foi ${isBlocked ? "desbloqueado" : "bloqueado"} com sucesso.`,
+            });
+            setShowBlockDialog(false);
+            await loadData();
+        } catch (error) {
+            toast({ title: "Erro", description: "Falha ao executar ação.", variant: "destructive" });
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const handleEditSalon = async () => {
+        if (!selectedSalon) return;
+        setActionLoading(true);
+        try {
+            await supabase.from("salons").update({
+                name: editForm.name || selectedSalon.name,
+                phone: editForm.phone || selectedSalon.phone,
+                city: editForm.city || selectedSalon.city,
+                state: editForm.state || selectedSalon.state,
+            }).eq("id", selectedSalon.id);
+            toast({ title: "Salão atualizado", description: "Dados salvos com sucesso." });
+            setShowEditDialog(false);
+            await loadData();
+        } catch (error) {
+            toast({ title: "Erro", description: "Falha ao salvar.", variant: "destructive" });
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const handleSendNotification = async () => {
+        if (!selectedSalon) return;
+        setActionLoading(true);
+        try {
+            await supabase.from("notifications").insert({
+                salon_id: selectedSalon.id,
+                title: notificationForm.title,
+                message: notificationForm.message,
+                type: "admin",
+                channel: "push",
+                status: "sent"
+            });
+            toast({ title: "Notificação enviada", description: `Enviada para ${selectedSalon.name}` });
+            setShowNotificationDialog(false);
+            setNotificationForm({ title: "", message: "" });
+        } catch (error) {
+            toast({ title: "Erro", description: "Falha ao enviar.", variant: "destructive" });
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const handleBroadcast = async () => {
+        setActionLoading(true);
+        try {
+            const { data: allSalons } = await supabase.from("salons").select("id");
+            const notifications = (allSalons || []).map(s => ({
+                salon_id: s.id,
+                title: broadcastForm.title,
+                message: broadcastForm.message,
+                type: "broadcast",
+                channel: "push",
+                status: "sent"
+            }));
+            await supabase.from("notifications").insert(notifications);
+            toast({ title: "Broadcast enviado", description: `Enviado para ${allSalons?.length || 0} salões` });
+            setShowBroadcastDialog(false);
+            setBroadcastForm({ title: "", message: "" });
+        } catch (error) {
+            toast({ title: "Erro", description: "Falha no broadcast.", variant: "destructive" });
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const handleExtendTrial = async () => {
+        if (!selectedSalon) return;
+        setActionLoading(true);
+        try {
+            const newTrialEnd = new Date();
+            newTrialEnd.setDate(newTrialEnd.getDate() + trialDays);
+            await supabase.from("subscriptions").upsert({
+                salon_id: selectedSalon.id,
+                status: "trialing",
+                trial_ends_at: newTrialEnd.toISOString()
+            }, { onConflict: "salon_id" });
+            toast({ title: "Trial estendido", description: `+${trialDays} dias para ${selectedSalon.name}` });
+            setShowExtendTrialDialog(false);
+            await loadData();
+        } catch (error) {
+            toast({ title: "Erro", description: "Falha ao estender trial.", variant: "destructive" });
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const handleMarkPaid = async (plan: string) => {
+        if (!selectedSalon) return;
+        setActionLoading(true);
+        try {
+            await supabase.from("subscriptions").upsert({
+                salon_id: selectedSalon.id,
+                status: "active",
+                plan_id: plan
+            }, { onConflict: "salon_id" });
+            toast({ title: "Marcado como pago", description: `Plano ${plan} ativado` });
+            setShowSalonDetails(false);
+            await loadData();
+        } catch (error) {
+            toast({ title: "Erro", description: "Falha ao ativar.", variant: "destructive" });
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const handleDeleteSalon = async () => {
+        if (!selectedSalon) return;
+        setActionLoading(true);
+        try {
+            await supabase.from("salons").delete().eq("id", selectedSalon.id);
+            toast({ title: "Salão excluído", description: `${selectedSalon.name} foi removido.` });
+            setShowDeleteDialog(false);
+            setShowSalonDetails(false);
+            await loadData();
+        } catch (error) {
+            toast({ title: "Erro", description: "Falha ao excluir.", variant: "destructive" });
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const handleMarkOverdue = async () => {
+        if (!selectedSalon) return;
+        setActionLoading(true);
+        try {
+            await supabase.from("subscriptions").upsert({
+                salon_id: selectedSalon.id,
+                status: "past_due"
+            }, { onConflict: "salon_id" });
+            toast({ title: "Inadimplente", description: "Salão marcado como inadimplente." });
+            await loadData();
+        } catch (error) {
+            toast({ title: "Erro", description: "Falha ao atualizar.", variant: "destructive" });
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const handleResetPassword = async () => {
+        if (!selectedSalon?.owner_email) return;
+
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/super-admin-actions`;
+
+            toast({ title: "Processando...", description: "Enviando solicitação de reset." });
+
+            await fetch(functionUrl, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${session?.access_token}`,
+                },
+                body: JSON.stringify({
+                    action: "reset_password",
+                    data: { email: selectedSalon.owner_email }
+                }),
+            });
+            toast({ title: "Solicitação enviada", description: "Se a Edge Function estiver ativa, o email será enviado." });
+        } catch (e) {
+            toast({ title: "Erro", description: "Falha ao contactar servidor de funções.", variant: "destructive" });
+        }
+    };
+
+    const openEditDialog = (salon: Salon) => {
+        setSelectedSalon(salon);
+        setEditForm({
+            name: salon.name || "",
+            phone: salon.phone || "",
+            city: salon.city || "",
+            state: salon.state || ""
+        });
+        setShowEditDialog(true);
+    };
+
     if (loading) {
         return (
             <div className="min-h-screen bg-background flex items-center justify-center">
@@ -360,6 +602,15 @@ const SuperAdmin = () => {
                         </div>
                     </div>
                     <div className="flex items-center gap-4">
+                        <Button
+                            variant="default"
+                            size="sm"
+                            className="bg-purple-600 hover:bg-purple-700"
+                            onClick={() => setShowBroadcastDialog(true)}
+                        >
+                            <Megaphone className="w-4 h-4 mr-2" />
+                            Broadcast
+                        </Button>
                         <Button
                             variant="outline"
                             size="sm"
@@ -575,16 +826,72 @@ const SuperAdmin = () => {
                                                 </div>
                                             </TableCell>
                                             <TableCell>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => {
-                                                        setSelectedSalon(salon);
-                                                        setShowSalonDetails(true);
-                                                    }}
-                                                >
-                                                    <Eye className="w-4 h-4" />
-                                                </Button>
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" size="sm">
+                                                            <MoreVertical className="w-4 h-4" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end" className="w-56">
+                                                        <DropdownMenuItem onClick={() => {
+                                                            setSelectedSalon(salon);
+                                                            setShowSalonDetails(true);
+                                                        }}>
+                                                            <Eye className="w-4 h-4 mr-2" /> Ver Detalhes
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem onClick={() => openEditDialog(salon)}>
+                                                            <Edit className="w-4 h-4 mr-2" /> Editar
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuSeparator />
+                                                        <DropdownMenuItem onClick={() => {
+                                                            setSelectedSalon(salon);
+                                                            setShowNotificationDialog(true);
+                                                        }}>
+                                                            <Bell className="w-4 h-4 mr-2" /> Enviar Notificação
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem onClick={() => {
+                                                            setSelectedSalon(salon);
+                                                            setShowExtendTrialDialog(true);
+                                                        }}>
+                                                            <Clock className="w-4 h-4 mr-2" /> Estender Trial
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem onClick={() => {
+                                                            setSelectedSalon(salon);
+                                                            handleMarkPaid("professional");
+                                                        }}>
+                                                            <CreditCard className="w-4 h-4 mr-2" /> Marcar Pago (Pro)
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem onClick={() => {
+                                                            setSelectedSalon(salon);
+                                                            handleMarkOverdue();
+                                                        }} className="text-orange-500">
+                                                            <AlertOctagon className="w-4 h-4 mr-2" /> Marcar Inadimplente
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem onClick={() => {
+                                                            setSelectedSalon(salon);
+                                                            handleResetPassword();
+                                                        }}>
+                                                            <Key className="w-4 h-4 mr-2" /> Resetar Senha
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuSeparator />
+                                                        <DropdownMenuItem onClick={() => {
+                                                            setSelectedSalon(salon);
+                                                            setShowBlockDialog(true);
+                                                        }} className={salon.is_active === false ? "text-green-500" : "text-yellow-500"}>
+                                                            {salon.is_active === false ? (
+                                                                <><Play className="w-4 h-4 mr-2" /> Desbloquear</>
+                                                            ) : (
+                                                                <><Pause className="w-4 h-4 mr-2" /> Bloquear</>
+                                                            )}
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem onClick={() => {
+                                                            setSelectedSalon(salon);
+                                                            setShowDeleteDialog(true);
+                                                        }} className="text-red-500">
+                                                            <Trash2 className="w-4 h-4 mr-2" /> Excluir
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
                                             </TableCell>
                                         </TableRow>
                                     ))}
@@ -684,6 +991,241 @@ const SuperAdmin = () => {
                     )}
                 </DialogContent>
             </Dialog>
+
+            {/* Block/Unblock Dialog */}
+            <AlertDialog open={showBlockDialog} onOpenChange={setShowBlockDialog}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>
+                            {selectedSalon?.is_active === false ? "Desbloquear Salão?" : "Bloquear Salão?"}
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                            {selectedSalon?.is_active === false
+                                ? `Tem certeza que deseja desbloquear ${selectedSalon?.name}? O acesso será restaurado imediatamente.`
+                                : `Tem certeza que deseja bloquear ${selectedSalon?.name}? O proprietário e profisionais perderão acesso imediatamente.`
+                            }
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleBlockSalon}
+                            className={selectedSalon?.is_active === false ? "bg-green-600" : "bg-red-600"}
+                            disabled={actionLoading}
+                        >
+                            {actionLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                            {selectedSalon?.is_active === false ? "Desbloquear" : "Bloquear"}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Edit Dialog */}
+            <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Editar Salão: {selectedSalon?.name}</DialogTitle>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid gap-2">
+                            <Label htmlFor="name">Nome do Salão</Label>
+                            <Input
+                                id="name"
+                                value={editForm.name}
+                                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                            />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="phone">Telefone</Label>
+                            <Input
+                                id="phone"
+                                value={editForm.phone}
+                                onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                            />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="grid gap-2">
+                                <Label htmlFor="city">Cidade</Label>
+                                <Input
+                                    id="city"
+                                    value={editForm.city}
+                                    onChange={(e) => setEditForm({ ...editForm, city: e.target.value })}
+                                />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="state">Estado</Label>
+                                <Input
+                                    id="state"
+                                    value={editForm.state}
+                                    onChange={(e) => setEditForm({ ...editForm, state: e.target.value })}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                    <div className="flex justify-end gap-3">
+                        <Button variant="outline" onClick={() => setShowEditDialog(false)}>Cancelar</Button>
+                        <Button onClick={handleEditSalon} disabled={actionLoading}>
+                            {actionLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                            Salvar Alterações
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Notification Dialog */}
+            <Dialog open={showNotificationDialog} onOpenChange={setShowNotificationDialog}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Enviar Notificação para {selectedSalon?.name}</DialogTitle>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid gap-2">
+                            <Label htmlFor="notif-title">Título</Label>
+                            <Input
+                                id="notif-title"
+                                value={notificationForm.title}
+                                onChange={(e) => setNotificationForm({ ...notificationForm, title: e.target.value })}
+                                placeholder="Ex: Aviso Importante"
+                            />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="notif-message">Mensagem</Label>
+                            <Textarea
+                                id="notif-message"
+                                value={notificationForm.message}
+                                onChange={(e) => setNotificationForm({ ...notificationForm, message: e.target.value })}
+                                placeholder="Digite a mensagem..."
+                                rows={4}
+                            />
+                        </div>
+                    </div>
+                    <div className="flex justify-end gap-3">
+                        <Button variant="outline" onClick={() => setShowNotificationDialog(false)}>Cancelar</Button>
+                        <Button onClick={handleSendNotification} disabled={actionLoading}>
+                            {actionLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                            <Send className="w-4 h-4 mr-2" />
+                            Enviar
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Broadcast Dialog */}
+            <Dialog open={showBroadcastDialog} onOpenChange={setShowBroadcastDialog}>
+                <DialogContent className="max-w-md border-purple-500 border-2">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-purple-600">
+                            <Megaphone className="w-5 h-5" />
+                            Broadcast Geral (Todos os Salões)
+                        </DialogTitle>
+                        <CardDescription>
+                            Isso enviará uma notificação para TODOS os salões cadastrados. Use com cuidado.
+                        </CardDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid gap-2">
+                            <Label htmlFor="bc-title">Título</Label>
+                            <Input
+                                id="bc-title"
+                                value={broadcastForm.title}
+                                onChange={(e) => setBroadcastForm({ ...broadcastForm, title: e.target.value })}
+                                placeholder="Ex: Novidade no SysHair!"
+                            />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="bc-message">Mensagem</Label>
+                            <Textarea
+                                id="bc-message"
+                                value={broadcastForm.message}
+                                onChange={(e) => setBroadcastForm({ ...broadcastForm, message: e.target.value })}
+                                placeholder="Digite a mensagem para todos..."
+                                rows={4}
+                            />
+                        </div>
+                    </div>
+                    <div className="flex justify-end gap-3">
+                        <Button variant="outline" onClick={() => setShowBroadcastDialog(false)}>Cancelar</Button>
+                        <Button
+                            className="bg-purple-600 hover:bg-purple-700 text-white"
+                            onClick={handleBroadcast}
+                            disabled={actionLoading}
+                        >
+                            {actionLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                            <Megaphone className="w-4 h-4 mr-2" />
+                            Enviar para Todos
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Extend Trial Dialog */}
+            <Dialog open={showExtendTrialDialog} onOpenChange={setShowExtendTrialDialog}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Estender Período de Teste</DialogTitle>
+                        <CardDescription>
+                            Adicionar dias extras de teste para {selectedSalon?.name}.
+                        </CardDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="flex items-center gap-4">
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => setTrialDays(Math.max(1, trialDays - 1))}
+                            >
+                                -
+                            </Button>
+                            <div className="text-center font-bold text-2xl w-20">
+                                {trialDays}
+                            </div>
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => setTrialDays(trialDays + 1)}
+                            >
+                                +
+                            </Button>
+                            <span className="text-muted-foreground">dias</span>
+                        </div>
+                    </div>
+                    <div className="flex justify-end gap-3">
+                        <Button variant="outline" onClick={() => setShowExtendTrialDialog(false)}>Cancelar</Button>
+                        <Button onClick={handleExtendTrial} disabled={actionLoading}>
+                            {actionLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                            Confirmar Extensão
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Delete Confirmation Dialog */}
+            <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-red-600 flex items-center gap-2">
+                            <AlertTriangle className="w-5 h-5" />
+                            Excluir Salão Permanentemente?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Atenção: Esta ação não pode ser desfeita. Isso excluirá permanentemente o salão
+                            <strong> {selectedSalon?.name} </strong>
+                            e todos os seus dados associados (agendamentos, clientes, configurações).
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleDeleteSalon}
+                            className="bg-red-600 hover:bg-red-700 text-white"
+                            disabled={actionLoading}
+                        >
+                            {actionLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                            Sim, Excluir Salão
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 };
