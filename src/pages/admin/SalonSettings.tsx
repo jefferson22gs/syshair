@@ -34,6 +34,12 @@ interface SalonData {
   slug: string;
   description: string;
   public_booking_enabled: boolean;
+  lunch_break_config: {
+    enabled: boolean;
+    start_time: string;
+    end_time: string;
+    days: number[];
+  };
 }
 
 const defaultSalon: SalonData = {
@@ -55,6 +61,12 @@ const defaultSalon: SalonData = {
   slug: "",
   description: "",
   public_booking_enabled: true,
+  lunch_break_config: {
+    enabled: false,
+    start_time: "12:00",
+    end_time: "13:00",
+    days: [1, 2, 3, 4, 5],
+  },
 };
 
 const weekDays = [
@@ -123,7 +135,9 @@ const SalonSettings = () => {
           logo_url: data.logo_url || "",
           slug: data.slug || "",
           description: data.description || "",
+          description: data.description || "",
           public_booking_enabled: data.public_booking_enabled ?? true,
+          lunch_break_config: typeof data.lunch_break_config === 'object' ? data.lunch_break_config : defaultSalon.lunch_break_config,
         });
         setIsNew(false);
       }
@@ -164,6 +178,7 @@ const SalonSettings = () => {
         slug: salon.slug || null,
         description: salon.description || null,
         public_booking_enabled: salon.public_booking_enabled,
+        lunch_break_config: salon.lunch_break_config,
         owner_id: user.id,
       };
 
@@ -607,6 +622,84 @@ const SalonSettings = () => {
                     </button>
                   ))}
                 </div>
+              </div>
+
+              {/* Lunch Break Section */}
+              <div className="pt-4 border-t border-border mt-4">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="space-y-1">
+                    <Label>Pausa para Almoço</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Bloquear agendamentos durante o horário de almoço
+                    </p>
+                  </div>
+                  <Switch
+                    checked={salon.lunch_break_config.enabled}
+                    onCheckedChange={(checked) => setSalon({
+                      ...salon,
+                      lunch_break_config: { ...salon.lunch_break_config, enabled: checked }
+                    })}
+                  />
+                </div>
+
+                {salon.lunch_break_config.enabled && (
+                  <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Início</Label>
+                        <Input
+                          type="time"
+                          value={salon.lunch_break_config.start_time}
+                          onChange={(e) => setSalon({
+                            ...salon,
+                            lunch_break_config: { ...salon.lunch_break_config, start_time: e.target.value }
+                          })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Fim</Label>
+                        <Input
+                          type="time"
+                          value={salon.lunch_break_config.end_time}
+                          onChange={(e) => setSalon({
+                            ...salon,
+                            lunch_break_config: { ...salon.lunch_break_config, end_time: e.target.value }
+                          })}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Aplicar nos dias</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {weekDays.map((day) => (
+                          <button
+                            key={day.value}
+                            type="button"
+                            onClick={() => {
+                              const currentDays = salon.lunch_break_config.days;
+                              const newDays = currentDays.includes(day.value)
+                                ? currentDays.filter(d => d !== day.value)
+                                : [...currentDays, day.value].sort();
+                              setSalon({
+                                ...salon,
+                                lunch_break_config: { ...salon.lunch_break_config, days: newDays }
+                              });
+                            }}
+                            className={`
+                              px-3 py-1 text-sm rounded-lg font-medium transition-all
+                              ${salon.lunch_break_config.days.includes(day.value)
+                                ? 'bg-primary text-primary-foreground'
+                                : 'bg-secondary text-muted-foreground hover:bg-secondary/80'
+                              }
+                            `}
+                          >
+                            {day.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

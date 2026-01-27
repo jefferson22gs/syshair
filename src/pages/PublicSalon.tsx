@@ -73,6 +73,12 @@ interface Salon {
   logo_url: string | null;
   public_booking_enabled: boolean;
   slug: string;
+  lunch_break_config?: {
+    enabled: boolean;
+    start_time: string;
+    end_time: string;
+    days: number[];
+  };
 }
 
 interface Coupon {
@@ -219,6 +225,7 @@ const PublicSalon = () => {
         logo_url: salonData.logo_url,
         public_booking_enabled: salonData.public_booking_enabled ?? true,
         slug: salonData.slug || '',
+        lunch_break_config: salonData.lunch_break_config,
       });
 
       // Fetch services
@@ -416,6 +423,25 @@ const PublicSalon = () => {
       // Filter out busy slots
       const availableSlots = slots.filter(slot => {
         const slotMinutes = parseInt(slot.split(':')[0]) * 60 + parseInt(slot.split(':')[1]);
+
+        // Lunch break check
+        if (salon.lunch_break_config?.enabled && salon.lunch_break_config.days.includes(dayOfWeek)) {
+          const [startH, startM] = salon.lunch_break_config.start_time.split(':').map(Number);
+          const [endH, endM] = salon.lunch_break_config.end_time.split(':').map(Number);
+
+          const lunchStart = startH * 60 + startM;
+          const lunchEnd = endH * 60 + endM;
+
+          // Se o início do slot cai dentro do almoço
+          if (slotMinutes >= lunchStart && slotMinutes < lunchEnd) {
+            return false;
+          }
+          // Se o agendamento termina após o início do almoço (caso de serviços longos)
+          if (slotMinutes < lunchStart && (slotMinutes + duration) > lunchStart) {
+            return false;
+          }
+        }
+
         const slotEnd = `${Math.floor((slotMinutes + duration) / 60).toString().padStart(2, '0')}:${((slotMinutes + duration) % 60).toString().padStart(2, '0')}`;
 
         const hasConflict = existingAppointments?.some(apt => {
