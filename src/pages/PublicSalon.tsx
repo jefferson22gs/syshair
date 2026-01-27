@@ -79,6 +79,7 @@ interface Salon {
     end_time: string;
     days: number[];
   };
+  working_hours?: Record<string, { isOpen: boolean; start: string; end: string }>;
 }
 
 interface Coupon {
@@ -226,6 +227,7 @@ const PublicSalon = () => {
         public_booking_enabled: salonData.public_booking_enabled ?? true,
         slug: salonData.slug || '',
         lunch_break_config: salonData.lunch_break_config,
+        working_hours: salonData.working_hours,
       });
 
       // Fetch services
@@ -369,7 +371,23 @@ const PublicSalon = () => {
       const dateStr = selectedDate.toISOString().split('T')[0];
       const dayOfWeek = selectedDate.getDay();
 
-      if (!salon.working_days.includes(dayOfWeek)) {
+      let dayOpen = salon.opening_time;
+      let dayClose = salon.closing_time;
+      let isWorkingDay = salon.working_days.includes(dayOfWeek);
+
+      // Override with specific working hours if available
+      if (salon.working_hours && salon.working_hours[dayOfWeek]) {
+        const dailyConfig = salon.working_hours[dayOfWeek];
+        if (dailyConfig.isOpen) {
+             isWorkingDay = true;
+             dayOpen = dailyConfig.start;
+             dayClose = dailyConfig.end;
+        } else {
+             isWorkingDay = false;
+        }
+      }
+
+      if (!isWorkingDay) {
         setAvailableSlots([]);
         setLoadingSlots(false);
         return;
@@ -385,8 +403,8 @@ const PublicSalon = () => {
 
       const duration = totalDuration;
       const slots: string[] = [];
-      const [openHour, openMin] = salon.opening_time.split(':').map(Number);
-      const [closeHour, closeMin] = salon.closing_time.split(':').map(Number);
+      const [openHour, openMin] = dayOpen.split(':').map(Number);
+      const [closeHour, closeMin] = dayClose.split(':').map(Number);
 
       let currentTime = openHour * 60 + openMin;
       const endTime = closeHour * 60 + closeMin - duration;

@@ -40,6 +40,7 @@ interface SalonData {
     end_time: string;
     days: number[];
   };
+  working_hours?: Record<string, { isOpen: boolean; start: string; end: string }>;
 }
 
 const defaultSalon: SalonData = {
@@ -67,6 +68,7 @@ const defaultSalon: SalonData = {
     end_time: "13:00",
     days: [1, 2, 3, 4, 5],
   },
+  working_hours: {},
 };
 
 const weekDays = [
@@ -138,7 +140,22 @@ const SalonSettings = () => {
           description: data.description || "",
           public_booking_enabled: data.public_booking_enabled ?? true,
           lunch_break_config: typeof data.lunch_break_config === 'object' ? data.lunch_break_config : defaultSalon.lunch_break_config,
+          working_hours: data.working_hours || null
         });
+
+        // Initialize working_hours from legacy if needed
+        if (!data.working_hours) {
+          const legacyHours: any = {};
+          weekDays.forEach(day => {
+            legacyHours[day.value] = {
+              isOpen: (data.working_days || []).includes(day.value),
+              start: data.opening_time || "09:00",
+              end: data.closing_time || "19:00"
+            };
+          });
+          setSalon(prev => ({ ...prev, working_hours: legacyHours }));
+        }
+
         setIsNew(false);
       }
     } catch (error) {
@@ -179,6 +196,9 @@ const SalonSettings = () => {
         description: salon.description || null,
         public_booking_enabled: salon.public_booking_enabled,
         lunch_break_config: salon.lunch_break_config,
+        working_hours: salon.working_hours,
+        // Sync legacy fields
+        working_days: Object.entries(salon.working_hours || {}).filter(([_, v]) => v.isOpen).map(([k]) => parseInt(k)),
         owner_id: user.id,
       };
 
@@ -582,45 +602,77 @@ const SalonSettings = () => {
               <CardDescription>Configure os dias e horários de atendimento</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="opening_time">Abertura</Label>
-                  <Input
-                    id="opening_time"
-                    type="time"
-                    value={salon.opening_time}
-                    onChange={(e) => setSalon({ ...salon, opening_time: e.target.value })}
-                  />
+              <div className="space-y-4">
+                <div className="flex justify-between items-center pb-2 border-b border-border">
+                  <Label>Configuração Semanal</Label>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      const monday = salon.working_hours?.["1"];
+                      if (monday) {
+                        const newHours = { ...salon.working_hours };
+                        weekDays.forEach(d => {
+                          if (d.value !== 1) newHours[d.value] = { ...monday };
+                        });
+                        setSalon({ ...salon, working_hours: newHours });
+                        toast.success("Horário de segunda aplicado para todos!");
+                      }
+                    }}
+                  >
+                    Copiar de Segunda para Todos
+                  </Button>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="closing_time">Fechamento</Label>
-                  <Input
-                    id="closing_time"
-                    type="time"
-                    value={salon.closing_time}
-                    onChange={(e) => setSalon({ ...salon, closing_time: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Dias de Funcionamento</Label>
-                <div className="flex flex-wrap gap-2">
-                  {weekDays.map((day) => (
-                    <button
-                      key={day.value}
-                      type="button"
-                      onClick={() => toggleWorkingDay(day.value)}
-                      className={`
-                        px-4 py-2 rounded-lg font-medium transition-all
-                        ${salon.working_days.includes(day.value)
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-secondary text-muted-foreground hover:bg-secondary/80'
-                        }
-                      `}
-                    >
-                      {day.label}
-                    </button>
-                  ))}
+
+                <div className="space-y-3">
+                  {weekDays.map((day) => {
+                    const dayConfig = salon.working_hours?.[day.value] || { isOpen: false, start: "09:00", end: "19:00" };
+                    return (
+                      <div key={day.value} className="flex items-center gap-4 p-2 rounded-lg hover:bg-secondary/20 transition-colors">
+                        <div className="w-24 flex items-center gap-2">
+                          <Switch
+                            checked={dayConfig.isOpen}
+                            onCheckedChange={(checked) => {
+                              const newHours = { ...salon.working_hours };
+                              newHours[day.value] = { ...dayConfig, isOpen: checked };
+                              setSalon({ ...salon, working_hours: newHours });
+                            }}
+                          />
+                          <span className={`font-medium ${dayConfig.isOpen ? 'text-foreground' : 'text-muted-foreground'}`}>
+                            {day.label}
+                          </span>
+                        </div>
+
+                        {dayConfig.isOpen ? (
+                          <div className="flex items-center gap-2 flex-1 animate-in fade-in slide-in-from-left-2">
+                            <Input
+                              type="time"
+                              className="w-24 h-8"
+                              value={dayConfig.start}
+                              onChange={(e) => {
+                                const newHours = { ...salon.working_hours };
+                                newHours[day.value] = { ...dayConfig, start: e.target.value };
+                                setSalon({ ...salon, working_hours: newHours });
+                              }}
+                            />
+                            <span className="text-muted-foreground">às</span>
+                            <Input
+                              type="time"
+                              className="w-24 h-8"
+                              value={dayConfig.end}
+                              onChange={(e) => {
+                                const newHours = { ...salon.working_hours };
+                                newHours[day.value] = { ...dayConfig, end: e.target.value };
+                                setSalon({ ...salon, working_hours: newHours });
+                              }}
+                            />
+                          </div>
+                        ) : (
+                          <span className="text-sm text-muted-foreground italic flex-1">Fechado</span>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
