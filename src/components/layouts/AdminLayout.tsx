@@ -41,7 +41,8 @@ import {
   Bot,
   CalendarDays,
   Smartphone,
-  Send
+  Send,
+  Upload
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -53,6 +54,7 @@ const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/admin", shortLabel: "Início" },
   { icon: Calendar, label: "Agendamentos", path: "/admin/appointments", shortLabel: "Agenda" },
   { icon: Users, label: "Clientes", path: "/admin/clients", shortLabel: "Clientes" },
+  { icon: Upload, label: "Importar Contatos", path: "/admin/import-contacts", shortLabel: "Importar", isNew: true },
   { icon: UserCog, label: "Profissionais", path: "/admin/professionals", shortLabel: "Equipe" },
   { icon: ClipboardList, label: "Serviços", path: "/admin/services", shortLabel: "Serviços" },
   { icon: Gift, label: "Cupons", path: "/admin/coupons", shortLabel: "Cupons" },
