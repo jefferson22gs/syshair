@@ -50,7 +50,7 @@ import { cn } from "@/lib/utils";
 interface ChatbotSettings {
     id?: string;
     enabled: boolean;
-    ai_provider: 'openai' | 'gemini' | 'grok' | 'perplexity';
+    ai_provider: 'openai' | 'gemini' | 'grok' | 'perplexity' | 'groq';
     ai_model: string;
     api_key: string;
     bot_name: string;
@@ -99,6 +99,7 @@ const AI_PROVIDERS = [
     { id: 'gemini', name: 'Google Gemini', models: ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-1.5-pro'] },
     { id: 'grok', name: 'xAI Grok', models: ['grok-2', 'grok-2-mini'] },
     { id: 'perplexity', name: 'Perplexity', models: ['llama-3.1-sonar-large', 'llama-3.1-sonar-small'] },
+    { id: 'groq', name: 'Groq (Ultra Rápido)', models: ['llama3-8b-8192', 'llama3-70b-8192', 'mixtral-8x7b-32768', 'gemma-7b-it'] },
 ];
 
 const DAYS_OF_WEEK = [

@@ -15,6 +15,7 @@ const AI_ENDPOINTS = {
     gemini: "https://generativelanguage.googleapis.com/v1beta/models",
     grok: "https://api.x.ai/v1/chat/completions",
     perplexity: "https://api.perplexity.ai/chat/completions",
+    groq: "https://api.groq.com/openai/v1/chat/completions",
 };
 
 // Evolution API Config
@@ -435,6 +436,32 @@ Seu nome é ${settings.bot_name}. Responda sempre em português brasileiro de fo
 
                 if (!response.ok) {
                     throw new Error(responseData.error?.message || "Perplexity API error");
+                }
+
+                return {
+                    success: true,
+                    message: responseData.choices[0]?.message?.content || "",
+                    tokens: responseData.usage?.total_tokens,
+                };
+
+            case "groq":
+                response = await fetch(AI_ENDPOINTS.groq, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${settings.api_key}`,
+                    },
+                    body: JSON.stringify({
+                        model: settings.ai_model,
+                        messages,
+                        temperature: settings.temperature,
+                        max_tokens: settings.max_tokens,
+                    }),
+                });
+                responseData = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(responseData.error?.message || "Groq API error");
                 }
 
                 return {
