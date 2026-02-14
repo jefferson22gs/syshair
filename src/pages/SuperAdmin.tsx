@@ -478,7 +478,7 @@ const SuperAdmin = () => {
             newTrialEnd.setDate(newTrialEnd.getDate() + trialDays);
             await supabase.from("subscriptions").upsert({
                 salon_id: selectedSalon.id,
-                status: "trialing",
+                status: "trial",
                 is_trial: true,
                 trial_end_date: newTrialEnd.toISOString()
             }, { onConflict: "salon_id" });
