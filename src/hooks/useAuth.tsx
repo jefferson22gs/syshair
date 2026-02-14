@@ -25,7 +25,9 @@ interface AuthContextType {
   profile: Profile | null;
   roles: UserRole[];
   loading: boolean;
-  signUp: (email: string, password: string, fullName: string, phone?: string) => Promise<{ error: Error | null }>;
+  sellerId: string | null; // Adicionado para vendedor que indicou o sistema
+  setSellerId: (sellerId: string | null) => void; // Adicionado para salvar o vendedor
+  signUp: (email: string, password: string, fullName: string, phone?: string, sellerId?: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   isAdmin: boolean;
@@ -40,6 +42,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [roles, setRoles] = useState<UserRole[]>([]);
+  const [sellerId, setSellerId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchUserData = async (userId: string) => {
@@ -70,6 +73,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   useEffect(() => {
+    // Carregar seller_id do localStorage
+    const savedSellerId = localStorage.getItem('seller_id');
+    if (savedSellerId) {
+      setSellerId(savedSellerId);
+    }
+
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
@@ -84,6 +93,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         } else {
           setProfile(null);
           setRoles([]);
+          // Limpar seller_id ao deslogar
+          setSellerId(null);
+          localStorage.removeItem('seller_id');
         }
       }
     );
@@ -102,7 +114,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signUp = async (email: string, password: string, fullName: string, phone?: string) => {
+  const signUp = async (email: string, password: string, fullName: string, phone?: string, sellerId?: string) => {
     try {
       const redirectUrl = `${window.location.origin}/`;
       
@@ -119,6 +131,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       });
 
       if (error) throw error;
+      
+      // Salvar o seller_id no localStorage para usar no onboarding
+      if (sellerId) {
+        setSellerId(sellerId);
+        localStorage.setItem('seller_id', sellerId);
+      }
       
       toast.success('Conta criada com sucesso!');
       return { error: null };
@@ -168,6 +186,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       profile,
       roles,
       loading,
+      sellerId,
+      setSellerId,
       signUp,
       signIn,
       signOut,

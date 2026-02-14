@@ -4,18 +4,34 @@ import { Logo } from "@/components/icons/Logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Eye, EyeOff, ArrowLeft, Check, Loader2 } from "lucide-react";
+import { Eye, EyeOff, ArrowLeft, Check, Loader2, Store } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+
+interface Seller {
+    id: string;
+    name: string;
+    email: string;
+}
 
 const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [sellers, setSellers] = useState<Seller[]>([]);
   const [formData, setFormData] = useState({
     salonName: "",
     name: "",
     email: "",
     phone: "",
     password: "",
+    sellerId: "", // Campo para indicar quem indicou
   });
 
   const { signUp, user } = useAuth();
@@ -27,6 +43,35 @@ const Register = () => {
     }
   }, [user, navigate]);
 
+  useEffect(() => {
+    // Carregar lista de vendedores (apenas ativos)
+    const loadSellers = async () => {
+      try {
+        const { data } = await supabase
+          .from("sellers")
+          .select("id, name, email")
+          .eq("is_active", true)
+          .order("name", { ascending: true });
+
+        if (data) {
+          setSellers(data);
+        }
+      } catch (error) {
+        console.error("Error loading sellers:", error);
+        // Não falhar o cadastro se não conseguir carregar vendedores
+      }
+    };
+
+    loadSellers();
+
+    // Verificar se há código de indicação na URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const sellerParam = urlParams.get("seller");
+    if (sellerParam) {
+      setFormData(prev => ({ ...prev, sellerId: sellerParam }));
+    }
+  }, []);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
@@ -35,11 +80,13 @@ const Register = () => {
     e.preventDefault();
     setIsLoading(true);
 
+    // Passar o vendedor selecionado para o cadastro
     const { error } = await signUp(
       formData.email,
       formData.password,
       formData.name,
-      formData.phone
+      formData.phone,
+      formData.sellerId // Passar vendedor que indicou
     );
 
     if (!error) {
@@ -171,6 +218,35 @@ const Register = () => {
                 </button>
               </div>
             </div>
+
+            {/* Campo para selecionar vendedor que indicou */}
+            {sellers.length > 0 && (
+              <div className="space-y-2">
+                <Label htmlFor="seller" className="flex items-center gap-2">
+                  <Store className="w-4 h-4" />
+                  Quem te indicou? (Opcional)
+                </Label>
+                <Select
+                  value={formData.sellerId}
+                  onValueChange={(value) => setFormData({ ...formData, sellerId: value })}
+                >
+                  <SelectTrigger className="h-12">
+                    <SelectValue placeholder="Ninguém, me encontrei sozinho" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Ninguém, me encontrei sozinho</SelectItem>
+                    {sellers.map((seller) => (
+                      <SelectItem key={seller.id} value={seller.id}>
+                        {seller.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Selecione quem te indicou o sistema para que ele receba comissão pela venda.
+                </p>
+              </div>
+            )}
 
             <Button type="submit" variant="gold" size="lg" className="w-full" disabled={isLoading}>
               {isLoading ? (

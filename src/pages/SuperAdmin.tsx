@@ -39,7 +39,9 @@ import {
     Pause,
     CreditCard,
     AlertOctagon,
-    Megaphone
+    Megaphone,
+    Percent,
+    Store
 } from "lucide-react";
 import {
     Table,
@@ -85,6 +87,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { SellersManagement } from "@/components/admin/SellersManagement";
 
 // Email do Super Admin (você!)
 const SUPER_ADMIN_EMAILS = [
@@ -545,13 +548,12 @@ const SuperAdmin = () => {
     const handleResetPassword = async () => {
         if (!selectedSalon?.owner_email) return;
 
+        setActionLoading(true);
         try {
             const { data: { session } } = await supabase.auth.getSession();
             const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/super-admin-actions`;
 
-            toast({ title: "Processando...", description: "Enviando solicitação de reset." });
-
-            await fetch(functionUrl, {
+            const response = await fetch(functionUrl, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -562,10 +564,104 @@ const SuperAdmin = () => {
                     data: { email: selectedSalon.owner_email }
                 }),
             });
-            toast({ title: "Solicitação enviada", description: "Se a Edge Function estiver ativa, o email será enviado." });
-        } catch (e) {
-            toast({ title: "Erro", description: "Falha ao contactar servidor de funções.", variant: "destructive" });
+
+            const result = await response.json();
+            
+            if (response.ok && result.success) {
+                toast({ 
+                    title: "✅ Link de reset enviado", 
+                    description: `Um email foi enviado para ${selectedSalon.owner_email}`,
+                    duration: 5000 
+                });
+            } else {
+                throw new Error(result.error || "Erro ao enviar email");
+            }
+        } catch (e: any) {
+            console.error("Reset password error:", e);
+            toast({ 
+                title: "Erro ao resetar senha", 
+                description: e.message || "Falha ao contactar servidor de funções.",
+                variant: "destructive" 
+            });
+        } finally {
+            setActionLoading(false);
         }
+    };
+
+    const handleUpdateEmail = async () => {
+        if (!selectedSalon?.owner_id || !selectedSalon) return;
+        
+        const newEmail = prompt(`Alterar email para ${selectedSalon.name}\nEmail atual: ${selectedSalon.owner_email}\n\nNovo email:`);
+        
+        if (!newEmail || !newEmail.includes("@")) {
+            toast({ title: "Email inválido", description: "Cancelado ou email não válido.", variant: "destructive" });
+            return;
+        }
+
+        setActionLoading(true);
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/super-admin-actions`;
+
+            const response = await fetch(functionUrl, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${session?.access_token}`,
+                },
+                body: JSON.stringify({
+                    action: "update_email",
+                    userId: selectedSalon.owner_id,
+                    data: { newEmail }
+                }),
+            });
+
+            const result = await response.json();
+            
+            if (response.ok && result.success) {
+                // Atualizar email na tabela salons também
+                await supabase.from("salons").update({ owner_email: newEmail }).eq("id", selectedSalon.id);
+                
+                toast({ 
+                    title: "✅ Email atualizado", 
+                    description: `Email alterado para ${newEmail}`,
+                    duration: 5000 
+                });
+                setShowSalonDetails(false);
+                await loadData();
+            } else {
+                throw new Error(result.error || "Erro ao atualizar email");
+            }
+        } catch (e: any) {
+            console.error("Update email error:", e);
+            toast({ 
+                title: "Erro ao atualizar email", 
+                description: e.message,
+                variant: "destructive" 
+            });
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const handleImpersonateUser = async () => {
+        if (!selectedSalon?.owner_id || !selectedSalon) return;
+        
+        if (!confirm(`Tem certeza que deseja entrar como administrador do salão "${selectedSalon.name}"?\n\nVocê terá acesso completo a este salão.\n\nSeus logs serão marcados como Super Admin.`)) {
+            return;
+        }
+
+        toast({ title: "Preparando acesso temporário...", description: "Redirecionando em breve." });
+        
+        // Guardar info do super admin
+        const { data: { user } } = await supabase.auth.getUser();
+        localStorage.setItem("super_admin_impersonating", selectedSalon.id);
+        localStorage.setItem("super_admin_email", user?.email || "");
+        
+        // Redirecionar para dashboard do admin
+        setTimeout(() => {
+            window.location.href = `/admin/dashboard`;
+        }, 1000);
     };
 
     const openEditDialog = (salon: Salon) => {
@@ -634,6 +730,51 @@ const SuperAdmin = () => {
             </header>
 
             <main className="container mx-auto px-4 py-8 space-y-8">
+                {/* Tabs */}
+                <Tabs defaultValue="salons" className="w-full">
+                    <div className="flex items-center justify-between mb-6">
+                        <TabsList className="grid w-96 grid-cols-2">
+                            <TabsTrigger value="salons" className="flex items-center gap-2">
+                                <Building2 className="w-4 h-4" />
+                                Salões
+                            </TabsTrigger>
+                            <TabsTrigger value="sellers" className="flex items-center gap-2">
+                                <Store className="w-4 h-4" />
+                                Vendedores
+                            </TabsTrigger>
+                        </TabsList>
+
+                        <div className="flex items-center gap-4">
+                            <Button
+                                variant="default"
+                                size="sm"
+                                className="bg-purple-600 hover:bg-purple-700"
+                                onClick={() => setShowBroadcastDialog(true)}
+                            >
+                                <Megaphone className="w-4 h-4 mr-2" />
+                                Broadcast
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={loadData}
+                                disabled={refreshing}
+                            >
+                                {refreshing ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                    <RefreshCw className="w-4 h-4" />
+                                )}
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={handleLogout}>
+                                <LogOut className="w-4 h-4 mr-2" />
+                                Sair
+                            </Button>
+                        </div>
+                    </div>
+
+                    {/* Salões Tab */}
+                    <TabsContent value="salons" className="space-y-8">
                 {/* Stats Cards */}
                 {stats && (
                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
@@ -1228,6 +1369,14 @@ const SuperAdmin = () => {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+                    {/* Vendedores Tab (Nova Funcionalidade) */}
+                    <TabsContent value="sellers">
+                        <SellersManagement />
+                    </TabsContent>
+
+                </Tabs>
+            </main>
         </div>
     );
 };

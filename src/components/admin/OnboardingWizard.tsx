@@ -16,13 +16,15 @@ import {
     CheckCircle2,
     ArrowRight,
     ArrowLeft,
-    Sparkles
+    Sparkles,
+    Building2
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 interface OnboardingWizardProps {
     userId: string;
+    sellerId?: string | null; // Adicionado vendedor que indicou
     onComplete: () => void;
 }
 
@@ -56,7 +58,7 @@ const DAYS_OF_WEEK = [
     { id: 6, label: "Sáb" },
 ];
 
-export function OnboardingWizard({ userId, onComplete }: OnboardingWizardProps) {
+export function OnboardingWizard({ userId, sellerId, onComplete }: OnboardingWizardProps) {
     const [currentStep, setCurrentStep] = useState(1);
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState<SalonFormData>({
@@ -116,25 +118,41 @@ export function OnboardingWizard({ userId, onComplete }: OnboardingWizardProps) 
     const handleComplete = async () => {
         setLoading(true);
         try {
+            // Preparar dados do salão
+            const salonData: any = {
+                owner_id: userId,
+                name: formData.name,
+                address: formData.address || null,
+                city: formData.city || null,
+                state: formData.state || null,
+                phone: formData.phone || null,
+                whatsapp: formData.whatsapp || null,
+                opening_time: formData.opening_time,
+                closing_time: formData.closing_time,
+                working_days: formData.working_days,
+                is_active: true,
+            };
+
+            // Adicionar seller_id se houver vendedor indicado
+            if (sellerId) {
+                salonData.seller_id = sellerId;
+            }
+
             const { error } = await supabase
                 .from('salons')
-                .insert({
-                    owner_id: userId,
-                    name: formData.name,
-                    address: formData.address || null,
-                    city: formData.city || null,
-                    state: formData.state || null,
-                    phone: formData.phone || null,
-                    whatsapp: formData.whatsapp || null,
-                    opening_time: formData.opening_time,
-                    closing_time: formData.closing_time,
-                    working_days: formData.working_days,
-                    is_active: true,
-                });
+                .insert([salonData])
+                .select()
+                .single();
 
             if (error) throw error;
 
             toast.success("Salão configurado com sucesso! 🎉");
+            
+            // Limpar seller_id do localStorage após uso
+            if (sellerId) {
+                localStorage.removeItem('seller_id');
+            }
+            
             onComplete();
         } catch (error: any) {
             console.error("Error creating salon:", error);

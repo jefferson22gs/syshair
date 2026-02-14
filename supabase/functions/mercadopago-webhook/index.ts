@@ -178,7 +178,7 @@ serve(async (req) => {
                 }
 
                 // Record payment
-                await supabase
+                const { data: paymentRecord, error: paymentError } = await supabase
                     .from('subscription_payments')
                     .insert({
                         subscription_id: subscription.id,
@@ -190,7 +190,9 @@ serve(async (req) => {
                         currency: payment.currency_id,
                         payment_method: payment.payment_method_id,
                         paid_at: payment.date_approved,
-                    });
+                    })
+                    .select()
+                    .single();
 
                 // Update subscription based on payment status
                 if (payment.status === 'approved') {
@@ -210,6 +212,83 @@ serve(async (req) => {
                         .eq('id', subscription.id);
 
                     console.log('✅ Payment APPROVED - Subscription activated:', subscription.id);
+
+                    // ===== CALCULAR COMISSÃO PARA O VENDEDOR =====
+                    try {
+                        // Buscar informações do salão para saber quem é o vendedor
+                        const { data: salon } = await supabase
+                            .from('salons')
+                            .select('seller_id')
+                            .eq('id', subscription.salon_id)
+                            .single();
+
+                        // Se houver vendedor associado, calcular comissão
+                        if (salon?.seller_id) {
+                            // Buscar informações da assinatura para determinar tipo (mensal/anual)
+                            const { data: subscriptionData } = await supabase
+                                .from('subscriptions')
+                                .select('plan_id, billing_cycle')
+                                .eq('id', subscription.id)
+                                .single();
+
+                            // Determinar tipo de pagamento baseado no plano
+                            const isAnnualPlan = subscriptionData?.plan_id?.includes('annual') || 
+                                              subscriptionData?.billing_cycle === 'annual' ||
+                                              payment.transaction_amount >= 400; // Plano anual geralmente é maior
+                            
+                            const paymentType = isAnnualPlan ? 'annual' : 'monthly';
+
+                            console.log(`🔍 Calculating commission for seller ${salon.seller_id}, payment type: ${paymentType}, amount: ${payment.transaction_amount}`);
+
+                            // Calcular comissão usando a função SQL
+                            const { data: commissionResult, error: commissionError } = await supabase
+                                .rpc('calculate_commission', {
+                                    p_amount: payment.transaction_amount,
+                                    p_payment_type: paymentType,
+                                    p_seller_id: salon.seller_id
+                                });
+
+                            if (commissionError) {
+                                console.error('❌ Error calculating commission:', commissionError);
+                            } else if (commissionResult) {
+                                // Buscar dados do vendedor para obter o percentual usado
+                                const { data: seller } = await supabase
+                                    .from('sellers')
+                                    .select('commission_monthly_percent, commission_annual_percent')
+                                    .eq('id', salon.seller_id)
+                                    .single();
+
+                                const commissionPercent = isAnnualPlan 
+                                    ? (seller?.commission_annual_percent || 10) 
+                                    : (seller?.commission_monthly_percent || 20);
+
+                                // Criar registro de comissão
+                                await supabase
+                                    .from('seller_commissions')
+                                    .insert({
+                                        seller_id: salon.seller_id,
+                                        salon_id: subscription.salon_id,
+                                        subscription_id: subscription.id,
+                                        payment_id: paymentRecord?.id,
+                                        amount: payment.transaction_amount,
+                                        commission_percent: commissionPercent,
+                                        commission_amount: commissionResult,
+                                        payment_type: paymentType,
+                                        status: 'pending',
+                                        mp_payment_id: payment.id.toString(),
+                                        subscription_plan: subscriptionData?.plan_id || 'unknown',
+                                    });
+
+                                console.log(`✅ Commission calculated: R$ ${commissionResult} (${commissionPercent}%) for seller ${salon.seller_id}`);
+                            }
+                        } else {
+                            console.log('ℹ️ No seller associated with this salon, skipping commission calculation');
+                        }
+                    } catch (commissionError) {
+                        console.error('⚠️ Error in commission calculation process:', commissionError);
+                        // Não falhar o fluxo principal se houver erro na comissão
+                    }
+
                 } else if (payment.status === 'rejected') {
                     await supabase
                         .from('subscriptions')
