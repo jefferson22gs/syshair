@@ -193,6 +193,11 @@ async function sendBroadcast(request: BroadcastRequest, supabase: any) {
     }
 
     const broadcastId = broadcast.id;
+    console.log(`=== BROADCAST INITIATED ===`);
+    console.log(`Broadcast ID: ${broadcastId}`);
+    console.log(`Instance: ${instanceName}`);
+    console.log(`Recipients: ${recipients.length}`);
+    console.log(`Message: ${message.substring(0, 100)}`);
 
     // Enviar mensagens em background (não bloquear a resposta)
     // Em produção, usaríamos um job queue como pg_cron ou um worker
@@ -217,8 +222,12 @@ async function processMessages(
     salonId: string,
     supabase: any
 ) {
-    console.log(`Starting broadcast ${broadcastId} to ${recipients.length} recipients`);
-    console.log(`Processing in batches of ${RATE_LIMITS.batchSize} with ${RATE_LIMITS.messageInterval}ms intervals`);
+    console.log(`=== STARTING BROADCAST ${broadcastId} ===`);
+    console.log(`Instance: ${instanceName}`);
+    console.log(`Recipients: ${recipients.length}`);
+    console.log(`Message: ${message.substring(0, 50)}...`);
+    console.log(`Evolution API: ${EVOLUTION_API_URL}`);
+    console.log(`Rate limits: ${RATE_LIMITS.messageInterval}ms interval, ${RATE_LIMITS.batchSize} per batch`);
 
     let sent = 0;
     let failed = 0;
@@ -232,7 +241,7 @@ async function processMessages(
             
             // Validação do número (Meta Business Policy: apenas números válidos)
             if (!phone || phone.length < 10 || phone.length > 15) {
-                console.log(`[${i + 1}/${recipients.length}] Skipping invalid phone: ${phone}`);
+                console.log(`[${i + 1}/${recipients.length}] SKIPPING invalid phone: ${phone}`);
                 failed++;
                 await supabase.from("broadcast_messages").insert({
                     broadcast_id: broadcastId,
@@ -245,11 +254,21 @@ async function processMessages(
             }
 
             const remoteJid = phone.includes("@") ? phone : `${phone}@s.whatsapp.net`;
-            console.log(`[${i + 1}/${recipients.length}] Processing ${remoteJid}...`);
+            console.log(`[${i + 1}/${recipients.length}] SENDING to ${remoteJid}...`);
 
             // Enviar mensagem via Evolution API com timeout de 30s
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 30000);
+            const timeoutId = setTimeout(() => {
+                console.log(`[${i + 1}/${recipients.length}] TIMEOUT for ${phone} (30s)`);
+                controller.abort();
+            }, 30000);
+
+            const requestBody = JSON.stringify({
+                number: remoteJid,
+                text: message,
+            });
+            
+            console.log(`[${i + 1}/${recipients.length}] API URL: ${EVOLUTION_API_URL}/message/sendText/${instanceName}`);
 
             const response = await fetch(`${EVOLUTION_API_URL}/message/sendText/${instanceName}`, {
                 method: "POST",
@@ -257,16 +276,21 @@ async function processMessages(
                     "Content-Type": "application/json",
                     "apikey": EVOLUTION_API_KEY,
                 },
-                body: JSON.stringify({
-                    number: remoteJid,
-                    text: message,
-                }),
+                body: requestBody,
                 signal: controller.signal,
             });
 
             clearTimeout(timeoutId);
+            console.log(`[${i + 1}/${recipients.length}] Response status: ${response.status} ${response.statusText}`);
 
-            const result = await response.json();
+            let result;
+            try {
+                result = await response.json();
+                console.log(`[${i + 1}/${recipients.length}] Response body:`, JSON.stringify(result).substring(0, 200));
+            } catch (e) {
+                result = { error: "Could not parse response" };
+                console.log(`[${i + 1}/${recipients.length}] Response text:`, await response.text());
+            }
 
             // Salvar resultado com todos os detalhes
             const messageData = {
@@ -284,17 +308,17 @@ async function processMessages(
             if (response.ok && result.key) {
                 sent++;
                 consecutiveFailures = 0;
-                console.log(`[${i + 1}/${recipients.length}] ✓ Sent to ${phone} (ID: ${result.key.id})`);
+                console.log(`[${i + 1}/${recipients.length}] ✓ SUCCESS to ${phone} (WhatsApp ID: ${result.key.id})`);
             } else {
                 failed++;
                 consecutiveFailures++;
-                const errorMsg = result.message || result.error || "Unknown error";
+                const errorMsg = result.message || result.error || JSON.stringify(result);
                 errors.push(`${phone}: ${errorMsg}`);
-                console.error(`[${i + 1}/${recipients.length}] ✗ Failed to ${phone}: ${errorMsg}`);
+                console.error(`[${i + 1}/${recipients.length}] ✗ FAILED to ${phone}: ${errorMsg}`);
 
                 // Parar APENAS se houver muitas falhas consecutivas (sinal de problema na API)
                 if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
-                    console.error(`⚠️ consecutiveFailures: ${consecutiveFailures}, pausing for 60 seconds...`);
+                    console.error(`⚠️ CONSECUTIVE FAILURES: ${consecutiveFailures}, pausing for 60 seconds...`);
                     await new Promise(resolve => setTimeout(resolve, 60000));
                     consecutiveFailures = 0;
                 }
@@ -320,7 +344,13 @@ async function processMessages(
             }
 
         } catch (error: any) {
-            console.error(`[${i + 1}/${recipients.length}] ✗ Exception for ${recipients[i]}:`, error);
+            console.error(`[${i + 1}/${recipients.length}] ✗ EXCEPTION for ${recipients[i]}:`, error);
+            console.error(`[${i + 1}/${recipients.length}] Error details:`, {
+                message: error?.message,
+                name: error?.name,
+                cause: error?.cause,
+                stack: error?.stack?.substring(0, 500)
+            });
             failed++;
             consecutiveFailures++;
 
@@ -335,7 +365,7 @@ async function processMessages(
 
             // Parar APENAS se houver falhas consecutivas (sinal de problema na API/disponibilidade)
             if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
-                console.error(`⚠️ Too many consecutive failures (${consecutiveFailures}), pausing for 60 seconds...`);
+                console.error(`⚠️ TOO MANY CONSECUTIVE EXCEPTIONS (${consecutiveFailures}), pausing for 60 seconds...`);
                 await new Promise(resolve => setTimeout(resolve, 60000));
                 consecutiveFailures = 0;
             }
@@ -344,6 +374,15 @@ async function processMessages(
 
     // Atualizar status final do broadcast
     const finalStatus = sent > 0 ? "completed" : "failed";
+    console.log(`=== BROADCAST ${broadcastId} FINISHED ===`);
+    console.log(`Status: ${finalStatus}`);
+    console.log(`Total: ${recipients.length}, Sent: ${sent}, Failed: ${failed}`);
+    console.log(`Success rate: ${((sent / recipients.length) * 100).toFixed(1)}%`);
+    
+    if (errors.length > 0) {
+        console.log(`Errors (${errors.length}):`, errors);
+    }
+
     await supabase.from("broadcasts").update({
         status: finalStatus,
         sent_count: sent,
@@ -351,8 +390,6 @@ async function processMessages(
         completed_at: new Date().toISOString(),
         error_message: errors.length > 0 ? errors.slice(0, 10).join("; ") : null,
     }).eq("id", broadcastId);
-
-    console.log(`✅ Broadcast ${broadcastId} ${finalStatus}: ${sent} sent, ${failed} failed`);
 }
 
 async function getBroadcastStatus(broadcastId: string, supabase: any) {
