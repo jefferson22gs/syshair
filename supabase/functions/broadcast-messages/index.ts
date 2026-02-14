@@ -13,14 +13,14 @@ const corsHeaders = {
 const EVOLUTION_API_URL = Deno.env.get("EVOLUTION_API_URL") || "https://api.tubaraoemprestimo.com.br";
 const EVOLUTION_API_KEY = Deno.env.get("EVOLUTION_API_KEY") || "B8959800-F546-407C-99E8-C40306E747F5";
 
-// Configurações de proteção contra bloqueio
+// Configurações de proteção contra bloqueio (Conformidade Meta Business)
 const RATE_LIMITS = {
-    messageInterval: 4000, // 4 segundos entre cada mensagem
-    batchSize: 30, // 30 mensagens por lote
-    batchPause: 900000, // 15 minutos de pausa entre lotes
-    maxPerHour: 60, // Máximo 60 mensagens por hora
-    maxPerDay: 500, // Máximo 500 mensagens por dia
-    errorThreshold: 0.1, // Para se 10% das mensagens falharem
+    messageInterval: 5000, // 5 segundos entre cada mensagem (Meta: evitar spam/suspicious activity)
+    batchSize: 20, // 20 mensagens por lote (Meta: manter padrões naturais de uso)
+    batchPause: 600000, // 10 minutos de pausa entre lotes (Meta: garantir compliance)
+    maxPerHour: 60, // Máximo 60 mensagens por hora (Meta: Política de Business API)
+    maxPerDay: 500, // Máximo 500 mensagens por dia (Meta: Política limitada para marketing)
+    maxConsecutiveFailures: 5, // Pausar se 5 msgs falharem consecutivamente
 };
 
 interface BroadcastRequest {
@@ -218,17 +218,39 @@ async function processMessages(
     supabase: any
 ) {
     console.log(`Starting broadcast ${broadcastId} to ${recipients.length} recipients`);
+    console.log(`Processing in batches of ${RATE_LIMITS.batchSize} with ${RATE_LIMITS.messageInterval}ms intervals`);
 
     let sent = 0;
     let failed = 0;
     let errors: string[] = [];
+    let consecutiveFailures = 0;
+    const MAX_CONSECUTIVE_FAILURES = 5;
 
     for (let i = 0; i < recipients.length; i++) {
-        const phone = recipients[i].replace(/\D/g, "");
-        const remoteJid = phone.includes("@") ? phone : `${phone}@s.whatsapp.net`;
-
         try {
-            // Enviar mensagem via Evolution API
+            const phone = recipients[i].replace(/\D/g, "");
+            
+            // Validação do número (Meta Business Policy: apenas números válidos)
+            if (!phone || phone.length < 10 || phone.length > 15) {
+                console.log(`[${i + 1}/${recipients.length}] Skipping invalid phone: ${phone}`);
+                failed++;
+                await supabase.from("broadcast_messages").insert({
+                    broadcast_id: broadcastId,
+                    salon_id: salonId,
+                    phone: phone,
+                    status: "failed",
+                    error_message: "Número inválido",
+                });
+                continue;
+            }
+
+            const remoteJid = phone.includes("@") ? phone : `${phone}@s.whatsapp.net`;
+            console.log(`[${i + 1}/${recipients.length}] Processing ${remoteJid}...`);
+
+            // Enviar mensagem via Evolution API com timeout de 30s
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 30000);
+
             const response = await fetch(`${EVOLUTION_API_URL}/message/sendText/${instanceName}`, {
                 method: "POST",
                 headers: {
@@ -239,74 +261,98 @@ async function processMessages(
                     number: remoteJid,
                     text: message,
                 }),
+                signal: controller.signal,
             });
+
+            clearTimeout(timeoutId);
 
             const result = await response.json();
 
-            // Salvar resultado
-            await supabase.from("broadcast_messages").insert({
+            // Salvar resultado com todos os detalhes
+            const messageData = {
                 broadcast_id: broadcastId,
                 salon_id: salonId,
                 phone: phone,
                 status: response.ok ? "sent" : "failed",
-                error_message: response.ok ? null : (result.message || "Unknown error"),
-                whatsapp_message_id: result.key?.id || null,
-            });
+                error_message: response.ok ? null : (result.message || result.error || JSON.stringify(result)),
+                whatsapp_message_id: result.key?.id || result.messageId || null,
+                created_at: new Date().toISOString(),
+            };
 
-            if (response.ok) {
+            await supabase.from("broadcast_messages").insert(messageData);
+
+            if (response.ok && result.key) {
                 sent++;
-                console.log(`[${i + 1}/${recipients.length}] Sent to ${phone}`);
+                consecutiveFailures = 0;
+                console.log(`[${i + 1}/${recipients.length}] ✓ Sent to ${phone} (ID: ${result.key.id})`);
             } else {
                 failed++;
-                errors.push(`${phone}: ${result.message || "Error"}`);
+                consecutiveFailures++;
+                const errorMsg = result.message || result.error || "Unknown error";
+                errors.push(`${phone}: ${errorMsg}`);
+                console.error(`[${i + 1}/${recipients.length}] ✗ Failed to ${phone}: ${errorMsg}`);
+
+                // Parar APENAS se houver muitas falhas consecutivas (sinal de problema na API)
+                if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+                    console.error(`⚠️ consecutiveFailures: ${consecutiveFailures}, pausing for 60 seconds...`);
+                    await new Promise(resolve => setTimeout(resolve, 60000));
+                    consecutiveFailures = 0;
+                }
             }
 
-            // Verificar taxa de erro
-            if (failed > 0 && (failed / (sent + failed)) > RATE_LIMITS.errorThreshold) {
-                console.error("Error threshold exceeded, stopping broadcast");
+            // Atualizar progresso do broadcast periodicamente
+            if ((i + 1) % 10 === 0 || i === recipients.length - 1) {
                 await supabase.from("broadcasts").update({
-                    status: "stopped",
                     sent_count: sent,
                     failed_count: failed,
-                    error_message: "Parado automaticamente: muitos erros",
                 }).eq("id", broadcastId);
-                return;
             }
 
-            // Aguardar intervalo entre mensagens
+            // Aguardar intervalo entre mensagens (Meta Business Policy: evitar spam)
             if (i < recipients.length - 1) {
                 await new Promise(resolve => setTimeout(resolve, RATE_LIMITS.messageInterval));
             }
 
-            // Pausa a cada lote
+            // Meta Business Policy: Pausa a cada lote para evitar suspicious activity
             if ((i + 1) % RATE_LIMITS.batchSize === 0 && i < recipients.length - 1) {
-                console.log(`Batch complete, pausing for ${RATE_LIMITS.batchPause / 60000} minutes...`);
+                console.log(`Batch ${Math.floor((i + 1) / RATE_LIMITS.batchSize)} complete, pausing for ${RATE_LIMITS.batchPause / 60000} minutes...`);
                 await new Promise(resolve => setTimeout(resolve, RATE_LIMITS.batchPause));
             }
 
         } catch (error: any) {
-            console.error(`Error sending to ${phone}:`, error);
+            console.error(`[${i + 1}/${recipients.length}] ✗ Exception for ${recipients[i]}:`, error);
             failed++;
+            consecutiveFailures++;
 
             await supabase.from("broadcast_messages").insert({
                 broadcast_id: broadcastId,
                 salon_id: salonId,
-                phone: phone,
+                phone: recipients[i],
                 status: "failed",
-                error_message: error.message,
+                error_message: error.message || error.toString(),
+                created_at: new Date().toISOString(),
             });
+
+            // Parar APENAS se houver falhas consecutivas (sinal de problema na API/disponibilidade)
+            if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+                console.error(`⚠️ Too many consecutive failures (${consecutiveFailures}), pausing for 60 seconds...`);
+                await new Promise(resolve => setTimeout(resolve, 60000));
+                consecutiveFailures = 0;
+            }
         }
     }
 
     // Atualizar status final do broadcast
+    const finalStatus = sent > 0 ? "completed" : "failed";
     await supabase.from("broadcasts").update({
-        status: "completed",
+        status: finalStatus,
         sent_count: sent,
         failed_count: failed,
         completed_at: new Date().toISOString(),
+        error_message: errors.length > 0 ? errors.slice(0, 10).join("; ") : null,
     }).eq("id", broadcastId);
 
-    console.log(`Broadcast ${broadcastId} completed: ${sent} sent, ${failed} failed`);
+    console.log(`✅ Broadcast ${broadcastId} ${finalStatus}: ${sent} sent, ${failed} failed`);
 }
 
 async function getBroadcastStatus(broadcastId: string, supabase: any) {

@@ -269,6 +269,11 @@ const BroadcastMessages = () => {
     const sendBroadcast = async () => {
         const selectedContacts = contacts.filter(c => c.selected);
 
+        console.log("=== INICIANDO DISPARO ===");
+        console.log(`Contatos selecionados: ${selectedContacts.length}`);
+        console.log(`Limite diário restante: ${todayStats.remaining}`);
+        console.log(`Mensagem: ${message.substring(0, 50)}...`);
+
         if (selectedContacts.length === 0) {
             toast({
                 title: "Nenhum contato selecionado",
@@ -298,22 +303,35 @@ const BroadcastMessages = () => {
 
         setIsSending(true);
         try {
+            console.log("Enviando requisição para Supabase Function...");
+            const recipients = selectedContacts.map(c => c.phone);
+            console.log(`Array de recipients: ${recipients.length} contatos`);
+            console.log(`Primeiros 5: ${recipients.slice(0, 5)}`);
+            console.log(`Últimos 5: ${recipients.slice(-5)}`);
+
             const response = await supabase.functions.invoke('broadcast-messages', {
                 body: {
                     action: 'send_broadcast',
                     salonId,
                     instanceName,
                     message: message.trim(),
-                    recipients: selectedContacts.map(c => c.phone)
+                    recipients: recipients
                 }
             });
 
-            if (response.error) throw new Error(response.error.message);
+            console.log("Resposta da função:", response);
+
+            if (response.error) {
+                console.error("Erro na função:", response.error);
+                throw new Error(response.error.message);
+            }
 
             if (response.data?.success) {
+                console.log("Disparo iniciado com sucesso:", response.data);
                 toast({
                     title: "🚀 Disparo iniciado!",
-                    description: response.data.message,
+                    description: `${response.data.message}. Tempo estimado: ${response.data.estimatedTime}`,
+                    duration: 10000,
                 });
 
                 // Limpar seleção
@@ -330,10 +348,11 @@ const BroadcastMessages = () => {
             console.error("Error sending broadcast:", error);
             toast({
                 title: "Erro ao enviar",
-                description: error.message,
+                description: error.message || "Erro desconhecido. Veja o console para detalhes.",
                 variant: "destructive",
             });
         } finally {
+            console.log("=== FIM DO DISPARO ===");
             setIsSending(false);
         }
     };
