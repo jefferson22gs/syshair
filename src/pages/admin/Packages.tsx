@@ -9,19 +9,27 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Package, Edit2, Trash2, Percent } from "lucide-react";
+import { Plus, Package, Edit2, Trash2, Percent, X } from "lucide-react";
+
+interface PackageItem {
+  service_id: string;
+  quantity: number;
+  service_name?: string;
+  service_price?: number;
+}
 
 interface ServicePackage {
   id: string;
   name: string;
   description: string | null;
-  service_id: string;
-  quantity: number;
   price: number;
   discount_percent: number;
   validity_days: number;
   is_active: boolean;
-  service?: { name: string; price: number };
+  salon_id: string;
+  created_at: string;
+  items?: PackageItem[];
+  total_services?: number;
 }
 
 interface Service {
@@ -42,11 +50,13 @@ const PackagesPage = () => {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    service_id: '',
-    quantity: 5,
+    items: [] as PackageItem[],
     discount_percent: 10,
     validity_days: 365
   });
+
+  const [selectedService, setSelectedService] = useState<string>('');
+  const [selectedQuantity, setSelectedQuantity] = useState<number>(1);
 
   useEffect(() => {
     fetchSalonId();
@@ -75,11 +85,8 @@ const PackagesPage = () => {
     if (!salonId) return;
     
     const { data, error } = await supabase
-      .from('service_packages')
-      .select(`
-        *,
-        service:services(name, price)
-      `)
+      .from('service_packages_with_items')
+      .select('*')
       .eq('salon_id', salonId)
       .order('created_at', { ascending: false });
 
@@ -102,53 +109,125 @@ const PackagesPage = () => {
     setServices(data || []);
   };
 
-  const calculatePackagePrice = () => {
-    const service = services.find(s => s.id === formData.service_id);
-    if (!service) return 0;
+  const addItemToPackage = () => {
+    if (!selectedService) return;
     
-    const totalPrice = service.price * formData.quantity;
-    const discount = totalPrice * (formData.discount_percent / 100);
-    return totalPrice - discount;
+    const service = services.find(s => s.id === selectedService);
+    if (!service) return;
+
+    setFormData({
+      ...formData,
+      items: [
+        ...formData.items,
+        {
+          service_id: selectedService,
+          quantity: selectedQuantity,
+          service_name: service.name,
+          service_price: service.price
+        }
+      ]
+    });
+
+    setSelectedService('');
+    setSelectedQuantity(1);
+  };
+
+  const removeItemFromPackage = (service_id: string) => {
+    setFormData({
+      ...formData,
+      items: formData.items.filter(item => item.service_id !== service_id)
+    });
+  };
+
+  const calculateOriginalPrice = () => {
+    return formData.items.reduce((total, item) => {
+      return total + ((item.service_price || 0) * item.quantity);
+    }, 0);
+  };
+
+  const calculateFinalPrice = () => {
+    const originalPrice = calculateOriginalPrice();
+    const discount = originalPrice * (formData.discount_percent / 100);
+    return originalPrice - discount;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!salonId || !formData.service_id) return;
+    if (!salonId || formData.items.length === 0) {
+      toast.error("Adicione pelo menos um serviço ao pacote");
+      return;
+    }
 
-    const packagePrice = calculatePackagePrice();
+    const finalPrice = calculateFinalPrice();
 
     try {
       if (editingPackage) {
-        const { error } = await supabase
+        // Atualizar pacote
+        const { data: pkgData, error: pkgError } = await supabase
           .from('service_packages')
           .update({
             name: formData.name,
             description: formData.description || null,
-            service_id: formData.service_id,
-            quantity: formData.quantity,
-            price: packagePrice,
+            price: finalPrice,
             discount_percent: formData.discount_percent,
             validity_days: formData.validity_days
           })
-          .eq('id', editingPackage.id);
+          .eq('id', editingPackage.id)
+          .select()
+          .single();
 
-        if (error) throw error;
+        if (pkgError) throw pkgError;
+
+        // Remover itens antigos
+        await supabase
+          .from('service_package_items')
+          .delete()
+          .eq('package_id', editingPackage.id);
+
+        // Adicionar novos itens
+        const itemsToAdd = formData.items.map(item => ({
+          package_id: pkgData.id,
+          service_id: item.service_id,
+          quantity: item.quantity
+        }));
+
+        const { error: itemsError } = await supabase
+          .from('service_package_items')
+          .insert(itemsToAdd);
+
+        if (itemsError) throw itemsError;
+
         toast.success("Pacote atualizado!");
       } else {
-        const { error } = await supabase
+        // Criar novo pacote
+        const { data: pkgData, error: pkgError } = await supabase
           .from('service_packages')
           .insert({
             salon_id: salonId,
             name: formData.name,
             description: formData.description || null,
-            service_id: formData.service_id,
-            quantity: formData.quantity,
-            price: packagePrice,
+            price: finalPrice,
             discount_percent: formData.discount_percent,
             validity_days: formData.validity_days
-          });
+          })
+          .select()
+          .single();
 
-        if (error) throw error;
+        if (pkgError) throw pkgError;
+
+        // Adicionar itens
+        const itemsToAdd = formData.items.map(item => ({
+          package_id: pkgData.id,
+          service_id: item.service_id,
+          quantity: item.quantity
+        }));
+
+        const { error: itemsError } = await supabase
+          .from('service_package_items')
+          .insert(itemsToAdd);
+
+        if (itemsError) throw itemsError;
+
         toast.success("Pacote criado!");
       }
 
@@ -161,13 +240,31 @@ const PackagesPage = () => {
     }
   };
 
-  const handleEdit = (pkg: ServicePackage) => {
+  const handleEdit = async (pkg: ServicePackage) => {
+    // Buscar itens do pacote
+    const { data: items, error } = await supabase
+      .from('service_package_items')
+      .select('service_id, quantity, services(name, price)')
+      .eq('package_id', pkg.id);
+
+    if (error) {
+      console.error("Error fetching package items:", error);
+      toast.error("Erro ao carregar pacote");
+      return;
+    }
+
+    const packageItems: PackageItem[] = items.map(item => ({
+      service_id: item.service_id,
+      quantity: item.quantity,
+      service_name: (item.services as any)?.name,
+      service_price: (item.services as any)?.price
+    }));
+
     setEditingPackage(pkg);
     setFormData({
       name: pkg.name,
       description: pkg.description || '',
-      service_id: pkg.service_id,
-      quantity: pkg.quantity,
+      items: packageItems,
       discount_percent: pkg.discount_percent,
       validity_days: pkg.validity_days
     });
@@ -197,11 +294,12 @@ const PackagesPage = () => {
     setFormData({
       name: '',
       description: '',
-      service_id: '',
-      quantity: 5,
+      items: [],
       discount_percent: 10,
       validity_days: 365
     });
+    setSelectedService('');
+    setSelectedQuantity(1);
   };
 
   if (loading) {
@@ -224,7 +322,7 @@ const PackagesPage = () => {
               Pacotes de Serviços
             </h1>
             <p className="text-muted-foreground">
-              Crie pacotes promocionais para fidelizar clientes
+              Crie pacotes promocionais com múltiplos serviços (combos)
             </p>
           </div>
           
@@ -238,7 +336,7 @@ const PackagesPage = () => {
                 Novo Pacote
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-md">
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>
                   {editingPackage ? 'Editar Pacote' : 'Novo Pacote'}
@@ -250,7 +348,7 @@ const PackagesPage = () => {
                   <Input
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="Ex: 5 Cortes com Desconto"
+                    placeholder="Ex:Combo: 5 Cortes + 5 Barbas"
                     required
                   />
                 </div>
@@ -264,37 +362,86 @@ const PackagesPage = () => {
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label>Serviço</Label>
-                  <Select
-                    value={formData.service_id}
-                    onValueChange={(value) => setFormData({ ...formData, service_id: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione um serviço" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {services.map((service) => (
-                        <SelectItem key={service.id} value={service.id}>
-                          {service.name} - R$ {service.price.toFixed(2)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                {/* Adicionar Serviços */}
+                <div className="space-y-4 p-4 rounded-lg bg-muted/50 border">
+                  <Label className="text-base font-semibold">Adicionar Serviços</Label>
+                  
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label>Serviço</Label>
+                      <Select
+                        value={selectedService}
+                        onValueChange={setSelectedService}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {services.map((service) => (
+                            <SelectItem key={service.id} value={service.id}>
+                              {service.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Quantidade</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        value={selectedQuantity}
+                        onChange={(e) => setSelectedQuantity(parseInt(e.target.value) || 1)}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>&nbsp;</Label>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={addItemToPackage}
+                        disabled={!selectedService}
+                        className="w-full"
+                      >
+                        <Plus size={16} />
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Lista de Serviços do Pacote */}
+                  {formData.items.length > 0 && (
+                    <div className="space-y-2 mt-4">
+                      <Label>Serviços no Pacote</Label>
+                      <div className="space-y-2">
+                        {formData.items.map((item) => (
+                          <div key={item.service_id} className="flex items-center justify-between p-3 rounded-lg bg-background border">
+                            <div className="flex-1">
+                              <p className="font-medium">{item.service_name}</p>
+                              <p className="text-sm text-muted-foreground">
+                                R$ {(item.service_price || 0).toFixed(2)} x {item.quantity}
+                              </p>
+                            </div>
+                            <p className="font-bold text-primary mr-4">
+                              R$ {((item.service_price || 0) * item.quantity).toFixed(2)}
+                            </p>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => removeItemFromPackage(item.service_id)}
+                            >
+                              <X size={16} className="text-destructive" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Quantidade</Label>
-                    <Input
-                      type="number"
-                      min={2}
-                      value={formData.quantity}
-                      onChange={(e) => setFormData({ ...formData, quantity: parseInt(e.target.value) })}
-                      required
-                    />
-                  </div>
-
                   <div className="space-y-2">
                     <Label>Desconto (%)</Label>
                     <Input
@@ -306,28 +453,42 @@ const PackagesPage = () => {
                       required
                     />
                   </div>
+
+                  <div className="space-y-2">
+                    <Label>Validade (dias)</Label>
+                    <Input
+                      type="number"
+                      min={30}
+                      value={formData.validity_days}
+                      onChange={(e) => setFormData({ ...formData, validity_days: parseInt(e.target.value) })}
+                      required
+                    />
+                  </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label>Validade (dias)</Label>
-                  <Input
-                    type="number"
-                    min={30}
-                    value={formData.validity_days}
-                    onChange={(e) => setFormData({ ...formData, validity_days: parseInt(e.target.value) })}
-                    required
-                  />
-                </div>
-
-                {formData.service_id && (
-                  <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
-                    <p className="text-sm text-muted-foreground mb-1">Preço final do pacote:</p>
-                    <p className="text-2xl font-bold text-primary">
-                      R$ {calculatePackagePrice().toFixed(2)}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {formData.quantity}x {services.find(s => s.id === formData.service_id)?.name}
-                    </p>
+                {/* Resumo do Preço */}
+                {formData.items.length > 0 && (
+                  <div className="p-4 rounded-lg bg-primary/10 border border-primary/20 space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Preço original:</span>
+                      <span className="line-through">R$ {calculateOriginalPrice().toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Desconto ({formData.discount_percent}%):</span>
+                      <span className="text-destructive">-R$ {(calculateOriginalPrice() * formData.discount_percent / 100).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Total de serviços:</span>
+                      <span>{formData.items.reduce((sum, item) => sum + item.quantity, 0)} sessões</span>
+                    </div>
+                    <div className="border-t pt-2 mt-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium">Preço final:</span>
+                        <span className="text-2xl font-bold text-primary">
+                          R$ {calculateFinalPrice().toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 )}
 
@@ -335,7 +496,12 @@ const PackagesPage = () => {
                   <Button type="button" variant="outline" className="flex-1" onClick={() => setIsDialogOpen(false)}>
                     Cancelar
                   </Button>
-                  <Button type="submit" variant="gold" className="flex-1">
+                  <Button 
+                    type="submit" 
+                    variant="gold" 
+                    className="flex-1"
+                    disabled={formData.items.length === 0}
+                  >
                     {editingPackage ? 'Salvar' : 'Criar Pacote'}
                   </Button>
                 </div>
@@ -351,13 +517,13 @@ const PackagesPage = () => {
               <Package size={48} className="text-muted-foreground mb-4" />
               <p className="text-muted-foreground mb-2">Nenhum pacote criado</p>
               <p className="text-sm text-muted-foreground">
-                Crie pacotes para oferecer descontos em múltiplos serviços
+                Crie combos com múltiplos serviços para oferecer descontos
               </p>
             </CardContent>
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {packages.map((pkg) => (
+            {packages.map((pkg: any) => (
               <Card key={pkg.id} className="glass-card">
                 <CardContent className="p-6">
                   <div className="flex items-start justify-between mb-4">
@@ -374,14 +540,27 @@ const PackagesPage = () => {
                     </div>
                   </div>
 
-                  <h3 className="font-display text-lg font-bold text-foreground mb-1">
+                  <h3 className="font-display text-lg font-bold text-foreground mb-2">
                     {pkg.name}
                   </h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    {pkg.quantity}x {pkg.service?.name}
-                  </p>
 
-                  <div className="flex items-center justify-between">
+                  {/* Lista de Serviços */}
+                  {Array.isArray(pkg.items) && pkg.items.length > 0 && (
+                    <div className="space-y-1 mb-4">
+                      {pkg.items.map((item: any, idx: number) => (
+                        <div key={idx} className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground">
+                            {item.service_name}
+                          </span>
+                          <span className="text-xs bg-primary/10 px-2 py-1 rounded">
+                            {item.quantity}x
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between pt-4 border-t">
                     <div>
                       <p className="text-2xl font-bold text-primary">
                         R$ {pkg.price.toFixed(2)}
