@@ -476,17 +476,48 @@ const SuperAdmin = () => {
         try {
             const newTrialEnd = new Date();
             newTrialEnd.setDate(newTrialEnd.getDate() + trialDays);
-            await supabase.from("subscriptions").upsert({
-                salon_id: selectedSalon.id,
-                status: "trial",
-                is_trial: true,
-                trial_end_date: newTrialEnd.toISOString()
-            }, { onConflict: "salon_id" });
+
+            // Primeiro, tentar atualizar a assinatura existente
+            const { error: updateError } = await supabase
+                .from("subscriptions")
+                .update({
+                    status: "trial",
+                    is_trial: true,
+                    trial_end_date: newTrialEnd.toISOString(),
+                    updated_at: new Date().toISOString()
+                })
+                .eq("salon_id", selectedSalon.id);
+
+            // Se não houver assinatura existente, criar uma nova
+            if (updateError?.message.includes('does not exist')) {
+                const { error: insertError } = await supabase
+                    .from("subscriptions")
+                    .insert({
+                        salon_id: selectedSalon.id,
+                        status: "trial",
+                        is_trial: true,
+                        trial_end_date: newTrialEnd.toISOString(),
+                        plan_name: "SysHair Trial Extension",
+                        amount: 0,
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                    });
+
+                if (insertError) throw insertError;
+            } else if (updateError) {
+                throw updateError;
+            }
+
             toast({ title: "Trial estendido", description: `+${trialDays} dias para ${selectedSalon.name}` });
             setShowExtendTrialDialog(false);
             await loadData();
-        } catch (error) {
-            toast({ title: "Erro", description: "Falha ao estender trial.", variant: "destructive" });
+        } catch (error: any) {
+            console.error("Error extending trial:", error);
+            toast({
+                title: "Erro",
+                description: error.message || "Falha ao estender trial.",
+                variant: "destructive"
+            });
         } finally {
             setActionLoading(false);
         }

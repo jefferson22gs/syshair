@@ -59,7 +59,8 @@ import {
     AlertTriangle,
     RefreshCw,
     Calendar,
-    Building2
+    Building2,
+    Clock
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -150,27 +151,32 @@ export const SellersManagement = () => {
         setRefreshing(true);
         try {
             // Carregar vendedores
-            const { data: sellersData } = await supabase
+            const { data: sellersData, error: sellersError } = await supabase
                 .from("sellers")
                 .select("*")
                 .order("name", { ascending: true });
 
-            if (sellersData) {
+            if (sellersError) {
+                console.error("Error loading sellers:", sellersError);
+                // Não exibir erro para não quebrar a UX se as tabelas não existirem ou não tiver permissão
+            } else if (sellersData) {
                 setSellers(sellersData);
             }
 
             // Carregar estatísticas
-            const { data: statsData } = await supabase
+            const { data: statsData, error: statsError } = await supabase
                 .from("seller_stats")
                 .select("*")
                 .order("seller_name", { ascending: true });
 
-            if (statsData) {
+            if (statsError) {
+                console.error("Error loading seller stats:", statsError);
+            } else if (statsData) {
                 setSellerStats(statsData);
             }
 
             // Carregar comissões pendentes
-            const { data: commissionsData } = await supabase
+            const { data: commissionsData, error: commissionsError } = await supabase
                 .from("seller_commissions")
                 .select(`
                     *,
@@ -180,7 +186,9 @@ export const SellersManagement = () => {
                 .order("created_at", { ascending: false })
                 .limit(100);
 
-            if (commissionsData) {
+            if (commissionsError) {
+                console.error("Error loading commissions:", commissionsError);
+            } else if (commissionsData) {
                 const enrichedCommissions = commissionsData.map((c: any) => ({
                     ...c,
                     salon_name: c.salons?.name || "Salão não encontrado"
@@ -192,7 +200,7 @@ export const SellersManagement = () => {
             console.error("Error loading sellers data:", error);
             toast({
                 title: "Erro ao carregar dados",
-                description: "Não foi possível carregar os dados dos vendedores.",
+                description: "Não foi possível carregar os dados dos vendedores. Verifique as permissões.",
                 variant: "destructive",
             });
         } finally {
