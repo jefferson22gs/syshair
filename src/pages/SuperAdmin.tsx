@@ -477,21 +477,44 @@ const SuperAdmin = () => {
             const newTrialEnd = new Date();
             newTrialEnd.setDate(newTrialEnd.getDate() + trialDays);
 
-            // Atualizar ou inserir a assinatura com os dados corretos
-            const { data, error } = await supabase
+            // Verificar se já existe uma assinatura para este salão
+            const { data: existingSub } = await supabase
                 .from("subscriptions")
-                .upsert({
-                    salon_id: selectedSalon.id,
-                    status: "trial",
-                    is_trial: true,
-                    trial_end_date: newTrialEnd.toISOString(),
-                    plan_name: "SysHair Trial Extension",
-                    amount: 0,
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                }, { onConflict: ['salon_id'] });
+                .select("id")
+                .eq("salon_id", selectedSalon.id)
+                .single();
 
-            if (error) throw error;
+            let result;
+            if (existingSub) {
+                // Atualizar a assinatura existente
+                result = await supabase
+                    .from("subscriptions")
+                    .update({
+                        status: "trial",
+                        is_trial: true,
+                        trial_end_date: newTrialEnd.toISOString(),
+                        plan_name: "SysHair Trial Extension",
+                        amount: 0,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq("salon_id", selectedSalon.id);
+            } else {
+                // Criar uma nova assinatura
+                result = await supabase
+                    .from("subscriptions")
+                    .insert({
+                        salon_id: selectedSalon.id,
+                        status: "trial",
+                        is_trial: true,
+                        trial_end_date: newTrialEnd.toISOString(),
+                        plan_name: "SysHair Trial Extension",
+                        amount: 0,
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                    });
+            }
+
+            if (result.error) throw result.error;
 
             toast({ title: "Trial estendido", description: `+${trialDays} dias para ${selectedSalon.name}` });
             setShowExtendTrialDialog(false);
