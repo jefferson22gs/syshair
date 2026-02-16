@@ -319,11 +319,21 @@ const BroadcastMessages = () => {
                 }
             });
 
-            console.log("Resposta da função:", response);
+            console.log("Resposta da função (raw):", response);
 
             if (response.error) {
-                console.error("Erro na função:", response.error);
-                throw new Error(response.error.message);
+                console.error("Erro na função (response.error):", response.error);
+                throw new Error(response.error.message || 'Erro desconhecido na função');
+            }
+
+            if (!response.data) {
+                console.error("Nenhum dado retornado pela função");
+                throw new Error("Nenhuma resposta recebida do servidor");
+            }
+
+            if (response.data.error) {
+                console.error("Erro retornado pela função:", response.data.error);
+                throw new Error(response.data.error);
             }
 
             if (response.data?.success) {
@@ -343,12 +353,26 @@ const BroadcastMessages = () => {
                     loadBroadcasts();
                     loadTodayStats();
                 }, 2000);
+            } else {
+                console.error("Resposta inesperada:", response.data);
+                throw new Error("Resposta inesperada do servidor");
             }
         } catch (error: any) {
             console.error("Error sending broadcast:", error);
+            let errorMsg = error.message || "Erro desconhecido";
+
+            // Verificar se é um erro de rede ou conexão
+            if (error.message.includes("fetch") || error.message.includes("network")) {
+                errorMsg = "Falha na conexão com o servidor. Verifique sua internet.";
+            } else if (error.message.includes("404")) {
+                errorMsg = "Função de disparo não encontrada. Contate o suporte.";
+            } else if (error.message.includes("500")) {
+                errorMsg = "Erro interno do servidor. Tente novamente mais tarde.";
+            }
+
             toast({
                 title: "Erro ao enviar",
-                description: error.message || "Erro desconhecido. Veja o console para detalhes.",
+                description: errorMsg,
                 variant: "destructive",
             });
         } finally {
