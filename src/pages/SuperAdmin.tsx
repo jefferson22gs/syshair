@@ -499,8 +499,18 @@ const SuperAdmin = () => {
             // Atualizar os dados localmente
             await loadData();
 
-            // Forçar atualização do hook de subscription em todos os clientes afetados
-            // Enviar notificação ou atualizar o cache se possível
+            // Enviar notificação para forçar atualização no cliente
+            try {
+                await supabase.functions.invoke("force-subscription-refresh", {
+                    body: {
+                        salon_id: selectedSalon.id,
+                        new_trial_end: newTrialEnd.toISOString()
+                    }
+                });
+            } catch (invokeError) {
+                console.log("Function invocation failed, which is expected if not implemented:", invokeError);
+                // Se a função não existir, apenas continuar
+            }
         } catch (error: any) {
             console.error("Error extending trial:", error);
             toast({
