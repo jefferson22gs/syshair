@@ -72,6 +72,7 @@ export const AISettingsManagement = () => {
     { value: "grok", name: "xAI Grok", description: "Grok models" },
     { value: "zai", name: "Z.ai", description: "Zhipu AI models" },
     { value: "glm", name: "GLM", description: "Zhipu GLM models" },
+    { value: "claude", name: "Claude (Anthropic)", description: "Claude 3.5 Sonnet, Opus, etc." },
   ];
 
   useEffect(() => {
