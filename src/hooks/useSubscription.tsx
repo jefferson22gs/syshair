@@ -19,6 +19,8 @@ export interface SubscriptionData {
     planName: string;
     planType: PlanType;
     createdAt: Date;
+    aiApiKey?: string;
+    aiProvider?: string;
 }
 
 interface SubscriptionContextType {

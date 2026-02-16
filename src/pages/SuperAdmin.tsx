@@ -41,7 +41,8 @@ import {
     AlertOctagon,
     Megaphone,
     Percent,
-    Store
+    Store,
+    Brain
 } from "lucide-react";
 import {
     Table,
@@ -88,6 +89,7 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { SellersManagement } from "@/components/admin/SellersManagement";
+import { AISettingsManagement } from "@/components/admin/AISettingsManagement";
 
 // Email do Super Admin (você!)
 const SUPER_ADMIN_EMAILS = [
@@ -787,7 +789,7 @@ const SuperAdmin = () => {
                 {/* Tabs */}
                 <Tabs defaultValue="salons" className="w-full">
                     <div className="flex items-center justify-between mb-6">
-                        <TabsList className="grid w-96 grid-cols-2">
+                        <TabsList className="grid w-full max-w-md grid-cols-3">
                             <TabsTrigger value="salons" className="flex items-center gap-2">
                                 <Building2 className="w-4 h-4" />
                                 Salões
@@ -795,6 +797,10 @@ const SuperAdmin = () => {
                             <TabsTrigger value="sellers" className="flex items-center gap-2">
                                 <Store className="w-4 h-4" />
                                 Vendedores
+                            </TabsTrigger>
+                            <TabsTrigger value="ai-settings" className="flex items-center gap-2">
+                                <Brain className="w-4 h-4" />
+                                IA
                             </TabsTrigger>
                         </TabsList>
 
@@ -1427,6 +1433,11 @@ const SuperAdmin = () => {
                     {/* Vendedores Tab (Nova Funcionalidade) */}
                     <TabsContent value="sellers">
                         <SellersManagement />
+                    </TabsContent>
+
+                    {/* Configurações de IA Tab */}
+                    <TabsContent value="ai-settings">
+                        <AISettingsManagement />
                     </TabsContent>
 
                 </Tabs>
