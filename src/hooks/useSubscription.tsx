@@ -124,16 +124,45 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
                 }
             }
 
-            // If not active and was trial/active, mark as expired
+            // Only update status if the database record is different from the actual state
             let finalStatus = status;
             if (!isActive && (status === 'trial' || status === 'active')) {
                 finalStatus = 'expired';
 
-                // Update in database
-                await supabase
-                    .from('subscriptions')
-                    .update({ status: 'expired' })
-                    .eq('id', sub.id);
+                // Only update the database if the current status in the DB is different from expired
+                if (status !== 'expired') {
+                    // Check the current database status again to avoid race conditions
+                    const { data: currentSub, error } = await supabase
+                        .from('subscriptions')
+                        .select('status, trial_end_date, current_period_end')
+                        .eq('id', sub.id)
+                        .single();
+
+                    if (!error && currentSub) {
+                        const now = new Date();
+                        let currentSubIsActive = false;
+
+                        if (currentSub.status === 'trial' && currentSub.trial_end_date) {
+                            currentSubIsActive = new Date(currentSub.trial_end_date) > now;
+                        } else if (currentSub.status === 'active' && currentSub.current_period_end) {
+                            currentSubIsActive = new Date(currentSub.current_period_end) > now;
+                        }
+
+                        // Only update if the database still shows the sub is active when it shouldn't be
+                        if (!currentSubIsActive && currentSub.status !== 'expired') {
+                            await supabase
+                                .from('subscriptions')
+                                .update({ status: 'expired' })
+                                .eq('id', sub.id);
+
+                            // Update our local status to match the DB change
+                            finalStatus = 'expired';
+                        } else {
+                            // The database is already correct, use the current status
+                            finalStatus = currentSub.status as SubscriptionStatus;
+                        }
+                    }
+                }
             }
 
             // Get amount based on plan type

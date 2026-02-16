@@ -477,40 +477,30 @@ const SuperAdmin = () => {
             const newTrialEnd = new Date();
             newTrialEnd.setDate(newTrialEnd.getDate() + trialDays);
 
-            // Primeiro, tentar atualizar a assinatura existente
-            const { error: updateError } = await supabase
+            // Atualizar ou inserir a assinatura com os dados corretos
+            const { data, error } = await supabase
                 .from("subscriptions")
-                .update({
+                .upsert({
+                    salon_id: selectedSalon.id,
                     status: "trial",
                     is_trial: true,
                     trial_end_date: newTrialEnd.toISOString(),
+                    plan_name: "SysHair Trial Extension",
+                    amount: 0,
+                    created_at: new Date().toISOString(),
                     updated_at: new Date().toISOString()
-                })
-                .eq("salon_id", selectedSalon.id);
+                }, { onConflict: ['salon_id'] });
 
-            // Se não houver assinatura existente, criar uma nova
-            if (updateError?.message.includes('does not exist')) {
-                const { error: insertError } = await supabase
-                    .from("subscriptions")
-                    .insert({
-                        salon_id: selectedSalon.id,
-                        status: "trial",
-                        is_trial: true,
-                        trial_end_date: newTrialEnd.toISOString(),
-                        plan_name: "SysHair Trial Extension",
-                        amount: 0,
-                        created_at: new Date().toISOString(),
-                        updated_at: new Date().toISOString()
-                    });
-
-                if (insertError) throw insertError;
-            } else if (updateError) {
-                throw updateError;
-            }
+            if (error) throw error;
 
             toast({ title: "Trial estendido", description: `+${trialDays} dias para ${selectedSalon.name}` });
             setShowExtendTrialDialog(false);
+
+            // Atualizar os dados localmente
             await loadData();
+
+            // Forçar atualização do hook de subscription em todos os clientes afetados
+            // Enviar notificação ou atualizar o cache se possível
         } catch (error: any) {
             console.error("Error extending trial:", error);
             toast({
