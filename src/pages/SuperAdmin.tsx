@@ -1043,7 +1043,7 @@ const SuperAdmin = () => {
                         </div>
                     </CardContent>
                 </Card>
-            </main>
+            </TabsContent>
 
             {/* Salon Details Modal */}
             <Dialog open={showSalonDetails} onOpenChange={setShowSalonDetails}>
