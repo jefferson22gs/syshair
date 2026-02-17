@@ -653,6 +653,19 @@ const PublicSalon = () => {
     }
   };
 
+  const handleBirthdayChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value.replace(/\D/g, '');
+    if (value.length > 8) value = value.slice(0, 8);
+
+    if (value.length >= 5) {
+      value = `${value.slice(0, 2)}/${value.slice(2, 4)}/${value.slice(4)}`;
+    } else if (value.length >= 3) {
+      value = `${value.slice(0, 2)}/${value.slice(2)}`;
+    }
+
+    setClientBirthday(value);
+  };
+
   const handleConfirmBooking = async () => {
     if (cartServices.length === 0 || !selectedDate || !selectedTime || !clientName.trim() || !clientPhone.trim() || !clientBirthday || !salon) {
       toast.error("Preencha todos os campos obrigatórios");
@@ -687,7 +700,7 @@ const PublicSalon = () => {
       // Build notes with birthday and services
       const notesArray: string[] = [];
       if (clientBirthday) {
-        notesArray.push(`Aniversário: ${clientBirthday.split('-').reverse().join('/')}`);
+        notesArray.push(`Aniversário: ${clientBirthday}`);
       }
       if (additionalServices.length > 0) {
         notesArray.push(`Serviços: ${servicesNotes}`);
@@ -756,7 +769,7 @@ const PublicSalon = () => {
               salon_id: salon.id,
               name: clientName.trim(),
               phone: clientPhone.trim(),
-              notes: clientBirthday ? `Aniversário: ${clientBirthday.split('-').reverse().join('/')}` : null,
+              notes: clientBirthday ? `Aniversário: ${clientBirthday}` : null,
               total_visits: 1,
               total_spent: finalPrice,
               loyalty_points: pointsEarned,
@@ -1489,10 +1502,11 @@ const PublicSalon = () => {
                 <div>
                   <Label>Data de nascimento (Opcional)</Label>
                   <Input
-                    type="date"
+                    type="tel"
+                    placeholder="DD/MM/AAAA"
                     value={clientBirthday}
-                    onChange={(e) => setClientBirthday(e.target.value)}
-                    max={new Date().toISOString().split('T')[0]}
+                    onChange={handleBirthdayChange}
+                    maxLength={10}
                   />
                   <p className="text-xs text-muted-foreground">
                     🎂 No seu aniversário você pode ganhar um presente especial!
