@@ -19,7 +19,7 @@ const RATE_LIMITS = {
     batchSize: 20, // 20 mensagens por lote
     batchPause: 600000, // 10 minutos entre lotes
     maxPerHour: 60,
-    maxPerDay: 500,
+    maxPerDay: 5000,
     maxConsecutiveFailures: 50, // AUMENTADO de 5 para 50 - não parar tão rápido
 };
 
@@ -220,7 +220,7 @@ async function processMessages(
     for (let i = 0; i < recipients.length; i++) {
         try {
             const phone = recipients[i].replace(/\D/g, "");
-            
+
             if (!phone || phone.length < 10 || phone.length > 15) {
                 console.log(`[SKIPPING] Invalid phone: ${phone}`);
                 failed++;

@@ -21,7 +21,9 @@ import {
   RefreshCw,
   Upload,
   FileText,
-  Copy
+  Copy,
+  Sparkles
+} from "lucide-react";
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -56,7 +58,7 @@ interface Broadcast {
 interface BroadcastTemplate {
   id: string;
   name: string;
-  message: string;
+  content: string;
   created_at: string;
 }
 
@@ -89,7 +91,8 @@ export const BroadcastMessagesComponent = () => {
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
 
   // Estados de estatísticas
-  const [todayStats, setTodayStats] = useState({ sent: 0, limit: 500, remaining: 500 });
+  const [todayStats, setTodayStats] = useState({ sent: 0, limit: 5000, remaining: 5000 });
+  const [isImproving, setIsImproving] = useState(false);
 
   useEffect(() => {
     loadUserData();
@@ -228,8 +231,11 @@ export const BroadcastMessagesComponent = () => {
     const sent = data?.length || 0;
     setTodayStats({
       sent,
-      limit: 500,
-      remaining: Math.max(0, 500 - sent)
+      const limit = 5000;
+      setTodayStats({
+        sent,
+        limit,
+        remaining: Math.max(0, limit - sent)
     });
   };
 
@@ -294,7 +300,7 @@ export const BroadcastMessagesComponent = () => {
         .insert({
           salon_id: salonId,
           name: templateName,
-          message: message
+          content: message
         })
         .select()
         .single();
@@ -318,10 +324,44 @@ export const BroadcastMessagesComponent = () => {
     }
   };
 
+  const improveWithAI = async () => {
+    if (!message.trim() || !salonId) return;
+
+    setIsImproving(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-text-content', {
+        body: {
+          text: message,
+          instruction: "Melhore este texto para uma mensagem de transmissão whatsapp. Mantenha curto, persuasivo e use emojis. Mantenha a variável {nome}.",
+          salonId: salonId
+        }
+      });
+
+      if (error) throw error;
+
+      if (data?.text) {
+        setMessage(data.text);
+        toast({
+          title: "Texto melhorado!",
+          description: "A IA aprimorou sua mensagem.",
+        });
+      }
+    } catch (error: any) {
+      console.error("AI Error:", error);
+      toast({
+        title: "Erro na IA",
+        description: "Falha ao gerar texto.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsImproving(false);
+    }
+  };
+
   const loadTemplate = (templateId: string) => {
     const template = templates.find(t => t.id === templateId);
     if (template) {
-      setMessage(template.message);
+      setMessage(template.content);
       setSelectedTemplate(templateId);
       toast({
         title: "Template carregado",
@@ -598,11 +638,10 @@ export const BroadcastMessagesComponent = () => {
                   {filteredContacts.map((contact) => (
                     <div
                       key={contact.phone}
-                      className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
-                        contact.selected
+                      className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${contact.selected
                           ? 'bg-primary/20 border border-primary/30'
                           : 'bg-surface-1 hover:bg-surface-2'
-                      }`}
+                        }`}
                       onClick={() => toggleContact(contact.phone)}
                     >
                       <Checkbox
@@ -655,6 +694,19 @@ export const BroadcastMessagesComponent = () => {
                     <FileText size={16} />
                   </Button>
                 </div>
+              </div>
+
+              <div className="flex justify-end mb-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={improveWithAI}
+                  disabled={isImproving || !message.trim()}
+                  className="text-primary hover:bg-primary/10"
+                >
+                  {isImproving ? <Loader2 size={14} className="mr-2 animate-spin" /> : <Sparkles size={14} className="mr-2" />}
+                  Melhorar com IA
+                </Button>
               </div>
 
               <Textarea
