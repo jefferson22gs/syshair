@@ -167,13 +167,13 @@ serve(async (req) => {
             console.log("No salon API Key found, checking global keys for:", chatbotSettings.ai_provider);
             const { data: globalKey } = await supabase
                 .from("ai_provider_keys")
-                .select("key_value")
+                .select("api_key")
                 .ilike("provider", chatbotSettings.ai_provider)
-                .eq("status", "active")
+                .eq("is_active", true)
                 .maybeSingle();
 
             if (globalKey) {
-                chatbotSettings.api_key = globalKey.key_value;
+                chatbotSettings.api_key = globalKey.api_key;
                 console.log("Using global API key for provider:", chatbotSettings.ai_provider);
             } else {
                 console.warn("No global API key found for provider:", chatbotSettings.ai_provider);
