@@ -162,6 +162,24 @@ serve(async (req) => {
 
         const chatbotSettings = settings as ChatbotSettings;
 
+        // Se não tiver API Key específica do salão, buscar a chave global do Super Admin
+        if (!chatbotSettings.api_key) {
+            console.log("No salon API Key found, checking global keys for:", chatbotSettings.ai_provider);
+            const { data: globalKey } = await supabase
+                .from("ai_provider_keys")
+                .select("key_value")
+                .ilike("provider", chatbotSettings.ai_provider)
+                .eq("status", "active")
+                .maybeSingle();
+
+            if (globalKey) {
+                chatbotSettings.api_key = globalKey.key_value;
+                console.log("Using global API key for provider:", chatbotSettings.ai_provider);
+            } else {
+                console.warn("No global API key found for provider:", chatbotSettings.ai_provider);
+            }
+        }
+
         // Verificar horário de funcionamento
         const now = new Date();
         const currentDay = now.getDay();
