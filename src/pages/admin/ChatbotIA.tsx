@@ -185,17 +185,35 @@ const ChatbotIA = () => {
             setSalonId(salon.id);
 
             // Buscar configurações do chatbot
-            const { data: chatbotSettings } = await supabase
+            const { data: chatbotSettings, error: chatbotError } = await supabase
                 .from('chatbot_settings')
                 .select('*')
                 .eq('salon_id', salon.id)
-                .single();
+                .maybeSingle();
+
+            if (chatbotError) {
+                console.error('Erro ao buscar chatbot_settings:', chatbotError);
+            }
 
             if (chatbotSettings) {
                 setSettings({
-                    ...DEFAULT_SETTINGS,
-                    ...chatbotSettings,
+                    id: chatbotSettings.id,
+                    enabled: chatbotSettings.enabled ?? false,
+                    ai_provider: (chatbotSettings.ai_provider as any) || 'openai',
+                    ai_model: chatbotSettings.ai_model || 'gpt-4o-mini',
                     api_key: chatbotSettings.api_key || '',
+                    bot_name: chatbotSettings.bot_name || 'Assistente',
+                    welcome_message: chatbotSettings.welcome_message || DEFAULT_SETTINGS.welcome_message,
+                    system_prompt: chatbotSettings.system_prompt || DEFAULT_SETTINGS.system_prompt,
+                    custom_instructions: chatbotSettings.custom_instructions || '',
+                    temperature: chatbotSettings.temperature ?? 0.7,
+                    max_tokens: chatbotSettings.max_tokens ?? 500,
+                    response_delay_ms: chatbotSettings.response_delay_ms ?? 1000,
+                    active_hours_start: chatbotSettings.active_hours_start || '08:00',
+                    active_hours_end: chatbotSettings.active_hours_end || '22:00',
+                    active_days: chatbotSettings.active_days || [1, 2, 3, 4, 5, 6],
+                    out_of_hours_message: chatbotSettings.out_of_hours_message || DEFAULT_SETTINGS.out_of_hours_message,
+                    fallback_message: chatbotSettings.fallback_message || DEFAULT_SETTINGS.fallback_message,
                 });
             }
 
@@ -246,24 +264,45 @@ const ChatbotIA = () => {
         setIsSaving(true);
 
         try {
+            // Remove id and created_at to avoid primary key conflicts on upsert
+            const { id: _id, ...settingsWithoutId } = settings as any;
+
+            const payload = {
+                salon_id: salonId,
+                enabled: settingsWithoutId.enabled,
+                ai_provider: settingsWithoutId.ai_provider,
+                ai_model: settingsWithoutId.ai_model,
+                api_key: settingsWithoutId.api_key,
+                bot_name: settingsWithoutId.bot_name,
+                welcome_message: settingsWithoutId.welcome_message,
+                system_prompt: settingsWithoutId.system_prompt,
+                custom_instructions: settingsWithoutId.custom_instructions,
+                temperature: settingsWithoutId.temperature,
+                max_tokens: settingsWithoutId.max_tokens,
+                response_delay_ms: settingsWithoutId.response_delay_ms,
+                active_hours_start: settingsWithoutId.active_hours_start,
+                active_hours_end: settingsWithoutId.active_hours_end,
+                active_days: settingsWithoutId.active_days,
+                out_of_hours_message: settingsWithoutId.out_of_hours_message,
+                fallback_message: settingsWithoutId.fallback_message,
+                updated_at: new Date().toISOString(),
+            };
+
             const { error } = await supabase
                 .from('chatbot_settings')
-                .upsert({
-                    salon_id: salonId,
-                    ...settings,
-                    updated_at: new Date().toISOString(),
-                }, { onConflict: 'salon_id' });
+                .upsert(payload, { onConflict: 'salon_id' });
 
             if (error) throw error;
 
             toast({
                 title: "Configurações salvas!",
-                description: "As configurações do chatbot foram atualizadas.",
+                description: "As configurações do chatbot foram atualizadas com sucesso.",
             });
         } catch (error: any) {
+            console.error('Erro ao salvar configurações do chatbot:', error);
             toast({
                 title: "Erro ao salvar",
-                description: error.message,
+                description: error.message || "Erro desconhecido ao salvar configurações",
                 variant: "destructive",
             });
         } finally {

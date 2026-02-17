@@ -38,3 +38,12 @@ enable_signup = false
 
 [functions.generate-image-caption]
 verify_jwt = false
+
+[functions.whatsapp-instances]
+verify_jwt = false
+
+[functions.evolution-webhook]
+verify_jwt = false
+
+[functions.broadcast-messages]
+verify_jwt = false

@@ -34,10 +34,30 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
-// Configuração da Evolution API
-const EVOLUTION_API_URL = 'https://api.tubaraoemprestimo.com.br';
-const EVOLUTION_API_KEY = 'B8959800-F546-407C-99E8-C40306E747F5';
-const SUPABASE_WEBHOOK_URL = 'https://jfjbpjnnfnuiezchhust.supabase.co/functions/v1/evolution-webhook';
+// Configuração da API
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://jfjbpjnnfnuiezchhust.supabase.co';
+const SUPABASE_WEBHOOK_URL = import.meta.env.VITE_SUPABASE_WEBHOOK_URL || 'https://jfjbpjnnfnuiezchhust.supabase.co/functions/v1/evolution-webhook';
+const WHATSAPP_INSTANCES_URL = `${SUPABASE_URL}/functions/v1/whatsapp-instances`;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmamJwam5uZm51aWV6Y2hodXN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY1OTI5MTksImV4cCI6MjA4MjE2ODkxOX0.hBIcT4HOxX04qs1Rl6wcPD57kWrmBEyokqgeMV601o0';
+
+// Helper function to call the WhatsApp Instances Edge Function
+const callWhatsAppAPI = async (action: string, params: Record<string, any> = {}) => {
+    const response = await fetch(WHATSAPP_INSTANCES_URL, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({ action, ...params }),
+    });
+
+    if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || error.message || 'Erro na API');
+    }
+
+    return response.json();
+};
 
 interface WhatsAppInstance {
     id?: string;
@@ -104,11 +124,15 @@ const WhatsAppConnection = () => {
             setInstanceName(`syshair_${safeName}_${salon.id.substring(0, 8)}`);
 
             // Buscar instância existente
-            const { data: instanceData } = await supabase
+            const { data: instanceData, error: instanceError } = await supabase
                 .from('whatsapp_instances')
                 .select('*')
                 .eq('salon_id', salon.id)
-                .single();
+                .maybeSingle();
+
+            if (instanceError) {
+                console.error('Erro ao buscar whatsapp_instances:', instanceError);
+            }
 
             if (instanceData) {
                 setInstance(instanceData as WhatsAppInstance);
@@ -124,24 +148,18 @@ const WhatsAppConnection = () => {
     };
 
     const checkInstanceStatus = async (name?: string) => {
-        const instanceName = name || instance?.instance_name;
-        if (!instanceName) return;
+        const instName = name || instance?.instance_name;
+        if (!instName) return;
 
         try {
-            const response = await fetch(`${EVOLUTION_API_URL}/instance/connectionState/${instanceName}`, {
-                headers: {
-                    'apikey': EVOLUTION_API_KEY,
-                },
-            });
+            const result = await callWhatsAppAPI('status', { instanceName: instName });
 
-            if (response.ok) {
-                const data = await response.json();
-                const state = data.instance?.state || 'close';
-
+            if (result.success) {
+                const state = result.state || 'close';
                 let newStatus: WhatsAppInstance['status'] = 'disconnected';
-                if (state === 'open') newStatus = 'connected';
-                else if (state === 'connecting') newStatus = 'connecting';
-                else if (state === 'close') newStatus = 'disconnected';
+                if (state === 'open' || state === 'CONNECTED' || state === 'connected') newStatus = 'connected';
+                else if (state === 'connecting' || state === 'PAIRING') newStatus = 'connecting';
+                else if (state === 'close' || state === 'DISCONNECTED') newStatus = 'disconnected';
 
                 // Atualizar no banco se mudou
                 if (instance && instance.status !== newStatus) {
@@ -154,8 +172,13 @@ const WhatsAppConnection = () => {
                 }
 
                 // Se conectado, buscar número
-                if (newStatus === 'connected') {
-                    await fetchConnectedNumber(instanceName);
+                if (newStatus === 'connected' && result.phoneNumber) {
+                    await supabase
+                        .from('whatsapp_instances')
+                        .update({ phone_number: result.phoneNumber })
+                        .eq('id', instance.id);
+
+                    setInstance(prev => prev ? { ...prev, phone_number: result.phoneNumber } : null);
                 }
             }
         } catch (error) {
@@ -163,17 +186,16 @@ const WhatsAppConnection = () => {
         }
     };
 
-    const fetchConnectedNumber = async (instanceName: string) => {
+    const fetchConnectedNumber = async (instName: string) => {
         try {
-            const response = await fetch(`${EVOLUTION_API_URL}/instance/fetchInstances?instanceName=${instanceName}`, {
-                headers: {
-                    'apikey': EVOLUTION_API_KEY,
-                },
-            });
+            const result = await callWhatsAppAPI('fetch', { instanceName: instName });
 
-            if (response.ok) {
-                const data = await response.json();
-                const phoneNumber = data[0]?.instance?.owner?.split('@')[0];
+            if (result.success && result.instance) {
+                let phoneNumber = null;
+                const owner = result.instance.owner;
+                if (owner) {
+                    phoneNumber = owner.split('@')[0];
+                }
 
                 if (phoneNumber && instance) {
                     await supabase
@@ -194,72 +216,39 @@ const WhatsAppConnection = () => {
         setIsCreating(true);
 
         try {
-            // Criar instância na Evolution API com webhook já configurado
-            const response = await fetch(`${EVOLUTION_API_URL}/instance/create`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'apikey': EVOLUTION_API_KEY,
-                },
-                body: JSON.stringify({
-                    instanceName: instanceName,
-                    integration: 'WHATSAPP-BAILEYS',
-                    qrcode: true,
-                    // Webhook automaticamente configurado para nossa Edge Function
-                    webhook: {
-                        enabled: true,
-                        url: SUPABASE_WEBHOOK_URL,
-                        webhookByEvents: true,
-                        events: [
-                            'MESSAGES_UPSERT',
-                            'MESSAGES_UPDATE',
-                            'CONNECTION_UPDATE',
-                            'QRCODE_UPDATED',
-                        ],
-                    },
-                    // Configurações extras para melhor integração
-                    chatwoot: { enabled: false },
-                    rabbitmq: { enabled: false },
-                    sqs: { enabled: false },
-                }),
+            // Usar a Edge Function para criar instância
+            const result = await callWhatsAppAPI('create', {
+                salonId: salonId,
+                instanceName: instanceName,
+                webhookUrl: SUPABASE_WEBHOOK_URL,
             });
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Erro ao criar instância');
+            if (!result.success) {
+                throw new Error(result.error || 'Erro ao criar instância');
             }
 
-            const data = await response.json();
+            console.log('Instância criada com sucesso:', result);
 
-            // Configurar webhook novamente via endpoint separado (garantia)
-            await configureWebhook(instanceName);
-
-            // Salvar no banco
-            const newInstance: Omit<WhatsAppInstance, 'id'> = {
-                salon_id: salonId,
-                instance_name: instanceName,
-                instance_token: data.hash,
-                status: 'disconnected',
-                webhook_url: SUPABASE_WEBHOOK_URL,
-            };
-
-            const { data: savedInstance, error } = await supabase
+            // Buscar instância salva no banco
+            const { data: instanceData } = await supabase
                 .from('whatsapp_instances')
-                .insert(newInstance)
-                .select()
+                .select('*')
+                .eq('salon_id', salonId)
                 .single();
 
-            if (error) throw error;
+            if (instanceData) {
+                setInstance(instanceData as WhatsAppInstance);
+            }
 
-            setInstance(savedInstance as WhatsAppInstance);
             setShowCreateModal(false);
 
             toast({
                 title: "Instância criada!",
-                description: "Webhook configurado automaticamente. Agora você pode conectar seu WhatsApp.",
+                description: "Webhook configurado automaticamente. Agora clique em 'Conectar' para gerar o QR Code.",
             });
 
         } catch (error: any) {
+            console.error('Erro ao criar instância:', error);
             toast({
                 title: "Erro ao criar instância",
                 description: error.message,
@@ -270,70 +259,69 @@ const WhatsAppConnection = () => {
         }
     };
 
-    // Função para configurar/atualizar webhook de uma instância
-    const configureWebhook = async (instanceNameParam: string) => {
-        try {
-            const response = await fetch(`${EVOLUTION_API_URL}/webhook/set/${instanceNameParam}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'apikey': EVOLUTION_API_KEY,
-                },
-                body: JSON.stringify({
-                    enabled: true,
-                    url: SUPABASE_WEBHOOK_URL,
-                    webhookByEvents: true,
-                    events: [
-                        'MESSAGES_UPSERT',
-                        'MESSAGES_UPDATE',
-                        'CONNECTION_UPDATE',
-                        'QRCODE_UPDATED',
-                    ],
-                }),
-            });
-
-            if (!response.ok) {
-                console.warn('Aviso: Não foi possível configurar webhook via endpoint separado');
-            } else {
-                console.log('Webhook configurado com sucesso para:', instanceNameParam);
-            }
-        } catch (error) {
-            console.warn('Erro ao configurar webhook:', error);
-        }
-    };
-
     const connectInstance = async () => {
         if (!instance) return;
         setIsConnecting(true);
         setQrCode(null);
 
         try {
-            const response = await fetch(`${EVOLUTION_API_URL}/instance/connect/${instance.instance_name}`, {
-                headers: {
-                    'apikey': EVOLUTION_API_KEY,
-                },
+            // Usar a Edge Function para conectar
+            const result = await callWhatsAppAPI('connect', {
+                instanceName: instance.instance_name,
             });
 
-            if (!response.ok) {
-                throw new Error('Erro ao gerar QR Code');
-            }
+            console.log('Connect response:', result);
 
-            const data = await response.json();
+            if (result.success) {
+                const qrCodeData = result.qrcode;
+                const pairingCode = result.pairingCode;
 
-            if (data.base64) {
-                setQrCode(data.base64);
-                setInstance(prev => prev ? { ...prev, status: 'qrcode' } : null);
+                if (qrCodeData) {
+                    setQrCode(qrCodeData);
+                    setInstance(prev => prev ? { ...prev, status: 'qrcode' } : null);
 
-                await supabase
-                    .from('whatsapp_instances')
-                    .update({ status: 'qrcode', qrcode: data.base64 })
-                    .eq('id', instance.id);
+                    await supabase
+                        .from('whatsapp_instances')
+                        .update({ status: 'qrcode', qrcode: qrCodeData })
+                        .eq('id', instance.id);
+
+                    toast({
+                        title: "QR Code gerado!",
+                        description: "Escaneie o QR Code com seu WhatsApp para conectar.",
+                    });
+                } else if (result.status === 'connected') {
+                    setInstance(prev => prev ? { ...prev, status: 'connected' } : null);
+                    await supabase
+                        .from('whatsapp_instances')
+                        .update({ status: 'connected' })
+                        .eq('id', instance.id);
+
+                    toast({
+                        title: "Já conectado!",
+                        description: "O WhatsApp já está conectado.",
+                    });
+                } else {
+                    // Status connecting ou pairing
+                    setInstance(prev => prev ? { ...prev, status: 'connecting' } : null);
+                    await supabase
+                        .from('whatsapp_instances')
+                        .update({ status: 'connecting' })
+                        .eq('id', instance.id);
+
+                    toast({
+                        title: result.message || "Aguardando conexão...",
+                        description: pairingCode ? `Código de pareamento: ${pairingCode}` : "Escaneie o QR Code ou use o código de pareamento.",
+                    });
+                }
+            } else {
+                throw new Error(result.error || 'Erro ao conectar');
             }
 
         } catch (error: any) {
+            console.error('Erro ao conectar:', error);
             toast({
                 title: "Erro ao conectar",
-                description: error.message,
+                description: error.message || "Erro ao gerar QR Code",
                 variant: "destructive",
             });
         } finally {
@@ -346,30 +334,30 @@ const WhatsAppConnection = () => {
         setIsDisconnecting(true);
 
         try {
-            await fetch(`${EVOLUTION_API_URL}/instance/logout/${instance.instance_name}`, {
-                method: 'DELETE',
-                headers: {
-                    'apikey': EVOLUTION_API_KEY,
-                },
+            const result = await callWhatsAppAPI('disconnect', {
+                instanceName: instance.instance_name,
             });
 
-            await supabase
-                .from('whatsapp_instances')
-                .update({ status: 'disconnected', phone_number: null, qrcode: null })
-                .eq('id', instance.id);
+            if (result.success) {
+                await supabase
+                    .from('whatsapp_instances')
+                    .update({ status: 'disconnected', phone_number: null, qrcode: null })
+                    .eq('id', instance.id);
 
-            setInstance(prev => prev ? { ...prev, status: 'disconnected', phone_number: undefined } : null);
-            setQrCode(null);
+                setInstance(prev => prev ? { ...prev, status: 'disconnected', phone_number: undefined } : null);
+                setQrCode(null);
 
-            toast({
-                title: "Desconectado",
-                description: "WhatsApp foi desconectado com sucesso.",
-            });
-
+                toast({
+                    title: "Desconectado",
+                    description: "WhatsApp foi desconectado com sucesso.",
+                });
+            } else {
+                throw new Error(result.error || "Não foi possível desconectar o WhatsApp");
+            }
         } catch (error: any) {
             toast({
                 title: "Erro ao desconectar",
-                description: error.message,
+                description: error.message || "Erro ao desconectar o WhatsApp",
                 variant: "destructive",
             });
         } finally {
@@ -385,12 +373,8 @@ const WhatsAppConnection = () => {
         }
 
         try {
-            // Deletar na Evolution API
-            await fetch(`${EVOLUTION_API_URL}/instance/delete/${instance.instance_name}`, {
-                method: 'DELETE',
-                headers: {
-                    'apikey': EVOLUTION_API_KEY,
-                },
+            await callWhatsAppAPI('delete', {
+                instanceName: instance.instance_name,
             });
 
             // Deletar no banco

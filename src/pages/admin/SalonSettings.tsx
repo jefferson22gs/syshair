@@ -137,7 +137,6 @@ const SalonSettings = () => {
           logo_url: data.logo_url || "",
           slug: data.slug || "",
           description: data.description || "",
-          description: data.description || "",
           public_booking_enabled: data.public_booking_enabled ?? true,
           lunch_break_config: typeof data.lunch_break_config === 'object' ? data.lunch_break_config : defaultSalon.lunch_break_config,
           working_hours: data.working_hours || null
@@ -197,8 +196,6 @@ const SalonSettings = () => {
         public_booking_enabled: salon.public_booking_enabled,
         lunch_break_config: salon.lunch_break_config,
         working_hours: salon.working_hours,
-        // Sync legacy fields
-        working_days: Object.entries(salon.working_hours || {}).filter(([_, v]) => v.isOpen).map(([k]) => parseInt(k)),
         owner_id: user.id,
       };
 

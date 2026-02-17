@@ -1131,6 +1131,7 @@ export type Database = {
           is_active: boolean | null
           is_franchise: boolean | null
           logo_url: string | null
+          lunch_break_config: Json | null
           name: string
           opening_time: string | null
           owner_id: string
@@ -1142,6 +1143,7 @@ export type Database = {
           updated_at: string
           whatsapp: string | null
           working_days: number[] | null
+          working_hours: Json | null
           zip_code: string | null
         }
         Insert: {
@@ -1158,6 +1160,7 @@ export type Database = {
           is_active?: boolean | null
           is_franchise?: boolean | null
           logo_url?: string | null
+          lunch_break_config?: Json | null
           name: string
           opening_time?: string | null
           owner_id: string
@@ -1169,6 +1172,7 @@ export type Database = {
           updated_at?: string
           whatsapp?: string | null
           working_days?: number[] | null
+          working_hours?: Json | null
           zip_code?: string | null
         }
         Update: {
@@ -1185,6 +1189,7 @@ export type Database = {
           is_active?: boolean | null
           is_franchise?: boolean | null
           logo_url?: string | null
+          lunch_break_config?: Json | null
           name?: string
           opening_time?: string | null
           owner_id?: string
@@ -1196,6 +1201,7 @@ export type Database = {
           updated_at?: string
           whatsapp?: string | null
           working_days?: number[] | null
+          working_hours?: Json | null
           zip_code?: string | null
         }
         Relationships: [
@@ -1484,6 +1490,329 @@ export type Database = {
           },
         ]
       }
+      chatbot_settings: {
+        Row: {
+          id: string
+          salon_id: string
+          enabled: boolean | null
+          ai_provider: string | null
+          ai_model: string | null
+          api_key: string | null
+          bot_name: string | null
+          welcome_message: string | null
+          system_prompt: string | null
+          custom_instructions: string | null
+          temperature: number | null
+          max_tokens: number | null
+          response_delay_ms: number | null
+          active_hours_start: string | null
+          active_hours_end: string | null
+          active_days: number[] | null
+          out_of_hours_message: string | null
+          fallback_message: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          salon_id: string
+          enabled?: boolean | null
+          ai_provider?: string | null
+          ai_model?: string | null
+          api_key?: string | null
+          bot_name?: string | null
+          welcome_message?: string | null
+          system_prompt?: string | null
+          custom_instructions?: string | null
+          temperature?: number | null
+          max_tokens?: number | null
+          response_delay_ms?: number | null
+          active_hours_start?: string | null
+          active_hours_end?: string | null
+          active_days?: number[] | null
+          out_of_hours_message?: string | null
+          fallback_message?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          salon_id?: string
+          enabled?: boolean | null
+          ai_provider?: string | null
+          ai_model?: string | null
+          api_key?: string | null
+          bot_name?: string | null
+          welcome_message?: string | null
+          system_prompt?: string | null
+          custom_instructions?: string | null
+          temperature?: number | null
+          max_tokens?: number | null
+          response_delay_ms?: number | null
+          active_hours_start?: string | null
+          active_hours_end?: string | null
+          active_days?: number[] | null
+          out_of_hours_message?: string | null
+          fallback_message?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chatbot_settings_salon_id_fkey"
+            columns: ["salon_id"]
+            isOneToOne: true
+            referencedRelation: "salons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_instances: {
+        Row: {
+          id: string
+          salon_id: string
+          instance_name: string
+          instance_token: string | null
+          api_url: string | null
+          status: string | null
+          qrcode: string | null
+          phone_number: string | null
+          webhook_url: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          salon_id: string
+          instance_name: string
+          instance_token?: string | null
+          api_url?: string | null
+          status?: string | null
+          qrcode?: string | null
+          phone_number?: string | null
+          webhook_url?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          salon_id?: string
+          instance_name?: string
+          instance_token?: string | null
+          api_url?: string | null
+          status?: string | null
+          qrcode?: string | null
+          phone_number?: string | null
+          webhook_url?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_instances_salon_id_fkey"
+            columns: ["salon_id"]
+            isOneToOne: true
+            referencedRelation: "salons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chatbot_conversations: {
+        Row: {
+          id: string
+          salon_id: string
+          client_phone: string
+          client_name: string | null
+          client_id: string | null
+          message_type: string | null
+          direction: string
+          content: string
+          media_url: string | null
+          ai_response: boolean | null
+          ai_provider: string | null
+          ai_model: string | null
+          tokens_used: number | null
+          response_time_ms: number | null
+          status: string | null
+          error_message: string | null
+          whatsapp_message_id: string | null
+          metadata: Json | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          salon_id: string
+          client_phone: string
+          client_name?: string | null
+          client_id?: string | null
+          message_type?: string | null
+          direction: string
+          content: string
+          media_url?: string | null
+          ai_response?: boolean | null
+          ai_provider?: string | null
+          ai_model?: string | null
+          tokens_used?: number | null
+          response_time_ms?: number | null
+          status?: string | null
+          error_message?: string | null
+          whatsapp_message_id?: string | null
+          metadata?: Json | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          salon_id?: string
+          client_phone?: string
+          client_name?: string | null
+          client_id?: string | null
+          message_type?: string | null
+          direction?: string
+          content?: string
+          media_url?: string | null
+          ai_response?: boolean | null
+          ai_provider?: string | null
+          ai_model?: string | null
+          tokens_used?: number | null
+          response_time_ms?: number | null
+          status?: string | null
+          error_message?: string | null
+          whatsapp_message_id?: string | null
+          metadata?: Json | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chatbot_conversations_salon_id_fkey"
+            columns: ["salon_id"]
+            isOneToOne: false
+            referencedRelation: "salons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chatbot_conversations_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chatbot_knowledge_base: {
+        Row: {
+          id: string
+          salon_id: string
+          category: string | null
+          question: string
+          answer: string
+          keywords: string[] | null
+          enabled: boolean | null
+          priority: number | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          salon_id: string
+          category?: string | null
+          question: string
+          answer: string
+          keywords?: string[] | null
+          enabled?: boolean | null
+          priority?: number | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          salon_id?: string
+          category?: string | null
+          question?: string
+          answer?: string
+          keywords?: string[] | null
+          enabled?: boolean | null
+          priority?: number | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chatbot_knowledge_base_salon_id_fkey"
+            columns: ["salon_id"]
+            isOneToOne: false
+            referencedRelation: "salons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scheduled_posts: {
+        Row: {
+          id: string
+          salon_id: string
+          content_type: string
+          text_content: string | null
+          media_url: string | null
+          media_filename: string | null
+          scheduled_at: string
+          recurrence_type: string | null
+          recurrence_days: number[] | null
+          recurrence_end_date: string | null
+          status: string | null
+          posted_at: string | null
+          error_message: string | null
+          whatsapp_status_id: string | null
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          salon_id: string
+          content_type: string
+          text_content?: string | null
+          media_url?: string | null
+          media_filename?: string | null
+          scheduled_at: string
+          recurrence_type?: string | null
+          recurrence_days?: number[] | null
+          recurrence_end_date?: string | null
+          status?: string | null
+          posted_at?: string | null
+          error_message?: string | null
+          whatsapp_status_id?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          salon_id?: string
+          content_type?: string
+          text_content?: string | null
+          media_url?: string | null
+          media_filename?: string | null
+          scheduled_at?: string
+          recurrence_type?: string | null
+          recurrence_days?: number[] | null
+          recurrence_end_date?: string | null
+          status?: string | null
+          posted_at?: string | null
+          error_message?: string | null
+          whatsapp_status_id?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheduled_posts_salon_id_fkey"
+            columns: ["salon_id"]
+            isOneToOne: false
+            referencedRelation: "salons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -1515,11 +1844,11 @@ export type Database = {
     }
     Enums: {
       appointment_status:
-        | "pending"
-        | "confirmed"
-        | "completed"
-        | "cancelled"
-        | "no_show"
+      | "pending"
+      | "confirmed"
+      | "completed"
+      | "cancelled"
+      | "no_show"
       coupon_type: "percentage" | "fixed"
       user_role: "admin" | "professional" | "client"
     }
@@ -1535,116 +1864,116 @@ type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
-    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    | { schema: keyof DatabaseWithoutInternals },
+  | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+  | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+  ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+    DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+  : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+    DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
-    ? R
-    : never
+  ? R
+  : never
   : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])
-    ? (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
-        Row: infer R
-      }
-      ? R
-      : never
-    : never
+    DefaultSchema["Views"])
+  ? (DefaultSchema["Tables"] &
+    DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+      Row: infer R
+    }
+  ? R
+  : never
+  : never
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
+  | keyof DefaultSchema["Tables"]
+  | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+  ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+  : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Insert: infer I
-    }
-    ? I
-    : never
+    Insert: infer I
+  }
+  ? I
+  : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Insert: infer I
-      }
-      ? I
-      : never
-    : never
+  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+    Insert: infer I
+  }
+  ? I
+  : never
+  : never
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
+  | keyof DefaultSchema["Tables"]
+  | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+  ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+  : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Update: infer U
-    }
-    ? U
-    : never
+    Update: infer U
+  }
+  ? U
+  : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Update: infer U
-      }
-      ? U
-      : never
-    : never
+  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+    Update: infer U
+  }
+  ? U
+  : never
+  : never
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-    | keyof DefaultSchema["Enums"]
-    | { schema: keyof DatabaseWithoutInternals },
+  | keyof DefaultSchema["Enums"]
+  | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+  ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+  : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
-    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
-    : never
+  ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+  : never
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-    | keyof DefaultSchema["CompositeTypes"]
-    | { schema: keyof DatabaseWithoutInternals },
+  | keyof DefaultSchema["CompositeTypes"]
+  | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+  ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+  : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-    : never
+  ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+  : never
 
 export const Constants = {
   public: {

@@ -226,8 +226,8 @@ const PublicSalon = () => {
         logo_url: salonData.logo_url,
         public_booking_enabled: salonData.public_booking_enabled ?? true,
         slug: salonData.slug || '',
-        lunch_break_config: salonData.lunch_break_config,
-        working_hours: salonData.working_hours,
+        lunch_break_config: salonData.lunch_break_config as unknown as Salon['lunch_break_config'],
+        working_hours: salonData.working_hours as unknown as Salon['working_hours'],
       });
 
       // Fetch services
@@ -379,11 +379,11 @@ const PublicSalon = () => {
       if (salon.working_hours && salon.working_hours[dayOfWeek]) {
         const dailyConfig = salon.working_hours[dayOfWeek];
         if (dailyConfig.isOpen) {
-             isWorkingDay = true;
-             dayOpen = dailyConfig.start;
-             dayClose = dailyConfig.end;
+          isWorkingDay = true;
+          dayOpen = dailyConfig.start;
+          dayClose = dailyConfig.end;
         } else {
-             isWorkingDay = false;
+          isWorkingDay = false;
         }
       }
 
