@@ -10,6 +10,8 @@ import { toast } from "sonner";
 import { Send, MessageCircle, Bell, Users, Gift, Megaphone, Clock, CheckCircle, Loader2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Trash2, Plus, Save, Sparkles, Wand2 } from "lucide-react";
 
 interface Client {
     id: string;
@@ -36,6 +38,93 @@ const Marketing = () => {
     const [selectAll, setSelectAll] = useState(false);
     const [sendVia, setSendVia] = useState<{ whatsapp: boolean; push: boolean }>({ whatsapp: true, push: false });
 
+    // Templates & AI
+    const [dbTemplates, setDbTemplates] = useState<{ id: string; name: string; content: string }[]>([]);
+    const [showSaveTemplate, setShowSaveTemplate] = useState(false);
+    const [newTemplateName, setNewTemplateName] = useState("");
+    const [isImproving, setIsImproving] = useState(false);
+
+    useEffect(() => {
+        if (salon?.id) {
+            loadTemplates();
+        }
+    }, [salon?.id]);
+
+    const loadTemplates = async () => {
+        if (!salon?.id) return;
+        const { data } = await supabase
+            .from('broadcast_templates')
+            .select('*')
+            .eq('salon_id', salon.id)
+            .order('name');
+        if (data) setDbTemplates(data);
+    };
+
+    const handleSaveTemplate = async () => {
+        if (!newTemplateName.trim() || !message.trim() || !salon?.id) return;
+
+        try {
+            const { error } = await supabase
+                .from('broadcast_templates')
+                .insert({
+                    salon_id: salon.id,
+                    name: newTemplateName,
+                    content: message
+                });
+
+            if (error) throw error;
+
+            toast.success("Template salvo com sucesso!");
+            setShowSaveTemplate(false);
+            setNewTemplateName("");
+            loadTemplates();
+        } catch (error: any) {
+            toast.error("Erro ao salvar template: " + error.message);
+        }
+    };
+
+    const handleDeleteTemplate = async (id: string) => {
+        try {
+            const { error } = await supabase
+                .from('broadcast_templates')
+                .delete()
+                .eq('id', id);
+
+            if (error) throw error;
+            toast.success("Template removido");
+            loadTemplates();
+        } catch (error: any) {
+            toast.error("Erro ao remover template");
+        }
+    };
+
+    const improveWithAI = async () => {
+        if (!message.trim() || !salon?.id) return;
+
+        setIsImproving(true);
+        try {
+            const { data, error } = await supabase.functions.invoke('generate-text-content', {
+                body: {
+                    text: message,
+                    instruction: "Melhore este texto de marketing para ficar mais persuasivo, curto e com emojis. Mantenha a variável {nome}.",
+                    salonId: salon.id
+                }
+            });
+
+            if (error) throw error;
+
+            if (data?.text) {
+                setMessage(data.text);
+                toast.success("Texto melhorado com IA! ✨");
+            }
+        } catch (error: any) {
+            console.error("AI Error:", error);
+            toast.error("Erro ao gerar texto com IA. Verifique se há uma chave configurada.");
+        } finally {
+            setIsImproving(false);
+        }
+    };
+
     useEffect(() => {
         if (user) {
             fetchData();
@@ -59,7 +148,8 @@ const Marketing = () => {
                 .from('clients')
                 .select('id, name, phone, total_visits')
                 .eq('salon_id', salonData.id)
-                .order('name');
+                .order('name')
+                .limit(5000);
 
             if (clientsError) throw clientsError;
             setClients(clientsData || []);
@@ -358,6 +448,37 @@ const Marketing = () => {
                                         </div>
                                     </div>
 
+                                    {/* Meus Templates (Banco de Dados) */}
+                                    {dbTemplates.length > 0 && (
+                                        <div className="mt-4 pt-4 border-t border-border">
+                                            <Label className="text-sm text-muted-foreground mb-2 block">Meus Templates Salvos</Label>
+                                            <div className="flex flex-wrap gap-2">
+                                                {dbTemplates.map((template) => (
+                                                    <div key={template.id} className="flex items-center gap-1 bg-secondary/30 rounded-md pr-1">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-8 px-3 hover:bg-secondary/50"
+                                                            onClick={() => {
+                                                                setTitle(template.name);
+                                                                setMessage(template.content);
+                                                            }}
+                                                        >
+                                                            {template.name}
+                                                        </Button>
+                                                        <button
+                                                            onClick={() => handleDeleteTemplate(template.id)}
+                                                            className="p-1 hover:text-destructive transition-colors"
+                                                            title="Excluir template"
+                                                        >
+                                                            <Trash2 size={14} />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
                                     {/* Title */}
                                     <div className="space-y-2">
                                         <Label htmlFor="title">Título (opcional)</Label>
@@ -383,6 +504,57 @@ const Marketing = () => {
                                         <p className="text-xs text-muted-foreground">
                                             💡 Use <code className="bg-secondary px-1 rounded">{'{nome}'}</code> para personalizar com o nome do cliente
                                         </p>
+                                    </div>
+
+                                    {/* AI Tools & Save Template */}
+                                    <div className="flex gap-2 justify-end">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={improveWithAI}
+                                            disabled={isImproving || !message.trim()}
+                                            className="text-primary border-primary/20 hover:bg-primary/5"
+                                        >
+                                            {isImproving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Sparkles className="w-4 h-4 mr-2" />}
+                                            Melhorar com IA
+                                        </Button>
+
+                                        <Dialog open={showSaveTemplate} onOpenChange={setShowSaveTemplate}>
+                                            <DialogTrigger asChild>
+                                                <Button variant="outline" size="sm" disabled={!message.trim()}>
+                                                    <Save className="w-4 h-4 mr-2" />
+                                                    Salvar Template
+                                                </Button>
+                                            </DialogTrigger>
+                                            <DialogContent>
+                                                <DialogHeader>
+                                                    <DialogTitle>Salvar Template</DialogTitle>
+                                                    <DialogDescription>
+                                                        Dê um nome para este modelo de mensagem para usar depois.
+                                                    </DialogDescription>
+                                                </DialogHeader>
+                                                <div className="space-y-4 py-4">
+                                                    <div className="space-y-2">
+                                                        <Label>Nome do Template</Label>
+                                                        <Input
+                                                            value={newTemplateName}
+                                                            onChange={(e) => setNewTemplateName(e.target.value)}
+                                                            placeholder="Ex: Lembrete de Agendamento"
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label>Conteúdo</Label>
+                                                        <div className="p-3 bg-secondary/50 rounded-md text-sm text-muted-foreground whitespace-pre-wrap max-h-32 overflow-y-auto">
+                                                            {message}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <DialogFooter>
+                                                    <Button variant="ghost" onClick={() => setShowSaveTemplate(false)}>Cancelar</Button>
+                                                    <Button onClick={handleSaveTemplate} disabled={!newTemplateName.trim()}>Salvar</Button>
+                                                </DialogFooter>
+                                            </DialogContent>
+                                        </Dialog>
                                     </div>
 
                                     {/* Send Via */}
