@@ -15,10 +15,14 @@ const EVOLUTION_API_URL = Deno.env.get("EVOLUTION_API_URL") || "https://api.tuba
 const EVOLUTION_API_KEY = Deno.env.get("EVOLUTION_API_KEY") || "B8959800-F546-407C-99E8-C40306E747F5";
 
 interface InstanceRequest {
-    action: 'create' | 'connect' | 'disconnect' | 'delete' | 'status' | 'fetch';
+    action: 'create' | 'connect' | 'disconnect' | 'delete' | 'status' | 'fetch' | 'sendText' | 'sendBulk';
     salonId?: string;
     instanceName?: string;
     webhookUrl?: string;
+    phone?: string;
+    message?: string;
+    phones?: string[];
+    messages?: string[];
 }
 
 serve(async (req) => {
@@ -56,6 +60,12 @@ serve(async (req) => {
 
             case 'fetch':
                 return await fetchInstance(instanceName!);
+
+            case 'sendText':
+                return await sendTextMessage(instanceName!, body.phone!, body.message!);
+
+            case 'sendBulk':
+                return await sendBulkMessages(instanceName!, body.phones!, body.messages || [], body.message);
 
             default:
                 return new Response(
@@ -455,6 +465,140 @@ async function fetchInstance(instanceName: string) {
         JSON.stringify({
             success: true,
             instance: instanceData?.instance || instanceData
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+}
+
+async function sendTextMessage(instanceName: string, phone: string, message: string) {
+    if (!instanceName || !phone || !message) {
+        return new Response(
+            JSON.stringify({ error: "instanceName, phone, and message are required" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+    }
+
+    // Clean phone number - remove non-digits and ensure country code
+    let cleanPhone = phone.replace(/\D/g, '');
+    if (!cleanPhone.startsWith('55')) {
+        cleanPhone = '55' + cleanPhone;
+    }
+
+    console.log(`Sending message to ${cleanPhone} via instance ${instanceName}`);
+
+    try {
+        const response = await fetch(`${EVOLUTION_API_URL}/message/sendText/${instanceName}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'apikey': EVOLUTION_API_KEY,
+            },
+            body: JSON.stringify({
+                number: cleanPhone,
+                text: message,
+            }),
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Evolution API sendText error:', errorText);
+            return new Response(
+                JSON.stringify({ success: false, error: `Failed to send message: ${errorText}` }),
+                { status: response.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+        }
+
+        const data = await response.json();
+        console.log('Message sent successfully:', data);
+
+        return new Response(
+            JSON.stringify({
+                success: true,
+                message: "Mensagem enviada com sucesso",
+                data: data,
+            }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+    } catch (error) {
+        console.error('Error sending text message:', error);
+        return new Response(
+            JSON.stringify({ success: false, error: error.message }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+    }
+}
+
+async function sendBulkMessages(instanceName: string, phones: string[], messages: string[], defaultMessage?: string) {
+    if (!instanceName || !phones || phones.length === 0) {
+        return new Response(
+            JSON.stringify({ error: "instanceName and phones array are required" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+    }
+
+    console.log(`Sending bulk messages to ${phones.length} numbers via instance ${instanceName}`);
+
+    const results: { phone: string; success: boolean; error?: string }[] = [];
+    let successCount = 0;
+    let failCount = 0;
+
+    for (let i = 0; i < phones.length; i++) {
+        const phone = phones[i];
+        const messageText = messages[i] || defaultMessage || '';
+
+        if (!messageText) {
+            results.push({ phone, success: false, error: 'No message provided' });
+            failCount++;
+            continue;
+        }
+
+        // Clean phone number
+        let cleanPhone = phone.replace(/\D/g, '');
+        if (!cleanPhone.startsWith('55')) {
+            cleanPhone = '55' + cleanPhone;
+        }
+
+        try {
+            const response = await fetch(`${EVOLUTION_API_URL}/message/sendText/${instanceName}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': EVOLUTION_API_KEY,
+                },
+                body: JSON.stringify({
+                    number: cleanPhone,
+                    text: messageText,
+                }),
+            });
+
+            if (response.ok) {
+                results.push({ phone: cleanPhone, success: true });
+                successCount++;
+            } else {
+                const errorText = await response.text();
+                results.push({ phone: cleanPhone, success: false, error: errorText });
+                failCount++;
+            }
+        } catch (error) {
+            results.push({ phone: cleanPhone, success: false, error: error.message });
+            failCount++;
+        }
+
+        // Delay between messages to avoid rate limiting (1.5 seconds)
+        if (i < phones.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 1500));
+        }
+    }
+
+    console.log(`Bulk send complete: ${successCount} success, ${failCount} failed`);
+
+    return new Response(
+        JSON.stringify({
+            success: true,
+            sent: successCount,
+            failed: failCount,
+            total: phones.length,
+            results: results,
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

@@ -121,24 +121,93 @@ const Marketing = () => {
             const selectedClientData = clients.filter(c => selectedClients.includes(c.id));
 
             if (sendVia.whatsapp) {
-                // Open WhatsApp messages for each client (frontend-only solution)
-                for (const client of selectedClientData) {
-                    if (client.phone) {
-                        const phone = client.phone.replace(/\D/g, '');
-                        const personalizedMessage = message.replace('{nome}', client.name.split(' ')[0]);
-                        const whatsappUrl = `https://wa.me/55${phone}?text=${encodeURIComponent(personalizedMessage)}`;
+                // Try to send via Evolution API (connected WhatsApp instance)
+                try {
+                    // Get WhatsApp instance for this salon
+                    const { data: whatsappInstance } = await supabase
+                        .from('whatsapp_instances')
+                        .select('instance_name, status')
+                        .eq('salon_id', salon?.id)
+                        .eq('status', 'connected')
+                        .maybeSingle();
 
-                        // Open in new tab (user needs to send manually)
-                        window.open(whatsappUrl, '_blank');
+                    if (whatsappInstance) {
+                        // Send via Evolution API in bulk
+                        const phones: string[] = [];
+                        const personalizedMessages: string[] = [];
 
-                        // Small delay to avoid overwhelming the browser
-                        await new Promise(resolve => setTimeout(resolve, 500));
+                        for (const client of selectedClientData) {
+                            if (client.phone) {
+                                phones.push(client.phone);
+                                personalizedMessages.push(
+                                    message.replace('{nome}', client.name.split(' ')[0])
+                                );
+                            }
+                        }
+
+                        if (phones.length > 0) {
+                            const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+                            const SUPABASE_ANON_KEY_LOCAL = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+                            const session = (await supabase.auth.getSession()).data.session;
+                            const authToken = session?.access_token || SUPABASE_ANON_KEY_LOCAL;
+
+                            const response = await fetch(`${SUPABASE_URL}/functions/v1/whatsapp-instances`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${authToken}`,
+                                },
+                                body: JSON.stringify({
+                                    action: 'sendBulk',
+                                    instanceName: whatsappInstance.instance_name,
+                                    phones: phones,
+                                    messages: personalizedMessages,
+                                }),
+                            });
+
+                            const result = await response.json();
+
+                            if (result.success) {
+                                toast.success(
+                                    `✅ ${result.sent} mensagem(ns) enviada(s) com sucesso!`,
+                                    {
+                                        description: result.failed > 0
+                                            ? `${result.failed} falharam. Verifique se os números estão corretos.`
+                                            : 'Todas as mensagens foram entregues.',
+                                    }
+                                );
+                            } else {
+                                throw new Error(result.error || 'Erro ao enviar mensagens');
+                            }
+                        }
+                    } else {
+                        // Fallback: open wa.me links (limited by browser popup blocking)
+                        let openedCount = 0;
+                        for (const client of selectedClientData) {
+                            if (client.phone) {
+                                const phone = client.phone.replace(/\D/g, '');
+                                const personalizedMessage = message.replace('{nome}', client.name.split(' ')[0]);
+                                const whatsappUrl = `https://wa.me/55${phone}?text=${encodeURIComponent(personalizedMessage)}`;
+
+                                window.open(whatsappUrl, '_blank');
+                                openedCount++;
+
+                                await new Promise(resolve => setTimeout(resolve, 500));
+                            }
+                        }
+
+                        toast.info(
+                            `⚠️ WhatsApp não conectado na plataforma`,
+                            {
+                                description: `${openedCount} link(s) aberto(s) no navegador. Para envio automático, conecte seu WhatsApp na aba "WhatsApp".`,
+                            }
+                        );
                     }
+                } catch (whatsappError: any) {
+                    console.error('WhatsApp send error:', whatsappError);
+                    toast.error("Erro ao enviar via WhatsApp: " + (whatsappError.message || whatsappError));
                 }
-
-                toast.success(`${selectedClientData.length} conversas do WhatsApp abertas!`, {
-                    description: "Clique em 'Enviar' em cada aba para enviar a mensagem."
-                });
             }
 
             if (sendVia.push) {
