@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { usePWA } from "@/hooks/usePWA";
+import { useRealtimeNotifications } from "@/hooks/useRealtimeNotifications";
 import { NotificationBell } from "@/components/admin/NotificationCenter";
 import { ThemeSelector } from "@/components/admin/ThemeSelector";
 import { FloatingActionButton } from "@/components/mobile/FloatingActionButton";
@@ -87,13 +88,17 @@ const bottomNavItems = [
 export const AdminLayout = ({ children }: AdminLayoutProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [salonName, setSalonName] = useState<string>("");
+  const [salonId, setSalonId] = useState<string | null>(null);
   const { user, profile, signOut, isAdmin } = useAuth();
   const { isOnline } = usePWA();
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Notificações em tempo real
+  const { notifications, unreadCount, isConnected } = useRealtimeNotifications(salonId || undefined);
+
   useEffect(() => {
-    fetchSalonName();
+    fetchSalonData();
   }, [user]);
 
   // Close sidebar on route change (mobile)
@@ -101,17 +106,19 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
     setSidebarOpen(false);
   }, [location.pathname]);
 
-  const fetchSalonName = async () => {
+  const fetchSalonData = async () => {
     if (!user) return;
 
     const { data } = await supabase
       .from('salons')
-      .select('name')
+      .select('id, name')
       .eq('owner_id', user.id)
       .maybeSingle();
 
     if (data) {
       setSalonName(data.name);
+      setSalonId(data.id);
+      console.log('🔔 Salon ID carregado para notificações:', data.id);
     }
   };
 
@@ -254,6 +261,15 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
 
             <div className="flex items-center gap-2 sm:gap-3">
               <ThemeSelector />
+
+              {/* Indicador de Notificações em Tempo Real */}
+              {isConnected && (
+                <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-full bg-green-500/10 border border-green-500/20">
+                  <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                  <span className="text-xs text-green-600 font-medium">Tempo Real</span>
+                </div>
+              )}
+
               <NotificationBell />
               <div className="hidden sm:flex w-10 h-10 rounded-full bg-gradient-to-br from-primary to-gold-light items-center justify-center text-primary-foreground font-bold">
                 {displayName.charAt(0).toUpperCase()}
