@@ -76,7 +76,7 @@ const Appointments = () => {
 
       setSalonId(salon.id);
 
-      // Fetch appointments for selected date
+      // Fetch appointments for selected date and future dates
       const { data: appointmentsData, error } = await supabase
         .from('appointments')
         .select(`
@@ -85,8 +85,10 @@ const Appointments = () => {
           professionals:professional_id (name)
         `)
         .eq('salon_id', salon.id)
-        .eq('date', selectedDate)
-        .order('start_time');
+        .gte('date', selectedDate)
+        .order('date', { ascending: true })
+        .order('start_time', { ascending: true })
+        .limit(100);
 
       if (error) throw error;
       setAppointments(appointmentsData || []);

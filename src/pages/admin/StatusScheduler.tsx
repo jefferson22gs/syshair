@@ -220,6 +220,18 @@ const StatusScheduler = () => {
 
         setGeneratingCaption(true);
         try {
+            // Buscar API Key ativa do banco de dados
+            const { data: apiKeyData, error: apiKeyError } = await supabase
+                .from("ai_provider_keys")
+                .select("*")
+                .eq("provider", "gemini")
+                .eq("is_active", true)
+                .maybeSingle();
+
+            if (apiKeyError || !apiKeyData) {
+                throw new Error("Nenhuma chave de API Gemini ativa encontrada. Configure no Super Admin.");
+            }
+
             // Obter base64 da imagem
             let imageBase64 = formData.media_preview;
 
@@ -246,13 +258,13 @@ const StatusScheduler = () => {
             // Prompt especializado para salão de beleza
             const prompt = `
                 Atue como um Criador de Conteúdo para Redes Sociais de um Salão de Beleza/Barbearia.
-                
-                Sua tarefa: Analisar a imagem anexada e criar uma legenda PERFEITA 
+
+                Sua tarefa: Analisar a imagem anexada e criar uma legenda PERFEITA
                 para postar no Status do WhatsApp/Stories.
-                
+
                 1. Identifique o que acontece na imagem (Cenário, Texto, Pessoas, Emoção).
                 2. Crie uma frase curta, impactante e criativa sobre ESSE CONTEÚDO.
-                
+
                 Regras:
                 - SEJA NATURAL. Não pareça um robô.
                 - Use 2-4 Emojis que combinem com a foto (💇‍♀️✨💅💈).
@@ -260,14 +272,13 @@ const StatusScheduler = () => {
                 - Se for transformação/antes-depois, destaque o resultado.
                 - MÁXIMO 2 linhas.
                 - Tom inspirador e positivo.
-                
+
                 Retorne APENAS o texto da legenda, sem aspas ou explicações.
             `;
 
-            // Chamar Gemini API diretamente
-            const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "AIzaSyC1NOIGT7MLTpKoqJF6VqqkdJkt0e6Yci4";
+            // Chamar Gemini API com a chave do banco
             const response = await fetch(
-                `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+                `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKeyData.api_key}`,
                 {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
