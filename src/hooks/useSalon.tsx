@@ -209,15 +209,68 @@ export const useSalon = (salonId?: string) => {
     }
 
     // Fetch packages
-    const { data: packagesData } = await supabase
+    console.log('Fetching packages for salon:', id);
+
+    // Try to fetch from view first
+    let { data: packagesData, error: packagesError } = await supabase
       .from('service_packages_with_items')
       .select('*')
       .eq('salon_id', id)
       .eq('is_active', true)
       .order('name');
 
-    if (packagesData) {
+    // If view doesn't exist (404), fallback to direct table query
+    if (packagesError) {
+      console.warn('View service_packages_with_items not found, using fallback:', packagesError);
+
+      const { data: pkgData, error: pkgError } = await supabase
+        .from('service_packages')
+        .select('*')
+        .eq('salon_id', id)
+        .eq('is_active', true)
+        .order('name');
+
+      if (pkgError) {
+        console.error('Error fetching packages:', pkgError);
+      } else if (pkgData) {
+        console.log('Packages found (fallback):', pkgData.length);
+
+        // Fetch items for each package
+        const packagesWithItems = await Promise.all(
+          pkgData.map(async (pkg) => {
+            const { data: items } = await supabase
+              .from('service_package_items')
+              .select(`
+                id,
+                service_id,
+                quantity,
+                services:service_id (
+                  name,
+                  price
+                )
+              `)
+              .eq('package_id', pkg.id);
+
+            return {
+              ...pkg,
+              items: items?.map(item => ({
+                id: item.id,
+                service_id: item.service_id,
+                quantity: item.quantity,
+                service_name: (item.services as any)?.name || '',
+                service_price: (item.services as any)?.price || 0
+              })) || []
+            };
+          })
+        );
+
+        setPackages(packagesWithItems);
+      }
+    } else if (packagesData) {
+      console.log('Packages found (view):', packagesData.length);
       setPackages(packagesData);
+    } else {
+      console.log('No packages found');
     }
   };
 
