@@ -211,6 +211,11 @@ const BookingFlow = () => {
     }
   }, [selectedDate, primaryServiceId, selectedProfessional]);
 
+  // Debug: Log packages when they change
+  useEffect(() => {
+    console.log('📦 Packages loaded:', packages.length, packages);
+  }, [packages]);
+
   const fetchAvailableSlots = async () => {
     if (!selectedDate || !primaryServiceId) return;
 
