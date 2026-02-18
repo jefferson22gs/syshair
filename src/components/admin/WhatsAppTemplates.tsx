@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import {
     MessageSquare,
     Plus,
@@ -17,7 +18,9 @@ import {
     Calendar,
     Clock,
     Bell,
-    Gift
+    Gift,
+    Sparkles,
+    Loader2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -93,6 +96,7 @@ export function WhatsAppTemplates() {
     const [editingTemplate, setEditingTemplate] = useState<WhatsAppTemplate | null>(null);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [copiedId, setCopiedId] = useState<string | null>(null);
+    const [isImproving, setIsImproving] = useState(false);
     const [formData, setFormData] = useState({
         name: "",
         category: "confirmation" as WhatsAppTemplate["category"],
@@ -104,6 +108,38 @@ export function WhatsAppTemplates() {
         setCopiedId(template.id);
         toast.success("Template copiado!");
         setTimeout(() => setCopiedId(null), 2000);
+    };
+
+    const improveTemplateWithAI = async () => {
+        if (!formData.message.trim()) {
+            toast.error("Escreva uma mensagem primeiro");
+            return;
+        }
+
+        setIsImproving(true);
+        try {
+            const { data, error } = await supabase.functions.invoke('generate-text-content', {
+                body: {
+                    text: formData.message,
+                    instruction: `Melhore este template de mensagem WhatsApp para ${categoryLabels[formData.category]}.
+Mantenha as variáveis {{}} intactas. Use emojis apropriados. Seja profissional mas amigável.
+Mantenha o texto conciso e direto.`,
+                    salonId: null
+                }
+            });
+
+            if (error) throw error;
+
+            if (data?.text) {
+                setFormData({ ...formData, message: data.text });
+                toast.success("Template melhorado com IA!");
+            }
+        } catch (error: any) {
+            console.error("AI Error:", error);
+            toast.error("Erro ao melhorar template. Verifique se a IA está configurada no Super Admin.");
+        } finally {
+            setIsImproving(false);
+        }
     };
 
     const handleSave = () => {
@@ -221,7 +257,23 @@ export function WhatsAppTemplates() {
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <Label>Mensagem</Label>
+                                <div className="flex items-center justify-between">
+                                    <Label>Mensagem</Label>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={improveTemplateWithAI}
+                                        disabled={!formData.message.trim() || isImproving}
+                                    >
+                                        {isImproving ? (
+                                            <Loader2 size={14} className="mr-2 animate-spin" />
+                                        ) : (
+                                            <Sparkles size={14} className="mr-2" />
+                                        )}
+                                        Melhorar com IA
+                                    </Button>
+                                </div>
                                 <Textarea
                                     value={formData.message}
                                     onChange={(e) => setFormData({ ...formData, message: e.target.value })}
