@@ -59,11 +59,29 @@ export interface Product {
   category: string | null;
 }
 
+export interface ServicePackage {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number;
+  discount_percent: number;
+  validity_days: number;
+  is_active: boolean;
+  items?: {
+    id: string;
+    service_id: string;
+    quantity: number;
+    service_name: string;
+    service_price: number;
+  }[];
+}
+
 export const useSalon = (salonId?: string) => {
   const [salon, setSalon] = useState<Salon | null>(null);
   const [services, setServices] = useState<Service[]>([]);
   const [professionals, setProfessionals] = useState<Professional[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [packages, setPackages] = useState<ServicePackage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -188,6 +206,71 @@ export const useSalon = (salonId?: string) => {
 
     if (productsData) {
       setProducts(productsData);
+    }
+
+    // Fetch packages
+    console.log('Fetching packages for salon:', id);
+
+    // Try to fetch from view first
+    let { data: packagesData, error: packagesError } = await supabase
+      .from('service_packages_with_items')
+      .select('*')
+      .eq('salon_id', id)
+      .eq('is_active', true)
+      .order('name');
+
+    // If view doesn't exist (404), fallback to direct table query
+    if (packagesError) {
+      console.warn('View service_packages_with_items not found, using fallback:', packagesError);
+
+      const { data: pkgData, error: pkgError } = await supabase
+        .from('service_packages')
+        .select('*')
+        .eq('salon_id', id)
+        .eq('is_active', true)
+        .order('name');
+
+      if (pkgError) {
+        console.error('Error fetching packages:', pkgError);
+      } else if (pkgData) {
+        console.log('Packages found (fallback):', pkgData.length);
+
+        // Fetch items for each package
+        const packagesWithItems = await Promise.all(
+          pkgData.map(async (pkg) => {
+            const { data: items } = await supabase
+              .from('service_package_items')
+              .select(`
+                id,
+                service_id,
+                quantity,
+                services:service_id (
+                  name,
+                  price
+                )
+              `)
+              .eq('package_id', pkg.id);
+
+            return {
+              ...pkg,
+              items: items?.map(item => ({
+                id: item.id,
+                service_id: item.service_id,
+                quantity: item.quantity,
+                service_name: (item.services as any)?.name || '',
+                service_price: (item.services as any)?.price || 0
+              })) || []
+            };
+          })
+        );
+
+        setPackages(packagesWithItems);
+      }
+    } else if (packagesData) {
+      console.log('Packages found (view):', packagesData.length);
+      setPackages(packagesData);
+    } else {
+      console.log('No packages found');
     }
   };
 
@@ -441,6 +524,7 @@ export const useSalon = (salonId?: string) => {
     services,
     professionals,
     products,
+    packages,
     loading,
     error,
     validateCoupon,

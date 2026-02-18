@@ -348,7 +348,17 @@ export const BroadcastMessagesComponent = () => {
 
     setIsImproving(true);
     try {
+      // Get current session token
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) {
+        throw new Error("Você precisa estar autenticado para usar a IA");
+      }
+
       const { data, error } = await supabase.functions.invoke('generate-text-content', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
         body: {
           text: message,
           instruction: "Melhore este texto para uma mensagem de transmissão whatsapp. Mantenha curto, persuasivo e use emojis. Mantenha a variável {nome}.",
@@ -364,12 +374,14 @@ export const BroadcastMessagesComponent = () => {
           title: "Texto melhorado!",
           description: "A IA aprimorou sua mensagem.",
         });
+      } else {
+        throw new Error("Nenhum texto foi gerado pela IA");
       }
     } catch (error: any) {
       console.error("AI Error:", error);
       toast({
         title: "Erro na IA",
-        description: "Falha ao gerar texto.",
+        description: error.message || "Falha ao gerar texto. Verifique se a IA está configurada no Super Admin.",
         variant: "destructive"
       });
     } finally {
@@ -379,12 +391,18 @@ export const BroadcastMessagesComponent = () => {
 
   const loadTemplate = (templateId: string) => {
     const template = templates.find(t => t.id === templateId);
-    if (template) {
+    if (template && template.content) {
       setMessage(template.content);
       setSelectedTemplate(templateId);
       toast({
         title: "Template carregado",
         description: "Mensagem do template carregada.",
+      });
+    } else {
+      toast({
+        title: "Erro ao carregar template",
+        description: "Template não encontrado ou sem conteúdo.",
+        variant: "destructive",
       });
     }
   };

@@ -118,7 +118,17 @@ export function WhatsAppTemplates() {
 
         setIsImproving(true);
         try {
+            // Get current session token
+            const { data: { session } } = await supabase.auth.getSession();
+
+            if (!session) {
+                throw new Error("Você precisa estar autenticado para usar a IA");
+            }
+
             const { data, error } = await supabase.functions.invoke('generate-text-content', {
+                headers: {
+                    Authorization: `Bearer ${session.access_token}`,
+                },
                 body: {
                     text: formData.message,
                     instruction: `Melhore este template de mensagem WhatsApp para ${categoryLabels[formData.category]}.
@@ -133,10 +143,12 @@ Mantenha o texto conciso e direto.`,
             if (data?.text) {
                 setFormData({ ...formData, message: data.text });
                 toast.success("Template melhorado com IA!");
+            } else {
+                throw new Error("Nenhum texto foi gerado pela IA");
             }
         } catch (error: any) {
             console.error("AI Error:", error);
-            toast.error("Erro ao melhorar template. Verifique se a IA está configurada no Super Admin.");
+            toast.error(error.message || "Erro ao melhorar template. Verifique se a IA está configurada no Super Admin.");
         } finally {
             setIsImproving(false);
         }
