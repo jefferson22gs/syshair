@@ -583,86 +583,87 @@ const BookingFlow = () => {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                  {/* Cart Summary */}
-                  {selectedServices.length > 0 && (
-                    <div className="p-4 rounded-xl bg-primary/10 border border-primary/20">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-medium text-foreground">
-                          {selectedServices.reduce((t, i) => t + i.quantity, 0)} serviço(s) selecionado(s)
-                        </span>
-                        <span className="font-bold text-primary">R$ {servicesTotal.toFixed(2)}</span>
+                    {/* Cart Summary */}
+                    {selectedServices.length > 0 && (
+                      <div className="p-4 rounded-xl bg-primary/10 border border-primary/20">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-medium text-foreground">
+                            {selectedServices.reduce((t, i) => t + i.quantity, 0)} serviço(s) selecionado(s)
+                          </span>
+                          <span className="font-bold text-primary">R$ {servicesTotal.toFixed(2)}</span>
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Duração total: {totalDuration} minutos
+                        </div>
                       </div>
-                      <div className="text-xs text-muted-foreground">
-                        Duração total: {totalDuration} minutos
-                      </div>
-                    </div>
-                  )}
-                  
-                  <div className="grid gap-3">
-                    {services.map((service) => {
-                      const quantityInCart = getServiceQuantityInCart(service.id);
-                      
-                      return (
-                        <div
-                          key={service.id}
-                          className={`
-                            relative flex items-center gap-4 p-4 rounded-xl border-2 transition-all
-                            ${quantityInCart > 0
-                              ? 'border-primary bg-primary/5' 
-                              : 'border-border hover:border-primary/50'
-                            }
-                          `}
-                        >
-                          <span className="text-2xl">{service.icon || '✂️'}</span>
-                          <div className="flex-1">
-                            <p className="font-medium text-foreground">{service.name}</p>
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <Clock size={14} />
-                              {service.duration_minutes}min
+                    )}
+
+                    <div className="grid gap-3">
+                      {services.map((service) => {
+                        const quantityInCart = getServiceQuantityInCart(service.id);
+
+                        return (
+                          <div
+                            key={service.id}
+                            className={`
+                              relative flex items-center gap-4 p-4 rounded-xl border-2 transition-all
+                              ${quantityInCart > 0
+                                ? 'border-primary bg-primary/5'
+                                : 'border-border hover:border-primary/50'
+                              }
+                            `}
+                          >
+                            <span className="text-2xl">{service.icon || '✂️'}</span>
+                            <div className="flex-1">
+                              <p className="font-medium text-foreground">{service.name}</p>
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <Clock size={14} />
+                                {service.duration_minutes}min
+                              </div>
+                            </div>
+                            <p className="text-lg font-bold text-foreground">
+                              R$ {service.price.toFixed(2)}
+                            </p>
+
+                            {/* Quantity Controls */}
+                            <div className="flex items-center gap-2">
+                              {quantityInCart > 0 ? (
+                                <>
+                                  <Button
+                                    variant="outline"
+                                    size="icon"
+                                    className="h-8 w-8"
+                                    onClick={() => updateServiceQuantity(service.id, quantityInCart - 1)}
+                                  >
+                                    <Minus size={14} />
+                                  </Button>
+                                  <span className="w-6 text-center font-medium">{quantityInCart}</span>
+                                  <Button
+                                    variant="outline"
+                                    size="icon"
+                                    className="h-8 w-8"
+                                    onClick={() => updateServiceQuantity(service.id, quantityInCart + 1)}
+                                  >
+                                    <Plus size={14} />
+                                  </Button>
+                                </>
+                              ) : (
+                                <Button
+                                  variant="gold"
+                                  size="sm"
+                                  onClick={() => addServiceToCart(service)}
+                                >
+                                  <Plus size={14} className="mr-1" />
+                                  Adicionar
+                                </Button>
+                              )}
                             </div>
                           </div>
-                          <p className="text-lg font-bold text-foreground">
-                            R$ {service.price.toFixed(2)}
-                          </p>
-                          
-                          {/* Quantity Controls */}
-                          <div className="flex items-center gap-2">
-                            {quantityInCart > 0 ? (
-                              <>
-                                <Button
-                                  variant="outline"
-                                  size="icon"
-                                  className="h-8 w-8"
-                                  onClick={() => updateServiceQuantity(service.id, quantityInCart - 1)}
-                                >
-                                  <Minus size={14} />
-                                </Button>
-                                <span className="w-6 text-center font-medium">{quantityInCart}</span>
-                                <Button
-                                  variant="outline"
-                                  size="icon"
-                                  className="h-8 w-8"
-                                  onClick={() => updateServiceQuantity(service.id, quantityInCart + 1)}
-                                >
-                                  <Plus size={14} />
-                                </Button>
-                              </>
-                            ) : (
-                              <Button
-                                variant="gold"
-                                size="sm"
-                                onClick={() => addServiceToCart(service)}
-                              >
-                                <Plus size={14} className="mr-1" />
-                                Adicionar
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
+                )
               )}
 
               {/* Packages Tab */}
