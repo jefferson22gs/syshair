@@ -205,6 +205,13 @@ const PublicSalon = () => {
     }
   }, [slug]);
 
+  // Auto-selecionar "any" quando entrar no step 2 sem profissional selecionado
+  useEffect(() => {
+    if (step === 2 && !selectedProfessional && hasBookableItems) {
+      setSelectedProfessional("any");
+    }
+  }, [step]);
+
   const fetchSalonBySlug = async () => {
     try {
       const { data: salonData, error: salonError } = await supabase
@@ -379,19 +386,23 @@ const PublicSalon = () => {
 
   const cartServices = cart.filter(c => c.type === 'service');
   const cartProducts = cart.filter(c => c.type === 'product');
+  const cartPackages = cart.filter(c => c.type === 'package');
   const cartTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const cartServicesDuration = cartServices.reduce((sum, item) => sum + (item.duration_minutes || 0), 0);
+
+  // Pacotes também precisam de agendamento
+  const hasBookableItems = cartServices.length > 0 || cartPackages.length > 0;
 
   const selectedProfessionalData = professionals.find(p => p.id === selectedProfessional);
 
   useEffect(() => {
-    if (selectedDate && cartServices.length > 0 && salon) {
+    if (selectedDate && hasBookableItems && salon) {
       fetchAvailableSlots();
     }
   }, [selectedDate, cartServices.length, selectedProfessional]);
 
   const fetchAvailableSlots = async () => {
-    if (!selectedDate || cartServices.length === 0 || !salon) return;
+    if (!selectedDate || !hasBookableItems || !salon) return;
 
     setLoadingSlots(true);
     setSelectedTime("");
@@ -696,7 +707,7 @@ const PublicSalon = () => {
   };
 
   const handleConfirmBooking = async () => {
-    if (cartServices.length === 0 || !selectedDate || !selectedTime || !clientName.trim() || !clientPhone.trim() || !clientBirthday || !salon) {
+    if (!hasBookableItems || !selectedDate || !selectedTime || !clientName.trim() || !clientPhone.trim() || !clientBirthday || !salon) {
       toast.error("Preencha todos os campos obrigatórios");
       return;
     }
@@ -1750,8 +1761,8 @@ const PublicSalon = () => {
               <Button
                 onClick={() => setStep(step + 1)}
                 disabled={
-                  (step === 1 && cartServices.length === 0) ||
-                  (step === 2 && !selectedProfessional) ||
+                  (step === 1 && cart.length === 0) ||
+                  (step === 2 && !selectedProfessional && hasBookableItems) ||
                   (step === 3 && (!selectedDate || !selectedTime))
                 }
                 style={{
