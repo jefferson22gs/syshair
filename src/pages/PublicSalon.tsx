@@ -758,7 +758,10 @@ const PublicSalon = () => {
         notesArray.push('✅ CLIENTE AUTORIZOU FOTOS ANTES/DEPOIS');
       }
 
-      const { error } = await supabase
+      // Buscar nome do profissional
+      const professionalName = professionals.find(p => p.id === finalProfessionalId)?.name || "Qualquer profissional";
+
+      const { data: appointmentData, error } = await supabase
         .from('appointments')
         .insert({
           salon_id: salon.id,
@@ -769,15 +772,41 @@ const PublicSalon = () => {
           end_time: endTime,
           client_name: clientName.trim(),
           client_phone: clientPhone.trim(),
+          client_email: clientEmail || null,
           coupon_id: couponApplied?.id || null,
           price: cartTotal,
           discount,
           final_price: finalPrice,
           status: 'pending',
           notes: notesArray.length > 0 ? notesArray.join(' | ') : null,
-        });
+        })
+        .select()
+        .single();
 
       if (error) throw error;
+
+      // Trigger automático via database trigger irá chamar a Edge Function
+      // Mas também podemos chamar manualmente para garantir
+      try {
+        await supabase.functions.invoke('auto-appointment-confirmation', {
+          body: {
+            id: appointmentData.id,
+            salon_id: salon.id,
+            client_name: clientName.trim(),
+            client_phone: clientPhone.trim(),
+            client_email: clientEmail || null,
+            service_name: mainService.name,
+            professional_name: professionalName,
+            appointment_date: format(selectedDate, 'yyyy-MM-dd'),
+            appointment_time: selectedTime,
+            total_price: finalPrice,
+            status: 'pending'
+          }
+        });
+      } catch (whatsappError) {
+        console.error("WhatsApp confirmation error:", whatsappError);
+        // Não bloqueia o agendamento se WhatsApp falhar
+      }
 
       // Auto-create or update client in clients table with loyalty points
       // Rule: R$ 1 spent = 1 loyalty point
@@ -806,12 +835,23 @@ const PublicSalon = () => {
             .eq('id', existingClient.id);
         } else {
           // Create new client with loyalty points
+          // Converter data de aniversário DD/MM/YYYY para YYYY-MM-DD
+          let birthDate = null;
+          if (clientBirthday) {
+            const [day, month, year] = clientBirthday.split('/');
+            if (day && month && year && year.length === 4) {
+              birthDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+            }
+          }
+
           await supabase
             .from('clients')
             .insert({
               salon_id: salon.id,
               name: clientName.trim(),
               phone: clientPhone.trim(),
+              email: clientEmail || null,
+              birth_date: birthDate,
               notes: clientBirthday ? `Aniversário: ${clientBirthday}` : null,
               total_visits: 1,
               total_spent: finalPrice,
