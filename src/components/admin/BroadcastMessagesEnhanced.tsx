@@ -228,13 +228,12 @@ export const BroadcastMessagesComponent = () => {
       .eq("status", "sent");
 
     const sent = data?.length || 0;
+    const limit = 5000;
+
     setTodayStats({
       sent,
-      const limit = 5000;
-      setTodayStats({
-        sent,
-        limit,
-        remaining: Math.max(0, limit - sent)
+      limit,
+      remaining: Math.max(0, limit - sent)
     });
   };
 
