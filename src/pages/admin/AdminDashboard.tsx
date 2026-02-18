@@ -63,11 +63,12 @@ const AdminDashboard = () => {
       setHasSalon(true);
       setSalonId(salon.id);
 
-      const today = new Date().toISOString().split('T')[0];
-      const currentTime = new Date().toTimeString().slice(0, 5); // HH:MM
-      const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+      // Use local date (not UTC) to avoid timezone offset issues (Brazil is UTC-3)
+      const now = new Date();
+      const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
-      // Fetch today's appointments - apenas futuros
+      // Fetch ALL of today's appointments (not just future ones)
       const { data: appointments } = await supabase
         .from('appointments')
         .select(`
@@ -77,7 +78,6 @@ const AdminDashboard = () => {
         `)
         .eq('salon_id', salon.id)
         .eq('date', today)
-        .gte('start_time', currentTime)
         .order('start_time');
 
       setTodayAppointments(appointments || []);

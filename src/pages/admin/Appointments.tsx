@@ -45,13 +45,18 @@ const Appointments = () => {
   const [salonId, setSalonId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  // Use local date to avoid UTC timezone offset (Brazil UTC-3 can show tomorrow after 21h)
+  const getLocalToday = () => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  };
+  const [selectedDate, setSelectedDate] = useState(getLocalToday());
   const [formData, setFormData] = useState({
     client_name: "",
     client_phone: "",
     service_id: "",
     professional_id: "",
-    date: new Date().toISOString().split('T')[0],
+    date: getLocalToday(),
     start_time: "09:00",
   });
 
@@ -76,11 +81,7 @@ const Appointments = () => {
 
       setSalonId(salon.id);
 
-      // Fetch appointments - apenas futuros (data futura OU hoje com horário futuro)
-      const now = new Date();
-      const today = now.toISOString().split('T')[0];
-      const currentTime = now.toTimeString().slice(0, 5); // HH:MM
-
+      // Fetch appointments APENAS da data selecionada pelo usuário
       const { data: appointmentsData, error } = await supabase
         .from('appointments')
         .select(`
@@ -89,10 +90,8 @@ const Appointments = () => {
           professionals:professional_id (name)
         `)
         .eq('salon_id', salon.id)
-        .or(`date.gt.${today},and(date.eq.${today},start_time.gte.${currentTime})`)
-        .order('date', { ascending: true })
-        .order('start_time', { ascending: true })
-        .limit(100);
+        .eq('date', selectedDate)
+        .order('start_time', { ascending: true });
 
       if (error) throw error;
       setAppointments(appointmentsData || []);
@@ -223,9 +222,13 @@ const Appointments = () => {
   };
 
   const changeDate = (days: number) => {
-    const date = new Date(selectedDate);
+    // Use T12:00:00 to avoid UTC midnight timezone offset shifting the date
+    const date = new Date(selectedDate + 'T12:00:00');
     date.setDate(date.getDate() + days);
-    setSelectedDate(date.toISOString().split('T')[0]);
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    setSelectedDate(`${y}-${m}-${d}`);
   };
 
   const timeSlots = [];
