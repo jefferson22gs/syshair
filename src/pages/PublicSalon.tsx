@@ -103,11 +103,12 @@ interface Product {
 
 interface CartItem {
   id: string;
-  type: 'service' | 'product';
+  type: 'service' | 'product' | 'package';
   name: string;
   price: number;
   quantity: number;
   duration_minutes?: number;
+  package_items?: Array<{ service_id: string; quantity: number }>;
 }
 
 interface PendingReview {
@@ -129,6 +130,21 @@ interface GalleryImage {
   service_name?: string;
 }
 
+interface ServicePackage {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number;
+  discount_percent: number;
+  validity_days: number;
+  is_active: boolean;
+  items?: Array<{
+    service_id: string;
+    quantity: number;
+    service_name?: string;
+  }>;
+}
+
 const PublicSalon = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
@@ -148,8 +164,9 @@ const PublicSalon = () => {
   const [step, setStep] = useState(1);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [packages, setPackages] = useState<ServicePackage[]>([]);
   const [gallery, setGallery] = useState<GalleryImage[]>([]);
-  const [activeTab, setActiveTab] = useState<'services' | 'products' | 'gallery'>('services');
+  const [activeTab, setActiveTab] = useState<'services' | 'products' | 'packages' | 'gallery'>('services');
   const [selectedProfessional, setSelectedProfessional] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedTime, setSelectedTime] = useState<string>("");
@@ -267,6 +284,16 @@ const PublicSalon = () => {
 
       if (productsData) setProducts(productsData);
 
+      // Fetch packages
+      const { data: packagesData } = await supabase
+        .from('service_packages_with_items')
+        .select('*')
+        .eq('salon_id', salonData.id)
+        .eq('is_active', true)
+        .order('name');
+
+      if (packagesData) setPackages(packagesData);
+
       // Fetch public gallery images
       const { data: galleryData } = await supabase
         .from('client_gallery')
@@ -304,7 +331,7 @@ const PublicSalon = () => {
   };
 
   // Cart helper functions
-  const addToCart = (item: Service | Product, type: 'service' | 'product') => {
+  const addToCart = (item: Service | Product | ServicePackage, type: 'service' | 'product' | 'package') => {
     const existing = cart.find(c => c.id === item.id && c.type === type);
     if (existing) {
       if (type === 'product') {
@@ -324,11 +351,12 @@ const PublicSalon = () => {
       price: item.price,
       quantity: 1,
       duration_minutes: type === 'service' ? (item as Service).duration_minutes : undefined,
+      package_items: type === 'package' ? (item as ServicePackage).items : undefined,
     };
     setCart([...cart, cartItem]);
   };
 
-  const removeFromCart = (id: string, type: 'service' | 'product') => {
+  const removeFromCart = (id: string, type: 'service' | 'product' | 'package') => {
     const existing = cart.find(c => c.id === id && c.type === type);
     if (existing && existing.quantity > 1 && type === 'product') {
       setCart(cart.map(c =>
@@ -341,7 +369,7 @@ const PublicSalon = () => {
     }
   };
 
-  const isInCart = (id: string, type: 'service' | 'product') => {
+  const isInCart = (id: string, type: 'service' | 'product' | 'package') => {
     return cart.some(c => c.id === id && c.type === type);
   };
 
@@ -1093,8 +1121,8 @@ const PublicSalon = () => {
               </h2>
               <p className="text-muted-foreground mb-6">Selecione serviços e produtos que deseja</p>
 
-              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'services' | 'products' | 'gallery')} className="w-full">
-                <TabsList className="grid w-full grid-cols-3 mb-6">
+              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'services' | 'products' | 'packages' | 'gallery')} className="w-full">
+                <TabsList className="grid w-full grid-cols-4 mb-6">
                   <TabsTrigger value="services" className="flex items-center gap-2">
                     <Scissors size={16} />
                     Serviços
@@ -1102,6 +1130,10 @@ const PublicSalon = () => {
                   <TabsTrigger value="products" className="flex items-center gap-2">
                     <Store size={16} />
                     Loja
+                  </TabsTrigger>
+                  <TabsTrigger value="packages" className="flex items-center gap-2">
+                    <Package size={16} />
+                    Pacotes
                   </TabsTrigger>
                   <TabsTrigger value="gallery" className="flex items-center gap-2">
                     <Camera size={16} />
@@ -1229,6 +1261,87 @@ const PublicSalon = () => {
                             )}
                           </div>
                         </div>
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="packages">
+                  {packages.length === 0 ? (
+                    <div className="text-center py-12">
+                      <Package size={48} className="mx-auto text-muted-foreground mb-4" />
+                      <p className="text-muted-foreground">Nenhum pacote disponível</p>
+                    </div>
+                  ) : (
+                    <div className="grid gap-3">
+                      {packages.map((pkg) => (
+                        <button
+                          key={pkg.id}
+                          onClick={() => isInCart(pkg.id, 'package')
+                            ? removeFromCart(pkg.id, 'package')
+                            : addToCart(pkg, 'package')
+                          }
+                          className="relative flex flex-col gap-3 p-4 rounded-xl border-2 transition-all text-left"
+                          style={{
+                            borderColor: isInCart(pkg.id, 'package') ? primaryColor : 'hsl(var(--border))',
+                            backgroundColor: isInCart(pkg.id, 'package') ? `${primaryColor}08` : 'transparent'
+                          }}
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-center gap-3">
+                              <div
+                                className="w-12 h-12 rounded-xl flex items-center justify-center text-white"
+                                style={{ backgroundColor: primaryColor }}
+                              >
+                                <Package size={24} />
+                              </div>
+                              <div className="flex-1">
+                                <p className="font-bold text-foreground">{pkg.name}</p>
+                                {pkg.description && (
+                                  <p className="text-sm text-muted-foreground line-clamp-1">{pkg.description}</p>
+                                )}
+                              </div>
+                            </div>
+                            {isInCart(pkg.id, 'package') && (
+                              <div
+                                className="w-6 h-6 rounded-full flex items-center justify-center text-white"
+                                style={{ backgroundColor: primaryColor }}
+                              >
+                                <Check size={14} />
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Lista de serviços inclusos */}
+                          {Array.isArray(pkg.items) && pkg.items.length > 0 && (
+                            <div className="space-y-1 pl-2 border-l-2" style={{ borderColor: `${primaryColor}30` }}>
+                              {pkg.items.map((item: any, idx: number) => (
+                                <div key={idx} className="flex items-center justify-between text-sm">
+                                  <span className="text-muted-foreground">
+                                    • {item.service_name || 'Serviço'}
+                                  </span>
+                                  <span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: `${primaryColor}15`, color: primaryColor }}>
+                                    {item.quantity}x
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          <div className="flex items-center justify-between pt-2 border-t">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs px-2 py-1 rounded-full bg-green-500/10 text-green-600 font-medium">
+                                {pkg.discount_percent}% OFF
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                Válido por {pkg.validity_days} dias
+                              </span>
+                            </div>
+                            <p className="text-xl font-bold" style={{ color: primaryColor }}>
+                              R$ {pkg.price.toFixed(2)}
+                            </p>
+                          </div>
+                        </button>
                       ))}
                     </div>
                   )}
