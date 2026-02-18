@@ -59,11 +59,29 @@ export interface Product {
   category: string | null;
 }
 
+export interface ServicePackage {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number;
+  discount_percent: number;
+  validity_days: number;
+  is_active: boolean;
+  items?: {
+    id: string;
+    service_id: string;
+    quantity: number;
+    service_name: string;
+    service_price: number;
+  }[];
+}
+
 export const useSalon = (salonId?: string) => {
   const [salon, setSalon] = useState<Salon | null>(null);
   const [services, setServices] = useState<Service[]>([]);
   const [professionals, setProfessionals] = useState<Professional[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [packages, setPackages] = useState<ServicePackage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -188,6 +206,18 @@ export const useSalon = (salonId?: string) => {
 
     if (productsData) {
       setProducts(productsData);
+    }
+
+    // Fetch packages
+    const { data: packagesData } = await supabase
+      .from('service_packages_with_items')
+      .select('*')
+      .eq('salon_id', id)
+      .eq('is_active', true)
+      .order('name');
+
+    if (packagesData) {
+      setPackages(packagesData);
     }
   };
 
@@ -441,6 +471,7 @@ export const useSalon = (salonId?: string) => {
     services,
     professionals,
     products,
+    packages,
     loading,
     error,
     validateCoupon,

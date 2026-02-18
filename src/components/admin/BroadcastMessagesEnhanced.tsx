@@ -379,12 +379,18 @@ export const BroadcastMessagesComponent = () => {
 
   const loadTemplate = (templateId: string) => {
     const template = templates.find(t => t.id === templateId);
-    if (template) {
+    if (template && template.content) {
       setMessage(template.content);
       setSelectedTemplate(templateId);
       toast({
         title: "Template carregado",
         description: "Mensagem do template carregada.",
+      });
+    } else {
+      toast({
+        title: "Erro ao carregar template",
+        description: "Template não encontrado ou sem conteúdo.",
+        variant: "destructive",
       });
     }
   };

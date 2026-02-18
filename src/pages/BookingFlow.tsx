@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
+import { Badge } from "@/components/ui/badge";
 import { useSalon, Product } from "@/hooks/useSalon";
 import { SalonStore } from "@/components/booking/SalonStore";
 import { SalonInstallPrompt } from "@/components/pwa/SalonInstallPrompt";
@@ -50,9 +51,10 @@ interface ServiceCartItem {
 const BookingFlow = () => {
   const { salonId } = useParams();
   const navigate = useNavigate();
-  const { salon, services, professionals, products, loading, error, validateCoupon, getAvailableTimeSlots, createAppointment } = useSalon(salonId);
+  const { salon, services, professionals, products, packages, loading, error, validateCoupon, getAvailableTimeSlots, createAppointment } = useSalon(salonId);
 
   const [step, setStep] = useState(1);
+  const [activeTab, setActiveTab] = useState<'services' | 'packages'>('services');
   const [selectedServices, setSelectedServices] = useState<ServiceCartItem[]>([]);
   const [selectedProfessional, setSelectedProfessional] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
@@ -86,17 +88,36 @@ const BookingFlow = () => {
             : item
         );
       }
-      return [...prev, { 
+      return [...prev, {
         service: {
           id: service.id,
           name: service.name,
           price: service.price,
           duration_minutes: service.duration_minutes,
           icon: service.icon
-        }, 
-        quantity: 1 
+        },
+        quantity: 1
       }];
     });
+  };
+
+  const addPackageToCart = (pkg: typeof packages[0]) => {
+    if (!pkg.items || pkg.items.length === 0) {
+      toast.error("Pacote sem serviços");
+      return;
+    }
+
+    // Adicionar todos os serviços do pacote ao carrinho
+    pkg.items.forEach(item => {
+      const service = services.find(s => s.id === item.service_id);
+      if (service) {
+        for (let i = 0; i < item.quantity; i++) {
+          addServiceToCart(service);
+        }
+      }
+    });
+
+    toast.success(`Pacote "${pkg.name}" adicionado!`);
   };
 
   const removeServiceFromCart = (serviceId: string) => {
@@ -524,15 +545,44 @@ const BookingFlow = () => {
               <h2 className="font-display text-2xl font-bold text-foreground mb-2">
                 Escolha o serviço
               </h2>
-              <p className="text-muted-foreground mb-6">Selecione o que você deseja fazer</p>
+              <p className="text-muted-foreground mb-4">Selecione o que você deseja fazer</p>
 
-              {services.length === 0 ? (
-                <div className="text-center py-12">
-                  <Scissors size={48} className="mx-auto text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">Nenhum serviço disponível</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
+              {/* Tabs */}
+              <div className="flex gap-2 mb-6 border-b border-border">
+                <button
+                  onClick={() => setActiveTab('services')}
+                  className={`px-4 py-2 font-medium transition-colors border-b-2 ${
+                    activeTab === 'services'
+                      ? 'border-primary text-primary'
+                      : 'border-transparent text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Serviços
+                </button>
+                {packages.length > 0 && (
+                  <button
+                    onClick={() => setActiveTab('packages')}
+                    className={`px-4 py-2 font-medium transition-colors border-b-2 ${
+                      activeTab === 'packages'
+                        ? 'border-primary text-primary'
+                        : 'border-transparent text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <Gift size={16} className="inline mr-1" />
+                    Pacotes
+                  </button>
+                )}
+              </div>
+
+              {/* Services Tab */}
+              {activeTab === 'services' && (
+                services.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Scissors size={48} className="mx-auto text-muted-foreground mb-4" />
+                    <p className="text-muted-foreground">Nenhum serviço disponível</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
                   {/* Cart Summary */}
                   {selectedServices.length > 0 && (
                     <div className="p-4 rounded-xl bg-primary/10 border border-primary/20">
@@ -613,6 +663,111 @@ const BookingFlow = () => {
                     })}
                   </div>
                 </div>
+              )}
+
+              {/* Packages Tab */}
+              {activeTab === 'packages' && (
+                packages.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Gift size={48} className="mx-auto text-muted-foreground mb-4" />
+                    <p className="text-muted-foreground">Nenhum pacote disponível</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {/* Cart Summary */}
+                    {selectedServices.length > 0 && (
+                      <div className="p-4 rounded-xl bg-primary/10 border border-primary/20">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-medium text-foreground">
+                            {selectedServices.reduce((t, i) => t + i.quantity, 0)} serviço(s) selecionado(s)
+                          </span>
+                          <span className="font-bold text-primary">R$ {servicesTotal.toFixed(2)}</span>
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Duração total: {totalDuration} minutos
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="grid gap-4">
+                      {packages.map((pkg) => {
+                        const originalPrice = pkg.items?.reduce((sum, item) => sum + (item.service_price * item.quantity), 0) || 0;
+                        const savings = originalPrice - pkg.price;
+
+                        return (
+                          <div
+                            key={pkg.id}
+                            className="relative p-6 rounded-xl border-2 border-primary/30 bg-gradient-to-br from-primary/5 to-gold-light/5 hover:border-primary/50 transition-all"
+                          >
+                            <div className="flex items-start gap-4 mb-4">
+                              <div className="p-3 rounded-xl bg-primary/10">
+                                <Gift size={24} className="text-primary" />
+                              </div>
+                              <div className="flex-1">
+                                <h3 className="font-bold text-lg text-foreground mb-1">{pkg.name}</h3>
+                                {pkg.description && (
+                                  <p className="text-sm text-muted-foreground mb-2">{pkg.description}</p>
+                                )}
+                                <div className="flex items-center gap-2 text-sm">
+                                  <Badge variant="secondary" className="bg-primary/10 text-primary">
+                                    {pkg.discount_percent}% OFF
+                                  </Badge>
+                                  <span className="text-muted-foreground">
+                                    Válido por {pkg.validity_days} dias
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Services in Package */}
+                            <div className="mb-4 p-3 rounded-lg bg-background/50">
+                              <p className="text-xs font-medium text-muted-foreground mb-2">Serviços inclusos:</p>
+                              <div className="space-y-1">
+                                {pkg.items?.map((item, idx) => (
+                                  <div key={idx} className="flex items-center gap-2 text-sm">
+                                    <Check size={14} className="text-primary" />
+                                    <span className="text-foreground">
+                                      {item.quantity > 1 ? `${item.quantity}x ` : ''}{item.service_name}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Pricing */}
+                            <div className="flex items-end justify-between">
+                              <div>
+                                <p className="text-xs text-muted-foreground line-through">
+                                  De R$ {originalPrice.toFixed(2)}
+                                </p>
+                                <p className="text-2xl font-bold text-primary">
+                                  R$ {pkg.price.toFixed(2)}
+                                </p>
+                                <p className="text-xs text-success">
+                                  Economize R$ {savings.toFixed(2)}
+                                </p>
+                              </div>
+                              <Button
+                                variant="gold"
+                                onClick={() => addPackageToCart(pkg)}
+                              >
+                                <Plus size={16} className="mr-2" />
+                                Adicionar Pacote
+                              </Button>
+                            </div>
+
+                            {/* Non-cumulative badge */}
+                            <div className="absolute top-3 right-3">
+                              <Badge variant="outline" className="text-xs">
+                                Não acumulativo
+                              </Badge>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )
               )}
             </div>
           )}
