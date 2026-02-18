@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
 import { useSalon, Product } from "@/hooks/useSalon";
 import { SalonStore } from "@/components/booking/SalonStore";
+import { SalonInstallPrompt } from "@/components/pwa/SalonInstallPrompt";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -978,6 +979,16 @@ const BookingFlow = () => {
           </>
         )}
       </main>
+
+      {/* PWA Install Prompt for Salon */}
+      {salon && salonId && (
+        <SalonInstallPrompt
+          salonName={salon.name}
+          salonSlug={salonId}
+          salonLogo={salon.logo_url || undefined}
+          salonThemeColor={salon.theme_color || '#c9a227'}
+        />
+      )}
     </div>
   );
 };
