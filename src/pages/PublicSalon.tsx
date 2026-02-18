@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
+import { SalonInstallPrompt } from "@/components/pwa/SalonInstallPrompt";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -1774,6 +1775,16 @@ const PublicSalon = () => {
 
       {/* Prompt para ativar notificações - só renderiza quando salon está carregado */}
       {salon?.id && <NotificationPrompt salonId={salon.id} />}
+
+      {/* PWA Install Prompt for Salon */}
+      {salon && slug && (
+        <SalonInstallPrompt
+          salonName={salon.name}
+          salonSlug={slug}
+          salonLogo={salon.logo_url || undefined}
+          salonThemeColor={salon.theme_color || '#c9a227'}
+        />
+      )}
     </div >
   );
 };
