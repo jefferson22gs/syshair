@@ -8,14 +8,14 @@ import { Calendar } from "@/components/ui/calendar";
 import { useSalon, Product } from "@/hooks/useSalon";
 import { SalonStore } from "@/components/booking/SalonStore";
 import { toast } from "sonner";
-import { 
-  ArrowLeft, 
-  ArrowRight, 
-  Check, 
-  Clock, 
-  Scissors, 
-  User, 
-  Calendar as CalendarIcon, 
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  Clock,
+  Scissors,
+  User,
+  Calendar as CalendarIcon,
   Gift,
   Loader2,
   Mail,
@@ -23,7 +23,9 @@ import {
   MapPin,
   ShoppingBag,
   Plus,
-  Minus
+  Minus,
+  Copy,
+  DollarSign
 } from "lucide-react";
 import { format, addDays, isBefore, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -382,6 +384,38 @@ const BookingFlow = () => {
               </div>
             </div>
           </div>
+
+          {/* PIX Payment Card */}
+          {salon?.pix_key && (
+            <div className="glass-card border-primary/30 bg-primary/5 rounded-2xl p-6 mb-6 text-left">
+              <div className="flex items-center gap-2 mb-4">
+                <DollarSign className="text-primary" size={24} />
+                <h3 className="font-semibold text-lg text-foreground">Pagamento via PIX</h3>
+              </div>
+              <p className="text-sm text-muted-foreground mb-4">
+                Você pode pagar agora via PIX usando a chave abaixo:
+              </p>
+              <div className="flex items-center gap-2 p-3 bg-background rounded-lg border border-border">
+                <code className="flex-1 text-sm font-mono text-foreground break-all">
+                  {salon.pix_key}
+                </code>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    navigator.clipboard.writeText(salon.pix_key || '');
+                    toast.success("Chave PIX copiada!");
+                  }}
+                >
+                  <Copy size={16} />
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-3">
+                Após o pagamento, envie o comprovante via WhatsApp
+              </p>
+            </div>
+          )}
+
           <Button variant="gold" size="lg" onClick={() => navigate('/')}>
             Voltar ao início
           </Button>
