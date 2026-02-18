@@ -264,6 +264,7 @@ export const useSalon = (salonId?: string) => {
           })
         );
 
+        console.log('Setting packages (fallback):', packagesWithItems);
         setPackages(packagesWithItems);
       }
     } else if (packagesData) {

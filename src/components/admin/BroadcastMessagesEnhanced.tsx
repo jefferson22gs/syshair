@@ -22,7 +22,9 @@ import {
   Upload,
   FileText,
   Copy,
-  Sparkles
+  Sparkles,
+  Eye,
+  StopCircle
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -54,6 +56,17 @@ interface Broadcast {
   error_message?: string;
 }
 
+interface BroadcastMessage {
+  id: string;
+  broadcast_id: string;
+  recipient_phone: string;
+  recipient_name?: string;
+  status: 'pending' | 'sent' | 'failed';
+  error_message?: string;
+  sent_at?: string;
+  created_at: string;
+}
+
 interface BroadcastTemplate {
   id: string;
   name: string;
@@ -79,10 +92,15 @@ export const BroadcastMessagesComponent = () => {
   const [isSending, setIsSending] = useState(false);
   const [broadcasts, setBroadcasts] = useState<Broadcast[]>([]);
   const [templates, setTemplates] = useState<BroadcastTemplate[]>([]);
+  const [activeBroadcastId, setActiveBroadcastId] = useState<string | null>(null);
 
   // Estados de modais
   const [showAddManual, setShowAddManual] = useState(false);
   const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [selectedBroadcast, setSelectedBroadcast] = useState<Broadcast | null>(null);
+  const [broadcastMessages, setBroadcastMessages] = useState<BroadcastMessage[]>([]);
+  const [loadingMessages, setLoadingMessages] = useState(false);
   const [manualNumbers, setManualNumbers] = useState("");
 
   // Template management
@@ -102,8 +120,21 @@ export const BroadcastMessagesComponent = () => {
       loadBroadcasts();
       loadTemplates();
       loadTodayStats();
+      checkActiveBroadcast();
     }
   }, [salonId]);
+
+  // Polling para atualizar status de broadcasts ativos
+  useEffect(() => {
+    if (!activeBroadcastId) return;
+
+    const interval = setInterval(() => {
+      loadBroadcasts();
+      loadTodayStats();
+    }, 5000); // Atualiza a cada 5 segundos
+
+    return () => clearInterval(interval);
+  }, [activeBroadcastId]);
 
   useEffect(() => {
     // Filtrar contatos
@@ -199,7 +230,79 @@ export const BroadcastMessagesComponent = () => {
 
     if (data) {
       setBroadcasts(data);
+
+      // Verificar se há broadcast ativo
+      const active = data.find(b => b.status === 'processing');
+      setActiveBroadcastId(active?.id || null);
     }
+  };
+
+  const checkActiveBroadcast = async () => {
+    if (!salonId) return;
+
+    const { data } = await supabase
+      .from("broadcasts")
+      .select("id")
+      .eq("salon_id", salonId)
+      .eq("status", "processing")
+      .maybeSingle();
+
+    setActiveBroadcastId(data?.id || null);
+  };
+
+  const loadBroadcastMessages = async (broadcastId: string) => {
+    setLoadingMessages(true);
+    try {
+      const { data, error } = await supabase
+        .from("broadcast_messages")
+        .select("*")
+        .eq("broadcast_id", broadcastId)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setBroadcastMessages(data || []);
+    } catch (error) {
+      console.error("Error loading broadcast messages:", error);
+      toast({
+        title: "Erro ao carregar mensagens",
+        description: "Não foi possível carregar os detalhes do disparo",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingMessages(false);
+    }
+  };
+
+  const stopBroadcast = async (broadcastId: string) => {
+    try {
+      const { error } = await supabase
+        .from("broadcasts")
+        .update({ status: "stopped" })
+        .eq("id", broadcastId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Disparo interrompido",
+        description: "O disparo foi parado com sucesso",
+      });
+
+      setActiveBroadcastId(null);
+      loadBroadcasts();
+    } catch (error: any) {
+      console.error("Error stopping broadcast:", error);
+      toast({
+        title: "Erro ao parar disparo",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const viewBroadcastDetails = async (broadcast: Broadcast) => {
+    setSelectedBroadcast(broadcast);
+    setShowHistoryModal(true);
+    await loadBroadcastMessages(broadcast.id);
   };
 
   const loadTemplates = async () => {
@@ -810,7 +913,20 @@ export const BroadcastMessagesComponent = () => {
                       className="p-3 bg-surface-1 rounded-lg"
                     >
                       <div className="flex justify-between items-start mb-2">
-                        {getStatusBadge(broadcast.status)}
+                        <div className="flex items-center gap-2">
+                          {getStatusBadge(broadcast.status)}
+                          {broadcast.status === 'processing' && (
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => stopBroadcast(broadcast.id)}
+                              className="h-6 px-2 text-xs"
+                            >
+                              <StopCircle size={12} className="mr-1" />
+                              Parar
+                            </Button>
+                          )}
+                        </div>
                         <span className="text-xs text-muted-foreground">
                           {new Date(broadcast.created_at).toLocaleDateString('pt-BR')}
                         </span>
@@ -821,6 +937,15 @@ export const BroadcastMessagesComponent = () => {
                         <span className="text-red-400">✗ {broadcast.failed_count || 0}</span>
                         <span>Total: {broadcast.total_recipients}</span>
                       </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => viewBroadcastDetails(broadcast)}
+                        className="w-full mt-2 h-7 text-xs"
+                      >
+                        <Eye size={12} className="mr-1" />
+                        Ver Detalhes
+                      </Button>
                     </div>
                   ))}
                 </div>
@@ -891,6 +1016,133 @@ export const BroadcastMessagesComponent = () => {
             </Button>
             <Button onClick={saveTemplate}>
               Salvar Template
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Detalhes do Histórico */}
+      <Dialog open={showHistoryModal} onOpenChange={setShowHistoryModal}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Detalhes do Disparo</DialogTitle>
+          </DialogHeader>
+
+          {selectedBroadcast && (
+            <div className="space-y-4">
+              {/* Resumo */}
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Status</p>
+                      {getStatusBadge(selectedBroadcast.status)}
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Total</p>
+                      <p className="text-lg font-bold">{selectedBroadcast.total_recipients}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Enviados</p>
+                      <p className="text-lg font-bold text-green-400">{selectedBroadcast.sent_count || 0}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Falhas</p>
+                      <p className="text-lg font-bold text-red-400">{selectedBroadcast.failed_count || 0}</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 p-3 bg-muted rounded-lg">
+                    <p className="text-sm font-medium mb-1">Mensagem:</p>
+                    <p className="text-sm">{selectedBroadcast.message}</p>
+                  </div>
+
+                  <div className="mt-2 text-xs text-muted-foreground">
+                    Criado em: {new Date(selectedBroadcast.created_at).toLocaleString('pt-BR')}
+                    {selectedBroadcast.completed_at && (
+                      <> • Concluído em: {new Date(selectedBroadcast.completed_at).toLocaleString('pt-BR')}</>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Lista de Mensagens */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-semibold">Mensagens Individuais</h3>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => loadBroadcastMessages(selectedBroadcast.id)}
+                    disabled={loadingMessages}
+                  >
+                    {loadingMessages ? (
+                      <Loader2 size={14} className="animate-spin" />
+                    ) : (
+                      <RefreshCw size={14} />
+                    )}
+                  </Button>
+                </div>
+
+                {loadingMessages ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 size={32} className="animate-spin text-primary" />
+                  </div>
+                ) : broadcastMessages.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">
+                    Nenhuma mensagem encontrada
+                  </p>
+                ) : (
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {broadcastMessages.map((msg) => (
+                      <div
+                        key={msg.id}
+                        className={`p-3 rounded-lg border ${
+                          msg.status === 'sent'
+                            ? 'bg-green-500/10 border-green-500/30'
+                            : msg.status === 'failed'
+                            ? 'bg-red-500/10 border-red-500/30'
+                            : 'bg-gray-500/10 border-gray-500/30'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              {msg.status === 'sent' ? (
+                                <CheckCircle size={16} className="text-green-400" />
+                              ) : msg.status === 'failed' ? (
+                                <XCircle size={16} className="text-red-400" />
+                              ) : (
+                                <Clock size={16} className="text-gray-400" />
+                              )}
+                              <span className="font-medium">{msg.recipient_name || 'Sem nome'}</span>
+                            </div>
+                            <p className="text-sm text-muted-foreground">{msg.recipient_phone}</p>
+                            {msg.error_message && (
+                              <p className="text-xs text-red-400 mt-1">
+                                Erro: {msg.error_message}
+                              </p>
+                            )}
+                          </div>
+                          <div className="text-right text-xs text-muted-foreground">
+                            {msg.sent_at ? (
+                              <span>{new Date(msg.sent_at).toLocaleTimeString('pt-BR')}</span>
+                            ) : (
+                              <span>Pendente</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowHistoryModal(false)}>
+              Fechar
             </Button>
           </DialogFooter>
         </DialogContent>

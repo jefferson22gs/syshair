@@ -214,6 +214,8 @@ const BookingFlow = () => {
   // Debug: Log packages when they change
   useEffect(() => {
     console.log('📦 Packages loaded:', packages.length, packages);
+    console.log('📦 Packages is array?', Array.isArray(packages));
+    console.log('📦 First package:', packages[0]);
   }, [packages]);
 
   const fetchAvailableSlots = async () => {
