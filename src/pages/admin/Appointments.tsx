@@ -76,7 +76,11 @@ const Appointments = () => {
 
       setSalonId(salon.id);
 
-      // Fetch appointments for selected date and future dates
+      // Fetch appointments - apenas futuros (data futura OU hoje com horário futuro)
+      const now = new Date();
+      const today = now.toISOString().split('T')[0];
+      const currentTime = now.toTimeString().slice(0, 5); // HH:MM
+
       const { data: appointmentsData, error } = await supabase
         .from('appointments')
         .select(`
@@ -85,7 +89,7 @@ const Appointments = () => {
           professionals:professional_id (name)
         `)
         .eq('salon_id', salon.id)
-        .gte('date', selectedDate)
+        .or(`date.gt.${today},and(date.eq.${today},start_time.gte.${currentTime})`)
         .order('date', { ascending: true })
         .order('start_time', { ascending: true })
         .limit(100);

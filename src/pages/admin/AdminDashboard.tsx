@@ -64,9 +64,10 @@ const AdminDashboard = () => {
       setSalonId(salon.id);
 
       const today = new Date().toISOString().split('T')[0];
+      const currentTime = new Date().toTimeString().slice(0, 5); // HH:MM
       const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
 
-      // Fetch today's appointments
+      // Fetch today's appointments - apenas futuros
       const { data: appointments } = await supabase
         .from('appointments')
         .select(`
@@ -76,11 +77,12 @@ const AdminDashboard = () => {
         `)
         .eq('salon_id', salon.id)
         .eq('date', today)
+        .gte('start_time', currentTime)
         .order('start_time');
 
       setTodayAppointments(appointments || []);
 
-      // Count today's appointments
+      // Count today's appointments (apenas futuros)
       const todayCount = appointments?.length || 0;
 
       // Calculate month revenue
