@@ -14,72 +14,18 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useRealtimeNotifications } from "@/hooks/useRealtimeNotifications";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Notification {
     id: string;
-    type: 'appointment' | 'payment' | 'review' | 'alert' | 'message' | 'client' | 'promo';
+    type: 'appointment' | 'payment' | 'review' | 'alert' | 'message' | 'client' | 'promo' | 'broadcast' | 'system';
     title: string;
     message: string;
     timestamp: Date;
     read: boolean;
     actionUrl?: string;
 }
-
-// Mock notifications - replace with real data from Supabase
-const mockNotifications: Notification[] = [
-    {
-        id: '1',
-        type: 'appointment',
-        title: 'Novo agendamento!',
-        message: 'Maria Silva agendou Corte + Escova para hoje às 15:00',
-        timestamp: new Date(Date.now() - 5 * 60 * 1000),
-        read: false,
-        actionUrl: '/admin/appointments'
-    },
-    {
-        id: '2',
-        type: 'payment',
-        title: 'Pagamento recebido',
-        message: 'R$ 150,00 recebido de João Santos via PIX',
-        timestamp: new Date(Date.now() - 30 * 60 * 1000),
-        read: false,
-    },
-    {
-        id: '3',
-        type: 'review',
-        title: 'Nova avaliação ⭐⭐⭐⭐⭐',
-        message: 'Ana Oliveira avaliou o serviço com 5 estrelas',
-        timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
-        read: false,
-        actionUrl: '/admin/reviews'
-    },
-    {
-        id: '4',
-        type: 'alert',
-        title: 'Estoque baixo',
-        message: 'Produto "Shampoo Keratina 500ml" está com apenas 2 unidades',
-        timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000),
-        read: true,
-        actionUrl: '/admin/products'
-    },
-    {
-        id: '5',
-        type: 'client',
-        title: 'Novo cliente cadastrado',
-        message: 'Pedro Costa se cadastrou pelo link de agendamento',
-        timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000),
-        read: true,
-        actionUrl: '/admin/clients'
-    },
-    {
-        id: '6',
-        type: 'promo',
-        title: 'Cupom utilizado',
-        message: 'Cupom PRIMEIRAVISITA foi usado por Carla Mendes',
-        timestamp: new Date(Date.now() - 8 * 60 * 60 * 1000),
-        read: true,
-    },
-];
 
 const getNotificationIcon = (type: Notification['type']) => {
     switch (type) {
@@ -90,6 +36,8 @@ const getNotificationIcon = (type: Notification['type']) => {
         case 'message': return <MessageCircle className="w-5 h-5 text-purple-500" />;
         case 'client': return <UserPlus className="w-5 h-5 text-cyan-500" />;
         case 'promo': return <Gift className="w-5 h-5 text-pink-500" />;
+        case 'broadcast': return <MessageCircle className="w-5 h-5 text-blue-500" />;
+        case 'system': return <Bell className="w-5 h-5 text-gray-500" />;
         default: return <Bell className="w-5 h-5 text-primary" />;
     }
 };
@@ -113,21 +61,59 @@ interface NotificationCenterProps {
 }
 
 export const NotificationCenter = ({ isOpen, onClose }: NotificationCenterProps) => {
-    const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
-    const unreadCount = notifications.filter(n => !n.read).length;
+    const [salonId, setSalonId] = useState<string | null>(null);
+
+    // Buscar salonId do usuário logado
+    useEffect(() => {
+        const fetchSalonId = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+
+            const { data: salon } = await supabase
+                .from('salons')
+                .select('id')
+                .eq('owner_id', user.id)
+                .maybeSingle();
+
+            if (salon) {
+                setSalonId(salon.id);
+            }
+        };
+
+        fetchSalonId();
+    }, []);
+
+    // Hook de notificações em tempo real
+    const {
+        notifications: realtimeNotifications,
+        unreadCount: realtimeUnreadCount,
+        markAsRead: realtimeMarkAsRead,
+        markAllAsRead: realtimeMarkAllAsRead
+    } = useRealtimeNotifications(salonId || undefined);
+
+    // Converter notificações do formato do hook para o formato do componente
+    const notifications: Notification[] = realtimeNotifications.map(n => ({
+        id: n.id,
+        type: n.type,
+        title: n.title,
+        message: n.message,
+        timestamp: new Date(n.created_at),
+        read: false, // Notificações em tempo real são sempre não lidas inicialmente
+        actionUrl: n.data?.url
+    }));
+
+    const unreadCount = realtimeUnreadCount;
 
     const markAsRead = (id: string) => {
-        setNotifications(prev =>
-            prev.map(n => n.id === id ? { ...n, read: true } : n)
-        );
+        realtimeMarkAsRead(id);
     };
 
     const markAllAsRead = () => {
-        setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+        realtimeMarkAllAsRead();
     };
 
     const deleteNotification = (id: string) => {
-        setNotifications(prev => prev.filter(n => n.id !== id));
+        realtimeMarkAsRead(id); // Remove da lista
     };
 
     return (
@@ -243,7 +229,31 @@ export const NotificationCenter = ({ isOpen, onClose }: NotificationCenterProps)
 // Bell Button for Header
 export const NotificationBell = () => {
     const [isOpen, setIsOpen] = useState(false);
-    const [hasUnread, setHasUnread] = useState(true);
+    const [salonId, setSalonId] = useState<string | null>(null);
+
+    // Buscar salonId do usuário logado
+    useEffect(() => {
+        const fetchSalonId = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+
+            const { data: salon } = await supabase
+                .from('salons')
+                .select('id')
+                .eq('owner_id', user.id)
+                .maybeSingle();
+
+            if (salon) {
+                setSalonId(salon.id);
+            }
+        };
+
+        fetchSalonId();
+    }, []);
+
+    // Hook de notificações em tempo real
+    const { unreadCount } = useRealtimeNotifications(salonId || undefined);
+    const hasUnread = unreadCount > 0;
 
     return (
         <>

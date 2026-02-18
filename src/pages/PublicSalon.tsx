@@ -75,6 +75,7 @@ interface Salon {
   logo_url: string | null;
   public_booking_enabled: boolean;
   slug: string;
+  pix_key: string | null;
   lunch_break_config?: {
     enabled: boolean;
     start_time: string;
@@ -252,6 +253,7 @@ const PublicSalon = () => {
         logo_url: salonData.logo_url,
         public_booking_enabled: salonData.public_booking_enabled ?? true,
         slug: salonData.slug || '',
+        pix_key: salonData.pix_key || null,
         lunch_break_config: salonData.lunch_break_config as unknown as Salon['lunch_break_config'],
         working_hours: salonData.working_hours as unknown as Salon['working_hours'],
       });
