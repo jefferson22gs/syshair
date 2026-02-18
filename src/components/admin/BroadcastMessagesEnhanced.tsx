@@ -249,6 +249,27 @@ export const BroadcastMessagesComponent = () => {
     setContacts(prev => prev.map(c => ({ ...c, selected })));
   };
 
+  const selectBatch = (size: number) => {
+    const newContacts = [...contacts];
+    // Desmarcar todos primeiro
+    newContacts.forEach(c => c.selected = false);
+
+    // Selecionar os primeiros 'size' contatos da lista atual (filtrada se houver busca, mas aqui aplicamos na lista completa por enquanto)
+    // Se quiser respeitar o filtro visual:
+    const targets = filteredContacts.slice(0, size);
+    const targetIds = new Set(targets.map(c => c.phone));
+
+    setContacts(prev => prev.map(c => ({
+      ...c,
+      selected: targetIds.has(c.phone)
+    })));
+
+    toast({
+      title: "Seleção em Lote",
+      description: `${Math.min(size, targets.length)} contatos selecionados.`,
+    });
+  };
+
   const addManualContacts = () => {
     const numbers = manualNumbers
       .split(/[\n,;]/)
@@ -607,6 +628,14 @@ export const BroadcastMessagesComponent = () => {
                 >
                   Nenhum
                 </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => selectBatch(500)}
+                  title="Selecionar os primeiros 500 da lista"
+                >
+                  Lote 500
+                </Button>
               </div>
 
               {/* Lista de contatos */}
@@ -639,8 +668,8 @@ export const BroadcastMessagesComponent = () => {
                     <div
                       key={contact.phone}
                       className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${contact.selected
-                          ? 'bg-primary/20 border border-primary/30'
-                          : 'bg-surface-1 hover:bg-surface-2'
+                        ? 'bg-primary/20 border border-primary/30'
+                        : 'bg-surface-1 hover:bg-surface-2'
                         }`}
                       onClick={() => toggleContact(contact.phone)}
                     >
