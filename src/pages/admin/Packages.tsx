@@ -163,6 +163,7 @@ const PackagesPage = () => {
     try {
       if (editingPackage) {
         // Atualizar pacote
+        console.log("Updating package:", editingPackage.id);
         const { data: pkgData, error: pkgError } = await supabase
           .from('service_packages')
           .update({
@@ -176,13 +177,22 @@ const PackagesPage = () => {
           .select()
           .single();
 
-        if (pkgError) throw pkgError;
+        if (pkgError) {
+          console.error("Package update error:", pkgError);
+          throw pkgError;
+        }
 
         // Remover itens antigos
-        await supabase
+        console.log("Deleting old items for package:", editingPackage.id);
+        const { error: deleteError } = await supabase
           .from('service_package_items')
           .delete()
           .eq('package_id', editingPackage.id);
+
+        if (deleteError) {
+          console.error("Delete items error:", deleteError);
+          throw deleteError;
+        }
 
         // Adicionar novos itens
         const itemsToAdd = formData.items.map(item => ({
@@ -191,15 +201,25 @@ const PackagesPage = () => {
           quantity: item.quantity
         }));
 
+        console.log("Inserting items:", itemsToAdd);
         const { error: itemsError } = await supabase
           .from('service_package_items')
           .insert(itemsToAdd);
 
-        if (itemsError) throw itemsError;
+        if (itemsError) {
+          console.error("Insert items error:", itemsError);
+          throw itemsError;
+        }
 
         toast.success("Pacote atualizado!");
       } else {
         // Criar novo pacote
+        console.log("Creating new package with data:", {
+          salon_id: salonId,
+          name: formData.name,
+          price: finalPrice
+        });
+
         const { data: pkgData, error: pkgError } = await supabase
           .from('service_packages')
           .insert({
@@ -213,7 +233,10 @@ const PackagesPage = () => {
           .select()
           .single();
 
-        if (pkgError) throw pkgError;
+        if (pkgError) {
+          console.error("Package creation error:", pkgError);
+          throw pkgError;
+        }
 
         // Adicionar itens
         const itemsToAdd = formData.items.map(item => ({
@@ -222,11 +245,15 @@ const PackagesPage = () => {
           quantity: item.quantity
         }));
 
+        console.log("Inserting items for new package:", itemsToAdd);
         const { error: itemsError } = await supabase
           .from('service_package_items')
           .insert(itemsToAdd);
 
-        if (itemsError) throw itemsError;
+        if (itemsError) {
+          console.error("Insert items error:", itemsError);
+          throw itemsError;
+        }
 
         toast.success("Pacote criado!");
       }
@@ -234,9 +261,9 @@ const PackagesPage = () => {
       setIsDialogOpen(false);
       resetForm();
       fetchPackages();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving package:", error);
-      toast.error("Erro ao salvar pacote");
+      toast.error(`Erro ao salvar pacote: ${error.message || error.hint || 'Erro desconhecido'}`);
     }
   };
 

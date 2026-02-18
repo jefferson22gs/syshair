@@ -34,6 +34,7 @@ interface SalonData {
   slug: string;
   description: string;
   public_booking_enabled: boolean;
+  pix_key?: string;
   lunch_break_config: {
     enabled: boolean;
     start_time: string;
@@ -138,6 +139,7 @@ const SalonSettings = () => {
           slug: data.slug || "",
           description: data.description || "",
           public_booking_enabled: data.public_booking_enabled ?? true,
+          pix_key: data.pix_key || "",
           lunch_break_config: typeof data.lunch_break_config === 'object' ? data.lunch_break_config : defaultSalon.lunch_break_config,
           working_hours: data.working_hours || null
         });
@@ -194,6 +196,7 @@ const SalonSettings = () => {
         slug: salon.slug || null,
         description: salon.description || null,
         public_booking_enabled: salon.public_booking_enabled,
+        pix_key: salon.pix_key || null,
         lunch_break_config: salon.lunch_break_config,
         working_hours: salon.working_hours,
         owner_id: user.id,
@@ -238,19 +241,32 @@ const SalonSettings = () => {
     if (!event.target.files || event.target.files.length === 0 || !salon.id) return;
 
     const file = event.target.files[0];
+
+    // Validar tamanho (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Imagem muito grande. Máximo 2MB.");
+      return;
+    }
+
+    // Validar tipo
+    if (!file.type.startsWith('image/')) {
+      toast.error("Apenas imagens são permitidas.");
+      return;
+    }
+
     const fileExt = file.name.split('.').pop();
     const fileName = `${salon.id}/logo-${Date.now()}.${fileExt}`;
 
     setUploadingLogo(true);
     try {
-      // Ensure bucket exists (handled by policies or manual creation, here we assume it exists or use 'gallery' or 'public')
-      // Let's use 'gallery' bucket for consistency as created before, or a 'logos' bucket if preferred.
-      // Re-using 'gallery' for simplicity since it is public.
       const { error: uploadError } = await supabase.storage
         .from('gallery')
         .upload(fileName, file, { upsert: true });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error("Upload error details:", uploadError);
+        throw uploadError;
+      }
 
       const { data: { publicUrl } } = supabase.storage
         .from('gallery')
@@ -260,7 +276,7 @@ const SalonSettings = () => {
       toast.success("Logo enviado com sucesso!");
     } catch (error: any) {
       console.error("Error uploading logo:", error);
-      toast.error("Erro ao enviar logo. Verifique se o bucket 'gallery' existe.");
+      toast.error(`Erro ao enviar logo: ${error.message || 'Verifique as permissões do bucket gallery'}`);
     } finally {
       setUploadingLogo(false);
     }
@@ -529,6 +545,18 @@ const SalonSettings = () => {
                     placeholder="(00) 00000-0000"
                   />
                 </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="pix_key">Chave PIX</Label>
+                <Input
+                  id="pix_key"
+                  value={salon.pix_key || ''}
+                  onChange={(e) => setSalon({ ...salon, pix_key: e.target.value })}
+                  placeholder="CPF, CNPJ, Email, Telefone ou Chave Aleatória"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Será exibida na confirmação de agendamento para pagamento
+                </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">E-mail</Label>
