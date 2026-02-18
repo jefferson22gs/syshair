@@ -21,7 +21,104 @@ const RATE_LIMITS = {
     maxPerHour: 60,
     maxPerDay: 5000,
     maxConsecutiveFailures: 50, // AUMENTADO de 5 para 50 - não parar tão rápido
+    maxRetries: 3, // Número máximo de tentativas por mensagem
+    retryDelay: 2000, // Delay entre retries (2 segundos)
 };
+
+/**
+ * Valida e formata número de telefone brasileiro
+ * Aceita formatos: 5511999999999, 11999999999, (11) 99999-9999, etc.
+ * Retorna número formatado com DDI 55 ou null se inválido
+ */
+function formatPhoneNumber(phone: string): string | null {
+    // Remove tudo que não é número
+    const cleaned = phone.replace(/\D/g, '');
+
+    // Valida formato brasileiro
+    // Deve ter 12 ou 13 dígitos (55 + DDD + número)
+    if (cleaned.length === 13 && cleaned.startsWith('55')) {
+        return cleaned; // 5511999999999
+    }
+
+    if (cleaned.length === 11 && !cleaned.startsWith('55')) {
+        return '55' + cleaned; // 11999999999 -> 5511999999999
+    }
+
+    if (cleaned.length === 10 && !cleaned.startsWith('55')) {
+        return '55' + cleaned; // 1199999999 -> 551199999999
+    }
+
+    // Formato inválido
+    return null;
+}
+
+/**
+ * Envia mensagem com retry automático
+ * Tenta até maxRetries vezes com delay entre tentativas
+ */
+async function sendMessageWithRetry(
+    instanceName: string,
+    phone: string,
+    message: string,
+    maxRetries: number = RATE_LIMITS.maxRetries
+): Promise<{ success: boolean; result?: any; error?: string; attempts: number }> {
+    const remoteJid = phone.includes("@") ? phone : `${phone}@s.whatsapp.net`;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            console.log(`[ATTEMPT ${attempt}/${maxRetries}] Sending to ${phone}`);
+
+            const response = await fetch(`${EVOLUTION_API_URL}/message/sendText/${instanceName}`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "apikey": EVOLUTION_API_KEY,
+                },
+                body: JSON.stringify({
+                    number: remoteJid,
+                    text: message,
+                }),
+            });
+
+            let result;
+            try {
+                result = await response.json();
+            } catch (e) {
+                result = { error: "Could not parse response" };
+            }
+
+            if (response.ok && result.key) {
+                return { success: true, result, attempts: attempt };
+            }
+
+            // Se não for último attempt, aguarda antes de retry
+            if (attempt < maxRetries) {
+                console.log(`[RETRY] Waiting ${RATE_LIMITS.retryDelay}ms before retry...`);
+                await new Promise(resolve => setTimeout(resolve, RATE_LIMITS.retryDelay));
+            } else {
+                return {
+                    success: false,
+                    error: JSON.stringify(result)?.substring(0, 500),
+                    attempts: attempt
+                };
+            }
+        } catch (error: any) {
+            console.error(`[ATTEMPT ${attempt}/${maxRetries}] Exception:`, error.message);
+
+            if (attempt < maxRetries) {
+                await new Promise(resolve => setTimeout(resolve, RATE_LIMITS.retryDelay));
+            } else {
+                return {
+                    success: false,
+                    error: error.message?.substring(0, 500),
+                    attempts: attempt
+                };
+            }
+        }
+    }
+
+    return { success: false, error: "Max retries reached", attempts: maxRetries };
+}
 
 interface BroadcastRequest {
     action: 'fetch_contacts' | 'send_broadcast' | 'get_status';
@@ -219,64 +316,49 @@ async function processMessages(
 
     for (let i = 0; i < recipients.length; i++) {
         try {
-            const phone = recipients[i].replace(/\D/g, "");
+            const rawPhone = recipients[i];
 
-            if (!phone || phone.length < 10 || phone.length > 15) {
-                console.log(`[SKIPPING] Invalid phone: ${phone}`);
+            // Validar e formatar número
+            const phone = formatPhoneNumber(rawPhone);
+
+            if (!phone) {
+                console.log(`[SKIPPING] Invalid phone format: ${rawPhone}`);
                 failed++;
                 await supabase.from("broadcast_messages").insert({
                     broadcast_id: broadcastId,
                     salon_id: salonId,
-                    phone: phone,
+                    phone: rawPhone,
                     status: "failed",
-                    error_message: "Número inválido",
+                    error_message: "Formato de número inválido (use formato brasileiro com DDD)",
                 });
                 continue;
             }
 
-            const remoteJid = phone.includes("@") ? phone : `${phone}@s.whatsapp.net`;
-            console.log(`[${i + 1}/${recipients.length}] SENDING: ${remoteJid}`);
+            console.log(`[${i + 1}/${recipients.length}] SENDING: ${phone}`);
 
-            const response = await fetch(`${EVOLUTION_API_URL}/message/sendText/${instanceName}`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "apikey": EVOLUTION_API_KEY,
-                },
-                body: JSON.stringify({
-                    number: remoteJid,
-                    text: message,
-                }),
-            });
-
-            let result;
-            try {
-                result = await response.json();
-            } catch (e) {
-                result = { error: "Could not parse response" };
-            }
+            // Enviar com retry automático
+            const sendResult = await sendMessageWithRetry(instanceName, phone, message);
 
             const messageData = {
                 broadcast_id: broadcastId,
                 salon_id: salonId,
                 phone: phone,
-                status: response.ok ? "sent" : "failed",
-                error_message: response.ok ? null : (JSON.stringify(result)?.substring(0, 500)),
-                whatsapp_message_id: result.key?.id || result.messageId || null,
+                status: sendResult.success ? "sent" : "failed",
+                error_message: sendResult.success ? null : sendResult.error,
+                whatsapp_message_id: sendResult.result?.key?.id || sendResult.result?.messageId || null,
             };
 
             await supabase.from("broadcast_messages").insert(messageData);
 
-            if (response.ok && result.key) {
+            if (sendResult.success) {
                 sent++;
                 consecutiveFailures = 0;
-                console.log(`[SUCCESS] ${phone} (ID: ${result.key.id})`);
+                console.log(`[SUCCESS] ${phone} (ID: ${sendResult.result.key.id}) - ${sendResult.attempts} attempt(s)`);
             } else {
                 failed++;
                 consecutiveFailures++;
-                const errorMsg = JSON.stringify(result)?.substring(0, 200);
-                errors.push(`${phone}: ${errorMsg}`);
-                console.log(`[FAILED] ${phone} - ${errorMsg}`);
+                errors.push(`${phone}: ${sendResult.error}`);
+                console.log(`[FAILED] ${phone} - ${sendResult.error} (${sendResult.attempts} attempts)`);
 
                 // SÓ pausa após MUITAS falhas consecutivas (50)
                 if (consecutiveFailures >= RATE_LIMITS.maxConsecutiveFailures) {
