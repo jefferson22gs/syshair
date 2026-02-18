@@ -29,7 +29,8 @@ import {
   Star,
   Download,
   Image,
-  Camera
+  Camera,
+  Copy
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { format, isBefore, startOfDay } from "date-fns";
@@ -1742,6 +1743,43 @@ const PublicSalon = () => {
                     <span style={{ color: primaryColor }}>R$ {finalPrice.toFixed(2)}</span>
                   </div>
                 </div>
+
+                {/* PIX Payment Info */}
+                {salon?.pix_key && finalPrice > 0 && (
+                  <div className="mt-6 p-4 bg-secondary/30 rounded-xl border border-border">
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                        <span className="text-lg">💳</span>
+                      </div>
+                      <div>
+                        <p className="font-semibold text-sm">Pagamento via PIX</p>
+                        <p className="text-xs text-muted-foreground">Pague no dia do atendimento</p>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between p-3 bg-background rounded-lg">
+                        <div className="flex-1">
+                          <p className="text-xs text-muted-foreground mb-1">Chave PIX</p>
+                          <p className="font-mono text-sm font-medium break-all">{salon.pix_key}</p>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            navigator.clipboard.writeText(salon.pix_key || '');
+                            toast.success('Chave PIX copiada!');
+                          }}
+                          className="ml-2"
+                        >
+                          <Copy size={16} />
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground text-center">
+                        💡 Você pode pagar via PIX no dia do atendimento
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
