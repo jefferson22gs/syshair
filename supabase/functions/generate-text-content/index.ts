@@ -23,6 +23,30 @@ serve(async (req) => {
     }
 
     try {
+        // Validate authentication
+        const authHeader = req.headers.get("Authorization");
+        if (!authHeader) {
+            return new Response(
+                JSON.stringify({ error: "Missing authorization header" }),
+                { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+        }
+
+        const token = authHeader.replace("Bearer ", "");
+        const supabase = createClient(
+            Deno.env.get("SUPABASE_URL") ?? "",
+            Deno.env.get("SUPABASE_ANON_KEY") ?? ""
+        );
+
+        // Verify user token
+        const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+        if (authError || !user) {
+            return new Response(
+                JSON.stringify({ error: "Invalid or expired token" }),
+                { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+        }
+
         const { text, instruction, salonId, provider: requestedProvider } = await req.json();
 
         if (!text && !instruction) {
@@ -32,7 +56,8 @@ serve(async (req) => {
             );
         }
 
-        const supabase = createClient(
+        // Use service role for database queries
+        const supabaseAdmin = createClient(
             Deno.env.get("SUPABASE_URL") ?? "",
             Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
         );
@@ -44,7 +69,7 @@ serve(async (req) => {
 
         // Tenta buscar chave específica do salão ou global
         // 1. Verificar configuração do salão (se houver tabela salon_ai_configs)
-        let { data: salonConfig } = await supabase
+        let { data: salonConfig } = await supabaseAdmin
             .from("salon_ai_configs")
             .select("provider, api_key:ai_provider_keys(api_key)")
             .eq("salon_id", salonId)
@@ -60,7 +85,7 @@ serve(async (req) => {
             const providersToCheck = requestedProvider ? [requestedProvider] : ["groq", "openai", "gemini"];
 
             for (const p of providersToCheck) {
-                const { data: globalKey } = await supabase
+                const { data: globalKey } = await supabaseAdmin
                     .from("ai_provider_keys")
                     .select("api_key")
                     .ilike("provider", p)

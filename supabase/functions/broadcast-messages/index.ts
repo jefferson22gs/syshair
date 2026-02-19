@@ -67,6 +67,8 @@ async function sendMessageWithRetry(
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
             console.log(`[ATTEMPT ${attempt}/${maxRetries}] Sending to ${phone}`);
+            console.log(`[DEBUG] RemoteJid: ${remoteJid}`);
+            console.log(`[DEBUG] API URL: ${EVOLUTION_API_URL}/message/sendText/${instanceName}`);
 
             const response = await fetch(`${EVOLUTION_API_URL}/message/sendText/${instanceName}`, {
                 method: "POST",
@@ -80,11 +82,15 @@ async function sendMessageWithRetry(
                 }),
             });
 
+            console.log(`[DEBUG] Response status: ${response.status}`);
+
             let result;
             try {
                 result = await response.json();
+                console.log(`[DEBUG] Response body:`, JSON.stringify(result).substring(0, 200));
             } catch (e) {
                 result = { error: "Could not parse response" };
+                console.error(`[DEBUG] Failed to parse response:`, e);
             }
 
             if (response.ok && result.key) {
@@ -283,7 +289,16 @@ async function sendBroadcast(request: BroadcastRequest, supabase: any) {
 
     const broadcastId = broadcast.id;
 
-    processMessages(broadcastId, instanceName, message, recipients, salonId, supabase);
+    // Start processing in background (don't await - return immediately)
+    processMessages(broadcastId, instanceName, message, recipients, salonId, supabase)
+        .catch(error => {
+            console.error(`[BROADCAST ${broadcastId}] Fatal error:`, error);
+            // Update broadcast status to failed
+            supabase.from("broadcasts").update({
+                status: "failed",
+                error_message: error.message
+            }).eq("id", broadcastId);
+        });
 
     return new Response(
         JSON.stringify({
