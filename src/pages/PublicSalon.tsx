@@ -1011,13 +1011,13 @@ const PublicSalon = () => {
     <div className="min-h-screen bg-background">
       {/* Header with salon branding */}
       <header
-        className="sticky top-0 z-30 backdrop-blur-xl border-b border-border"
+        className="sticky-header safe-top"
         style={{
           background: `linear-gradient(135deg, ${primaryColor}10 0%, transparent 100%)`,
           borderColor: `${primaryColor}20`
         }}
       >
-        <div className="container px-4 py-6">
+        <div className="container-responsive py-4 sm:py-6">
           {/* Centered Salon Header */}
           <div className="flex flex-col items-center text-center">
             {/* Logo */}
@@ -1025,12 +1025,12 @@ const PublicSalon = () => {
               <img
                 src={salon.logo_url}
                 alt={salon.name}
-                className="h-20 w-20 rounded-2xl object-cover shadow-lg mb-4 border-2"
+                className="h-16 w-16 sm:h-20 sm:w-20 rounded-2xl object-cover shadow-gold mb-3 sm:mb-4 border-2 animate-scale-in"
                 style={{ borderColor: primaryColor }}
               />
             ) : (
               <div
-                className="h-20 w-20 rounded-2xl flex items-center justify-center text-white text-2xl font-bold shadow-lg mb-4"
+                className="h-16 w-16 sm:h-20 sm:w-20 rounded-2xl flex items-center justify-center text-white text-xl sm:text-2xl font-bold shadow-gold mb-3 sm:mb-4 animate-scale-in"
                 style={{ backgroundColor: primaryColor }}
               >
                 {salon.name.charAt(0)}
@@ -1038,15 +1038,15 @@ const PublicSalon = () => {
             )}
 
             {/* Salon Name */}
-            <h1 className="font-display text-2xl font-bold text-foreground mb-1">
+            <h1 className="font-display title-responsive font-bold text-foreground mb-1 animate-fade-in">
               {salon.name}
             </h1>
 
             {/* Address */}
             {(salon.address || salon.city) && (
-              <div className="flex items-center gap-1 text-sm text-muted-foreground mb-3">
-                <MapPin size={14} style={{ color: primaryColor }} />
-                <span>
+              <div className="flex items-center gap-1 text-xs sm:text-sm text-muted-foreground mb-3 animate-fade-in">
+                <MapPin size={14} className="flex-shrink-0" style={{ color: primaryColor }} />
+                <span className="text-center">
                   {salon.address ? `${salon.address}` : ''}
                   {salon.address && salon.city ? ' - ' : ''}
                   {salon.city ? `${salon.city}, ${salon.state}` : ''}
@@ -1055,40 +1055,42 @@ const PublicSalon = () => {
             )}
 
             {/* Info Pills */}
-            <div className="flex flex-wrap justify-center gap-2 mb-4">
+            <div className="flex flex-wrap justify-center gap-2 mb-3 sm:mb-4 animate-fade-in">
               {/* Working Hours */}
               <div
-                className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium"
+                className="flex items-center gap-2 px-3 py-1.5 sm:py-2 rounded-full text-xs font-medium transition-all hover:scale-105"
                 style={{ backgroundColor: `${primaryColor}15`, color: primaryColor }}
               >
-                <Clock size={14} />
-                <span>{salon.opening_time?.slice(0, 5)} - {salon.closing_time?.slice(0, 5)} • {formatWorkingDays()}</span>
+                <Clock size={14} className="flex-shrink-0" />
+                <span className="whitespace-nowrap">{salon.opening_time?.slice(0, 5)} - {salon.closing_time?.slice(0, 5)}</span>
+                <span className="hidden sm:inline">• {formatWorkingDays()}</span>
               </div>
 
               {/* Phone */}
               {salon.phone && (
                 <a
                   href={`tel:${salon.phone}`}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium bg-secondary/50 text-foreground hover:bg-secondary transition-colors"
+                  className="flex items-center gap-2 px-3 py-1.5 sm:py-2 rounded-full text-xs font-medium bg-secondary/50 text-foreground hover:bg-secondary transition-all hover:scale-105 touch-target"
                 >
-                  <Phone size={14} />
-                  <span>{salon.phone}</span>
+                  <Phone size={14} className="flex-shrink-0" />
+                  <span className="hidden sm:inline">{salon.phone}</span>
+                  <span className="sm:hidden">Ligar</span>
                 </a>
               )}
             </div>
 
             {/* Action Buttons */}
-            <div className="flex flex-wrap justify-center gap-2">
+            <div className="flex flex-wrap justify-center gap-2 animate-fade-in-up">
               {/* WhatsApp Button */}
               {salon.whatsapp && (
                 <a
                   href={`https://wa.me/${salon.whatsapp.replace(/\D/g, '')}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-white text-sm font-medium transition-all hover:opacity-90 hover:scale-105"
+                  className="inline-flex items-center gap-2 px-4 py-2 sm:px-5 sm:py-2.5 rounded-full text-white text-sm font-medium transition-all hover:opacity-90 hover:scale-105 touch-target btn-premium"
                   style={{ backgroundColor: '#25D366' }}
                 >
-                  <MessageCircle size={18} />
+                  <MessageCircle size={18} className="flex-shrink-0" />
                   <span>WhatsApp</span>
                 </a>
               )}
@@ -1097,10 +1099,10 @@ const PublicSalon = () => {
               {isInstallable && !isInstalled && (
                 <button
                   onClick={installApp}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all hover:opacity-90 hover:scale-105"
+                  className="inline-flex items-center gap-2 px-4 py-2 sm:px-5 sm:py-2.5 rounded-full text-sm font-medium transition-all hover:opacity-90 hover:scale-105 touch-target btn-premium"
                   style={{ backgroundColor: primaryColor, color: 'white' }}
                 >
-                  <Download size={18} />
+                  <Download size={18} className="flex-shrink-0" />
                   <span>Instalar App</span>
                 </button>
               )}
@@ -1119,34 +1121,35 @@ const PublicSalon = () => {
 
       {/* Salon Description (only on step 1) */}
       {step === 1 && salon.description && (
-        <div className="border-b border-border bg-card/50">
-          <div className="container px-4 py-4">
+        <div className="border-b border-border bg-card/50 backdrop-blur-sm">
+          <div className="container-responsive py-3 sm:py-4">
             <div className="max-w-2xl mx-auto text-center">
-              <p className="text-sm text-muted-foreground">{salon.description}</p>
+              <p className="text-xs sm:text-sm text-muted-foreground animate-fade-in">{salon.description}</p>
             </div>
           </div>
         </div>
       )}
 
-      <main className="container px-4 py-8 max-w-2xl mx-auto">
+      <main className="container-responsive py-6 sm:py-8 max-w-2xl mx-auto pb-safe">
         {/* Progress Steps */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-6 sm:mb-8 overflow-x-auto scrollbar-hide px-2">
           {steps.map((s, index) => (
-            <div key={s.number} className="flex items-center">
+            <div key={s.number} className="flex items-center flex-shrink-0">
               <div className="flex flex-col items-center">
                 <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center transition-all"
+                  className="w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-all duration-300 touch-target"
                   style={{
                     background: step >= s.number
                       ? `linear-gradient(135deg, ${primaryColor}, ${primaryColor}CC)`
                       : 'hsl(var(--secondary))',
-                    color: step >= s.number ? 'white' : 'hsl(var(--muted-foreground))'
+                    color: step >= s.number ? 'white' : 'hsl(var(--muted-foreground))',
+                    transform: step === s.number ? 'scale(1.1)' : 'scale(1)'
                   }}
                 >
                   {step > s.number ? <Check size={18} /> : <s.icon size={18} />}
                 </div>
                 <span
-                  className="text-xs mt-2"
+                  className="text-xs mt-2 text-center whitespace-nowrap transition-colors duration-300"
                   style={{ color: step >= s.number ? 'hsl(var(--foreground))' : 'hsl(var(--muted-foreground))' }}
                 >
                   {s.label}
@@ -1154,7 +1157,7 @@ const PublicSalon = () => {
               </div>
               {index < steps.length - 1 && (
                 <div
-                  className="w-12 md:w-20 h-0.5 mx-2"
+                  className="w-8 sm:w-12 md:w-20 h-0.5 mx-1 sm:mx-2 transition-all duration-300"
                   style={{ backgroundColor: step > s.number ? primaryColor : 'hsl(var(--border))' }}
                 />
               )}
@@ -1163,43 +1166,46 @@ const PublicSalon = () => {
         </div>
 
         {/* Step Content */}
-        <div className="bg-card border border-border rounded-3xl p-6 md:p-8 shadow-lg">
+        <div className="glass-premium rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 shadow-lg animate-fade-in">
           {/* Step 1: Select Services & Products */}
           {step === 1 && (
             <div className="animate-fade-in">
-              <h2 className="font-display text-2xl font-bold text-foreground mb-2">
+              <h2 className="font-display heading-responsive font-bold text-foreground mb-2">
                 Monte seu pedido
               </h2>
-              <p className="text-muted-foreground mb-6">Selecione serviços e produtos que deseja</p>
+              <p className="text-responsive text-muted-foreground mb-4 sm:mb-6">Selecione serviços e produtos que deseja</p>
 
               <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'services' | 'products' | 'packages' | 'gallery')} className="w-full">
-                <TabsList className="grid w-full grid-cols-4 mb-6">
-                  <TabsTrigger value="services" className="flex items-center gap-2">
-                    <Scissors size={16} />
-                    Serviços
+                <TabsList className="grid w-full grid-cols-4 mb-4 sm:mb-6 h-auto">
+                  <TabsTrigger value="services" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 sm:py-3">
+                    <Scissors size={14} className="sm:w-4 sm:h-4" />
+                    <span className="hidden xs:inline">Serviços</span>
+                    <span className="xs:hidden">Serv.</span>
                   </TabsTrigger>
-                  <TabsTrigger value="products" className="flex items-center gap-2">
-                    <Store size={16} />
-                    Loja
+                  <TabsTrigger value="products" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 sm:py-3">
+                    <Store size={14} className="sm:w-4 sm:h-4" />
+                    <span>Loja</span>
                   </TabsTrigger>
-                  <TabsTrigger value="packages" className="flex items-center gap-2">
-                    <Package size={16} />
-                    Pacotes
+                  <TabsTrigger value="packages" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 sm:py-3">
+                    <Package size={14} className="sm:w-4 sm:h-4" />
+                    <span className="hidden xs:inline">Pacotes</span>
+                    <span className="xs:hidden">Pac.</span>
                   </TabsTrigger>
-                  <TabsTrigger value="gallery" className="flex items-center gap-2">
-                    <Camera size={16} />
-                    Galeria
+                  <TabsTrigger value="gallery" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 sm:py-3">
+                    <Camera size={14} className="sm:w-4 sm:h-4" />
+                    <span className="hidden xs:inline">Galeria</span>
+                    <span className="xs:hidden">Gal.</span>
                   </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="services">
                   {services.length === 0 ? (
                     <div className="text-center py-12">
-                      <Scissors size={48} className="mx-auto text-muted-foreground mb-4" />
-                      <p className="text-muted-foreground">Nenhum serviço disponível</p>
+                      <Scissors size={48} className="mx-auto text-muted-foreground mb-4 opacity-50" />
+                      <p className="text-responsive text-muted-foreground">Nenhum serviço disponível</p>
                     </div>
                   ) : (
-                    <div className="grid gap-3">
+                    <div className="grid gap-3 sm:gap-4">
                       {services.map((service) => (
                         <button
                           key={service.id}
@@ -1207,36 +1213,38 @@ const PublicSalon = () => {
                             ? removeFromCart(service.id, 'service')
                             : addToCart(service, 'service')
                           }
-                          className="relative flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left"
+                          className="card-premium relative flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl border-2 transition-all text-left touch-target"
                           style={{
                             borderColor: isInCart(service.id, 'service') ? primaryColor : 'hsl(var(--border))',
                             backgroundColor: isInCart(service.id, 'service') ? `${primaryColor}08` : 'transparent'
                           }}
                         >
-                          <span className="text-2xl">{service.icon || '✂️'}</span>
-                          <div className="flex-1">
-                            <p className="font-medium text-foreground">{service.name}</p>
+                          <span className="text-xl sm:text-2xl flex-shrink-0">{service.icon || '✂️'}</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm sm:text-base text-foreground truncate">{service.name}</p>
                             {service.description && (
-                              <p className="text-sm text-muted-foreground line-clamp-1">{service.description}</p>
+                              <p className="text-xs sm:text-sm text-muted-foreground line-clamp-1">{service.description}</p>
                             )}
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
-                              <Clock size={14} />
+                            <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground mt-1">
+                              <Clock size={12} className="sm:w-3.5 sm:h-3.5 flex-shrink-0" />
                               {service.duration_minutes}min
                             </div>
                           </div>
-                          <p className="text-lg font-bold text-foreground">
-                            R$ {service.price.toFixed(2)}
-                          </p>
-                          <div
-                            className="w-6 h-6 rounded-full flex items-center justify-center border-2"
-                            style={{
-                              borderColor: primaryColor,
-                              backgroundColor: isInCart(service.id, 'service') ? primaryColor : 'transparent'
-                            }}
-                          >
-                            {isInCart(service.id, 'service') && (
-                              <Check size={14} className="text-white" />
-                            )}
+                          <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                            <p className="text-base sm:text-lg font-bold text-foreground whitespace-nowrap">
+                              R$ {service.price.toFixed(2)}
+                            </p>
+                            <div
+                              className="w-6 h-6 rounded-full flex items-center justify-center border-2 transition-all"
+                              style={{
+                                borderColor: primaryColor,
+                                backgroundColor: isInCart(service.id, 'service') ? primaryColor : 'transparent'
+                              }}
+                            >
+                              {isInCart(service.id, 'service') && (
+                                <Check size={14} className="text-white" />
+                              )}
+                            </div>
                           </div>
                         </button>
                       ))}
@@ -1460,19 +1468,19 @@ const PublicSalon = () => {
 
               {/* Cart Summary */}
               {cart.length > 0 && (
-                <div className="mt-6 p-4 rounded-xl border-2" style={{ borderColor: primaryColor, backgroundColor: `${primaryColor}08` }}>
+                <div className="mt-4 sm:mt-6 p-3 sm:p-4 rounded-xl border-2 animate-scale-in" style={{ borderColor: primaryColor, backgroundColor: `${primaryColor}08` }}>
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <ShoppingCart size={18} style={{ color: primaryColor }} />
-                      <span className="font-medium">Carrinho ({cart.length} {cart.length === 1 ? 'item' : 'itens'})</span>
+                      <ShoppingCart size={16} className="sm:w-5 sm:h-5 flex-shrink-0" style={{ color: primaryColor }} />
+                      <span className="font-medium text-sm sm:text-base">Carrinho ({cart.length} {cart.length === 1 ? 'item' : 'itens'})</span>
                     </div>
-                    <span className="text-lg font-bold" style={{ color: primaryColor }}>
+                    <span className="text-base sm:text-lg font-bold whitespace-nowrap" style={{ color: primaryColor }}>
                       R$ {cartTotal.toFixed(2)}
                     </span>
                   </div>
                   {cartServicesDuration > 0 && (
-                    <p className="text-sm text-muted-foreground">
-                      <Clock size={12} className="inline mr-1" />
+                    <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1">
+                      <Clock size={12} className="flex-shrink-0" />
                       Tempo estimado: {cartServicesDuration} min
                     </p>
                   )}
@@ -1484,24 +1492,24 @@ const PublicSalon = () => {
           {/* Step 2: Select Professional */}
           {step === 2 && (
             <div className="animate-fade-in">
-              <h2 className="font-display text-2xl font-bold text-foreground mb-2">
+              <h2 className="font-display heading-responsive font-bold text-foreground mb-2">
                 Escolha o profissional
               </h2>
-              <p className="text-muted-foreground mb-6">Ou deixe em branco para qualquer um disponível</p>
+              <p className="text-responsive text-muted-foreground mb-4 sm:mb-6">Ou deixe em branco para qualquer um disponível</p>
 
-              <div className="grid gap-3">
+              <div className="grid gap-3 sm:gap-4">
                 {professionals.map((pro) => (
                   <button
                     key={pro.id}
                     onClick={() => setSelectedProfessional(pro.id)}
-                    className="flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left"
+                    className="card-premium flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl border-2 transition-all text-left touch-target"
                     style={{
                       borderColor: selectedProfessional === pro.id ? primaryColor : 'hsl(var(--border))',
                       backgroundColor: selectedProfessional === pro.id ? `${primaryColor}08` : 'transparent'
                     }}
                   >
                     <div
-                      className="w-14 h-14 rounded-full flex items-center justify-center text-white font-bold text-xl overflow-hidden"
+                      className="w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center text-white font-bold text-lg sm:text-xl overflow-hidden flex-shrink-0"
                       style={{ background: `linear-gradient(135deg, ${primaryColor}, ${primaryColor}CC)` }}
                     >
                       {pro.avatar_url ? (
@@ -1510,15 +1518,15 @@ const PublicSalon = () => {
                         pro.name.charAt(0)
                       )}
                     </div>
-                    <div className="flex-1">
-                      <p className="font-medium text-foreground">{pro.name}</p>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm sm:text-base text-foreground truncate">{pro.name}</p>
                       {pro.specialty && (
-                        <p className="text-sm text-muted-foreground">{pro.specialty}</p>
+                        <p className="text-xs sm:text-sm text-muted-foreground truncate">{pro.specialty}</p>
                       )}
                     </div>
                     {selectedProfessional === pro.id && (
                       <div
-                        className="w-6 h-6 rounded-full flex items-center justify-center"
+                        className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
                         style={{ backgroundColor: primaryColor }}
                       >
                         <Check size={14} className="text-white" />
@@ -1529,22 +1537,22 @@ const PublicSalon = () => {
 
                 <button
                   onClick={() => setSelectedProfessional("any")}
-                  className="flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left"
+                  className="card-premium flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl border-2 transition-all text-left touch-target"
                   style={{
                     borderColor: selectedProfessional === "any" ? primaryColor : 'hsl(var(--border))',
                     backgroundColor: selectedProfessional === "any" ? `${primaryColor}08` : 'transparent'
                   }}
                 >
-                  <div className="w-14 h-14 rounded-full bg-secondary flex items-center justify-center text-muted-foreground">
-                    <User size={24} />
+                  <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-secondary flex items-center justify-center text-muted-foreground flex-shrink-0">
+                    <User size={20} className="sm:w-6 sm:h-6" />
                   </div>
-                  <div className="flex-1">
-                    <p className="font-medium text-foreground">Sem preferência</p>
-                    <p className="text-sm text-muted-foreground">Qualquer profissional disponível</p>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm sm:text-base text-foreground">Sem preferência</p>
+                    <p className="text-xs sm:text-sm text-muted-foreground">Qualquer profissional disponível</p>
                   </div>
                   {selectedProfessional === "any" && (
                     <div
-                      className="w-6 h-6 rounded-full flex items-center justify-center"
+                      className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
                       style={{ backgroundColor: primaryColor }}
                     >
                       <Check size={14} className="text-white" />
@@ -1558,25 +1566,25 @@ const PublicSalon = () => {
           {/* Step 3: Select Date and Time */}
           {step === 3 && (
             <div className="animate-fade-in">
-              <h2 className="font-display text-2xl font-bold text-foreground mb-2">
+              <h2 className="font-display heading-responsive font-bold text-foreground mb-2">
                 Data e horário
               </h2>
-              <p className="text-muted-foreground mb-6">Escolha quando você quer ser atendido</p>
+              <p className="text-responsive text-muted-foreground mb-4 sm:mb-6">Escolha quando você quer ser atendido</p>
 
-              <div className="mb-6">
+              <div className="mb-4 sm:mb-6">
                 <Calendar
                   mode="single"
                   selected={selectedDate}
                   onSelect={setSelectedDate}
                   disabled={isDateDisabled}
                   locale={ptBR}
-                  className="rounded-xl border border-border p-3"
+                  className="rounded-xl border border-border p-2 sm:p-3 mx-auto"
                 />
               </div>
 
               {selectedDate && (
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-3">
+                  <label className="block text-sm sm:text-base font-medium text-foreground mb-3">
                     Horários disponíveis para {format(selectedDate, "dd/MM", { locale: ptBR })}
                   </label>
 
@@ -1587,15 +1595,15 @@ const PublicSalon = () => {
                   ) : availableSlots.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
                       <Clock size={32} className="mx-auto mb-2 opacity-50" />
-                      <p>Nenhum horário disponível nesta data</p>
+                      <p className="text-sm sm:text-base">Nenhum horário disponível nesta data</p>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
                       {availableSlots.map((slot) => (
                         <button
                           key={slot}
                           onClick={() => setSelectedTime(slot)}
-                          className="py-3 px-2 rounded-lg text-sm font-medium transition-all"
+                          className="py-3 px-2 rounded-lg text-sm font-medium transition-all touch-target hover:scale-105"
                           style={{
                             backgroundColor: selectedTime === slot ? primaryColor : 'hsl(var(--secondary))',
                             color: selectedTime === slot ? 'white' : 'hsl(var(--foreground))'
@@ -1614,31 +1622,31 @@ const PublicSalon = () => {
           {/* Step 4: Confirmation */}
           {step === 4 && (
             <div className="animate-fade-in">
-              <h2 className="font-display text-2xl font-bold text-foreground mb-2">
+              <h2 className="font-display heading-responsive font-bold text-foreground mb-2">
                 Confirme seu agendamento
               </h2>
-              <p className="text-muted-foreground mb-6">Revise os detalhes e preencha seus dados</p>
+              <p className="text-responsive text-muted-foreground mb-4 sm:mb-6">Revise os detalhes e preencha seus dados</p>
 
               {/* Summary */}
-              <div className="bg-secondary/50 rounded-xl p-4 mb-6">
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
+              <div className="bg-secondary/50 rounded-xl p-3 sm:p-4 mb-4 sm:mb-6">
+                <div className="space-y-2 text-xs sm:text-sm">
+                  <div className="flex justify-between gap-4">
                     <span className="text-muted-foreground">Serviços</span>
                     <span className="font-medium text-right">{cartServices.map(s => s.name).join(', ') || 'Nenhum'}</span>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex justify-between gap-4">
                     <span className="text-muted-foreground">Profissional</span>
-                    <span className="font-medium">
+                    <span className="font-medium text-right">
                       {selectedProfessional === "any" ? "Qualquer disponível" : selectedProfessionalData?.name}
                     </span>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex justify-between gap-4">
                     <span className="text-muted-foreground">Data</span>
-                    <span className="font-medium">
+                    <span className="font-medium text-right">
                       {selectedDate && format(selectedDate, "EEEE, dd 'de' MMMM", { locale: ptBR })}
                     </span>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex justify-between gap-4">
                     <span className="text-muted-foreground">Horário</span>
                     <span className="font-medium">{selectedTime}</span>
                   </div>
@@ -1646,34 +1654,37 @@ const PublicSalon = () => {
               </div>
 
               {/* Client Info */}
-              <div className="space-y-4 mb-6">
+              <div className="space-y-3 sm:space-y-4 mb-4 sm:mb-6">
                 <div className="space-y-2">
-                  <Label htmlFor="clientName">Seu nome *</Label>
+                  <Label htmlFor="clientName" className="text-sm sm:text-base">Seu nome *</Label>
                   <Input
                     id="clientName"
                     value={clientName}
                     onChange={(e) => setClientName(e.target.value)}
+                    className="h-11 sm:h-12 text-base"
                   />
                 </div>
                 <div>
-                  <Label>WhatsApp *</Label>
+                  <Label className="text-sm sm:text-base">WhatsApp *</Label>
                   <Input
                     placeholder="(00) 00000-0000"
                     value={clientPhone}
                     onChange={(e) => setClientPhone(e.target.value)}
                     onBlur={(e) => checkPendingReviews(e.target.value)}
+                    className="h-11 sm:h-12 text-base"
                   />
                 </div>
                 <div>
-                  <Label>Data de nascimento (Opcional)</Label>
+                  <Label className="text-sm sm:text-base">Data de nascimento (Opcional)</Label>
                   <Input
                     type="tel"
                     placeholder="DD/MM/AAAA"
                     value={clientBirthday}
                     onChange={handleBirthdayChange}
                     maxLength={10}
+                    className="h-11 sm:h-12 text-base"
                   />
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground mt-1">
                     🎂 No seu aniversário você pode ganhar um presente especial!
                   </p>
                 </div>
@@ -1735,8 +1746,8 @@ const PublicSalon = () => {
 
 
               {/* Coupon */}
-              <div className="mb-6">
-                <Label className="flex items-center gap-2 mb-2">
+              <div className="mb-4 sm:mb-6">
+                <Label className="flex items-center gap-2 mb-2 text-sm sm:text-base">
                   <Gift size={16} style={{ color: primaryColor }} />
                   Cupom de desconto
                 </Label>
@@ -1747,18 +1758,20 @@ const PublicSalon = () => {
                     placeholder="Digite o código"
                     disabled={!!couponApplied}
                     maxLength={30}
+                    className="h-11 sm:h-12 text-base"
                   />
                   <Button
                     onClick={validateCoupon}
                     disabled={validatingCoupon || !couponCode.trim() || !!couponApplied}
                     variant="outline"
                     style={{ borderColor: primaryColor, color: primaryColor }}
+                    className="h-11 sm:h-12 px-4 sm:px-6 touch-target"
                   >
                     {validatingCoupon ? <Loader2 className="w-4 h-4 animate-spin" /> : "Aplicar"}
                   </Button>
                 </div>
                 {couponApplied && (
-                  <p className="text-sm mt-2" style={{ color: primaryColor }}>
+                  <p className="text-xs sm:text-sm mt-2" style={{ color: primaryColor }}>
                     ✓ {couponApplied.message}
                   </p>
                 )}
@@ -1767,17 +1780,17 @@ const PublicSalon = () => {
               {/* Price Summary */}
               <div className="border-t border-border pt-4">
                 <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between text-sm sm:text-base">
                     <span className="text-muted-foreground">Subtotal</span>
                     <span>R$ {price.toFixed(2)}</span>
                   </div>
                   {discount > 0 && (
-                    <div className="flex justify-between text-sm" style={{ color: primaryColor }}>
+                    <div className="flex justify-between text-sm sm:text-base" style={{ color: primaryColor }}>
                       <span>Desconto</span>
                       <span>- R$ {discount.toFixed(2)}</span>
                     </div>
                   )}
-                  <div className="flex justify-between text-lg font-bold pt-2">
+                  <div className="flex justify-between text-lg sm:text-xl font-bold pt-2">
                     <span>Total</span>
                     <span style={{ color: primaryColor }}>R$ {finalPrice.toFixed(2)}</span>
                   </div>
@@ -1785,21 +1798,21 @@ const PublicSalon = () => {
 
                 {/* PIX Payment Info */}
                 {salon?.pix_key && finalPrice > 0 && (
-                  <div className="mt-6 p-4 bg-secondary/30 rounded-xl border border-border">
+                  <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-secondary/30 rounded-xl border border-border">
                     <div className="flex items-center gap-2 mb-3">
-                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                         <span className="text-lg">💳</span>
                       </div>
                       <div>
-                        <p className="font-semibold text-sm">Pagamento via PIX</p>
+                        <p className="font-semibold text-xs sm:text-sm">Pagamento via PIX</p>
                         <p className="text-xs text-muted-foreground">Pague no dia do atendimento</p>
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <div className="flex items-center justify-between p-3 bg-background rounded-lg">
-                        <div className="flex-1">
+                      <div className="flex items-center justify-between p-2 sm:p-3 bg-background rounded-lg">
+                        <div className="flex-1 min-w-0 mr-2">
                           <p className="text-xs text-muted-foreground mb-1">Chave PIX</p>
-                          <p className="font-mono text-sm font-medium break-all">{salon.pix_key}</p>
+                          <p className="font-mono text-xs sm:text-sm font-medium break-all">{salon.pix_key}</p>
                         </div>
                         <Button
                           size="sm"
@@ -1808,7 +1821,7 @@ const PublicSalon = () => {
                             navigator.clipboard.writeText(salon.pix_key || '');
                             toast.success('Chave PIX copiada!');
                           }}
-                          className="ml-2"
+                          className="flex-shrink-0 touch-target"
                         >
                           <Copy size={16} />
                         </Button>
@@ -1824,11 +1837,12 @@ const PublicSalon = () => {
           )}
 
           {/* Navigation Buttons */}
-          <div className="flex justify-between mt-8">
+          <div className="flex justify-between mt-6 sm:mt-8 gap-3">
             {step > 1 ? (
-              <Button variant="outline" onClick={() => setStep(step - 1)}>
+              <Button variant="outline" onClick={() => setStep(step - 1)} className="touch-target">
                 <ArrowLeft size={18} className="mr-2" />
-                Voltar
+                <span className="hidden xs:inline">Voltar</span>
+                <span className="xs:hidden">Voltar</span>
               </Button>
             ) : (
               <div />
@@ -1846,8 +1860,10 @@ const PublicSalon = () => {
                   backgroundColor: primaryColor,
                   color: 'white'
                 }}
+                className="touch-target btn-premium"
               >
-                Próximo
+                <span className="hidden xs:inline">Próximo</span>
+                <span className="xs:hidden">Próximo</span>
                 <ArrowRight size={18} className="ml-2" />
               </Button>
             ) : (
@@ -1858,16 +1874,19 @@ const PublicSalon = () => {
                   backgroundColor: primaryColor,
                   color: 'white'
                 }}
+                className="touch-target btn-premium"
               >
                 {submitting ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                    Agendando...
+                    <span className="hidden xs:inline">Agendando...</span>
+                    <span className="xs:hidden">...</span>
                   </>
                 ) : (
                   <>
                     <Check size={18} className="mr-2" />
-                    Confirmar Agendamento
+                    <span className="hidden sm:inline">Confirmar Agendamento</span>
+                    <span className="sm:hidden">Confirmar</span>
                   </>
                 )}
               </Button>
@@ -1876,7 +1895,7 @@ const PublicSalon = () => {
         </div>
 
         {/* Footer */}
-        <p className="text-center text-xs text-muted-foreground mt-8">
+        <p className="text-center text-xs text-muted-foreground mt-6 sm:mt-8 px-4">
           Ao agendar, você concorda com os termos de uso do estabelecimento.
         </p>
       </main >

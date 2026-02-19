@@ -364,7 +364,7 @@ export const useSalon = (salonId?: string) => {
       const hours = Math.floor(currentTime / 60);
       const minutes = currentTime % 60;
       slots.push(`${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`);
-      currentTime += 30; // 30 minute intervals
+      currentTime += duration; // Use service duration for intervals
     }
 
     // Get existing appointments for the date
