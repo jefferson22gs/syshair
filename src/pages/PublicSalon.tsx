@@ -444,6 +444,13 @@ const PublicSalon = () => {
         return;
       }
 
+      // Use the smallest service duration for slot intervals
+      const slotInterval = cartServices.length > 0
+        ? Math.min(...cartServices.map(s => s.duration_minutes || 30))
+        : 30;
+
+      console.log('🔍 Slot interval:', slotInterval, 'minutes | Total duration:', totalDuration, 'minutes');
+
       const duration = totalDuration;
       const slots: string[] = [];
       const [openHour, openMin] = dayOpen.split(':').map(Number);
@@ -463,7 +470,7 @@ const PublicSalon = () => {
           const minutes = currentTime % 60;
           slots.push(`${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`);
         }
-        currentTime += 30;
+        currentTime += slotInterval; // Use dynamic interval based on service duration
       }
 
       // Get existing appointments

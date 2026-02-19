@@ -351,6 +351,7 @@ export const useSalon = (salonId?: string) => {
     if (!service) return [];
 
     const duration = service.duration_minutes;
+    console.log('🔍 Service:', service.name, '| Duration:', duration, 'minutes');
 
     // Generate all possible time slots
     const slots: string[] = [];
