@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS public.broadcast_templates (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     salon_id UUID REFERENCES public.salons(id) ON DELETE CASCADE NOT NULL,
     name VARCHAR(255) NOT NULL,
-    message TEXT NOT NULL,
+    content TEXT NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

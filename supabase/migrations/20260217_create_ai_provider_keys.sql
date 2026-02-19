@@ -2,8 +2,8 @@
 CREATE TABLE IF NOT EXISTS public.ai_provider_keys (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     provider TEXT NOT NULL,
-    key_value TEXT NOT NULL,
-    status TEXT DEFAULT 'active',
+    api_key TEXT NOT NULL,
+    is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
