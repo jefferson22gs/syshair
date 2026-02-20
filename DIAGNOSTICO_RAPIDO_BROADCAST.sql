@@ -1,7 +1,7 @@
 -- ============================================
--- DIAGNÓSTICO RÁPIDO - BROADCAST TRAVADO
+-- DIAGNÓSTICO RÁPIDO - BROADCAST TRAVADO (CORRIGIDO v2)
 -- Execute estas queries e me envie os resultados
--- Data: 2026-02-20 16:00
+-- Data: 2026-02-20 16:03
 -- ============================================
 
 -- QUERY 1: Ver último broadcast
@@ -27,8 +27,8 @@ SELECT
     phone,
     status,
     error_message,
-    created_at,
-    sent_at
+    whatsapp_message_id,
+    created_at
 FROM broadcast_messages
 WHERE broadcast_id = (SELECT id FROM broadcasts ORDER BY created_at DESC LIMIT 1)
 ORDER BY created_at DESC
@@ -87,40 +87,82 @@ FROM broadcasts
 WHERE status = 'processing'
 ORDER BY created_at DESC;
 
--- ============================================
--- INTERPRETAÇÃO DOS RESULTADOS:
--- ============================================
-
--- Se QUERY 1 mostrar:
--- status = 'processing' e tempo_rodando > 10 minutos → TRAVADO
--- status = 'failed' → Ver error_message
--- status = 'completed' mas sent_count = 0 → Problema de envio
-
--- Se QUERY 2 mostrar:
--- Muitos status = 'failed' → Ver error_message
--- Muitos status = 'pending' → Broadcast não está processando
-
--- Se QUERY 4 mostrar:
--- status != 'connected' → Instância desconectada
--- instance_name diferente de 'syshair_daniel_cabelos_1777c2a7' → Usar instância errada
+-- QUERY 7: Ver estrutura da tabela broadcast_messages
+SELECT
+    '=== COLUNAS DA TABELA ===' as info,
+    column_name,
+    data_type
+FROM information_schema.columns
+WHERE table_name = 'broadcast_messages'
+  AND table_schema = 'public'
+ORDER BY ordinal_position;
 
 -- ============================================
 -- CORREÇÃO RÁPIDA (se necessário):
 -- ============================================
 
--- Se broadcast estiver travado:
+-- 1. Parar broadcasts travados
 UPDATE broadcasts
-SET status = 'stopped', completed_at = NOW()
+SET
+    status = 'stopped',
+    completed_at = NOW(),
+    error_message = 'Parado manualmente - broadcast travado'
 WHERE status = 'processing'
   AND created_at < NOW() - INTERVAL '10 minutes';
 
--- Se instância estiver desconectada:
+-- 2. Atualizar instância para uma conectada
 UPDATE whatsapp_instances
 SET
     instance_name = 'syshair_daniel_cabelos_1777c2a7',
     status = 'connected',
-    phone_number = '5519982143580'
+    phone_number = '5519982143580',
+    updated_at = NOW()
 WHERE salon_id = (SELECT id FROM salons LIMIT 1);
 
--- Verificar resultado:
-SELECT 'Correção aplicada ✓' as status;
+-- 3. Limpar mensagens pendentes antigas
+UPDATE broadcast_messages
+SET
+    status = 'failed',
+    error_message = 'Timeout - broadcast travado'
+WHERE status = 'pending'
+  AND created_at < NOW() - INTERVAL '10 minutes';
+
+-- 4. Verificar resultado
+SELECT
+    'Correção aplicada ✓' as status,
+    (SELECT COUNT(*) FROM broadcasts WHERE status = 'stopped' AND completed_at >= NOW() - INTERVAL '1 minute') as broadcasts_parados,
+    (SELECT COUNT(*) FROM broadcast_messages WHERE status = 'failed' AND error_message = 'Timeout - broadcast travado') as mensagens_limpas,
+    (SELECT instance_name FROM whatsapp_instances LIMIT 1) as instancia_atual,
+    (SELECT status FROM whatsapp_instances LIMIT 1) as instancia_status;
+
+-- ============================================
+-- INTERPRETAÇÃO DOS RESULTADOS:
+-- ============================================
+
+-- QUERY 1 (Último Broadcast):
+-- - status = 'processing' e tempo_rodando > 10 min → TRAVADO, executar correção 1
+-- - status = 'failed' → Ver error_message para identificar causa
+-- - status = 'completed' mas sent_count = 0 → Problema de envio, ver QUERY 5
+
+-- QUERY 2 (Mensagens):
+-- - Muitos status = 'failed' → Ver error_message na QUERY 5
+-- - Muitos status = 'pending' → Broadcast não está processando, executar correção 1
+-- - Nenhuma mensagem → Broadcast não iniciou, problema no frontend
+
+-- QUERY 3 (Estatísticas):
+-- - 100% pending → Broadcast não processou nenhuma mensagem
+-- - 100% failed → Problema grave (instância, API key, etc)
+-- - Mix de sent/failed → Normal, ver taxa de sucesso
+
+-- QUERY 4 (Instância):
+-- - status != 'connected' → Executar correção 2
+-- - instance_name != 'syshair_daniel_cabelos_1777c2a7' → Executar correção 2
+
+-- QUERY 5 (Erros):
+-- - "Formato de número inválido" → Números sem DDD
+-- - "Instance not found" → Nome da instância incorreto
+-- - "Unauthorized" → API key incorreta
+-- - "Timeout" → Evolution API lenta ou offline
+
+-- QUERY 6 (Broadcasts Travados):
+-- - Se aparecer algum → Executar correção 1
