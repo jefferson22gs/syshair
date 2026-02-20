@@ -1,154 +1,130 @@
-# ⚡ INÍCIO RÁPIDO - 5 MINUTOS
+# 🎯 INÍCIO RÁPIDO - 5 MINUTOS
 
-**Tudo está pronto! Siga estes passos para começar a usar:**
-
----
-
-## 🎯 PASSO 1: Configurar Salão (2 minutos)
-
-### Acessar Admin:
-```
-https://syshair.vercel.app/admin/settings
-```
-
-### Preencher:
-1. **WhatsApp Instance Name:**
-   - Digite o nome da sua instância Evolution
-   - Exemplo: `salao123` ou `meu-salao`
-   - (É o nome que você usa na Evolution API)
-
-2. **Chave PIX:**
-   - Digite sua chave PIX
-   - Pode ser: CPF, CNPJ, email, telefone ou chave aleatória
-
-3. **Ativar Automações:**
-   - ✅ Auto Confirm Appointments
-   - ✅ Auto Birthday Messages
-
-4. **Desconto de Aniversário:**
-   - Digite: `10` (ou outro valor de 1 a 100)
-
-5. **Salvar**
+**Última atualização:** 2026-02-20 13:40
 
 ---
 
-## 🧪 PASSO 2: Testar (3 minutos)
+## ⚡ AÇÃO IMEDIATA
 
-### Fazer um Agendamento:
+### 1️⃣ Abrir Supabase (1 min)
+```
+https://supabase.com/dashboard/project/jfjbpjnnfnuiezchhust
+```
+- Fazer login
+- Clicar em "SQL Editor" (menu lateral)
 
-1. Abra a página pública do salão
-2. Selecione um serviço
-3. Preencha:
-   - Nome: Seu nome
-   - Telefone: **SEU NÚMERO** (para receber o teste)
-   - Data de nascimento: Qualquer data
-4. Selecione data e horário
-5. Confirme
+### 2️⃣ Executar Diagnóstico (2 min)
+- Abrir arquivo: `DIAGNOSTICO_COMPLETO.sql`
+- Copiar TODO o conteúdo (Ctrl+A, Ctrl+C)
+- Colar no SQL Editor (Ctrl+V)
+- Clicar em "Run" ou pressionar Ctrl+Enter
+- **ANOTAR o `salon_id`** que aparece no final
 
-### Verificar:
-- ✅ Agendamento criado?
-- ✅ WhatsApp recebido no seu telefone?
-- ✅ Mensagem tem: nome, data, horário, serviço, PIX?
-- ✅ Notificação apareceu no admin?
+### 3️⃣ Aplicar Correções (2 min)
+- Abrir arquivo: `CORRECOES_CHATBOT.sql`
+- Substituir `'SEU_SALON_ID'` pelo ID anotado (Ctrl+H)
+- Copiar TODO o conteúdo
+- Colar no SQL Editor
+- Clicar em "Run"
 
 ---
 
-## ✅ PRONTO!
+## 🔑 OBTER API KEY (5 min)
 
-Se tudo funcionou, seu sistema está 100% operacional! 🎉
+**Escolha UMA opção:**
 
-### O que acontece agora automaticamente:
+### Opção A: Groq (Recomendado)
+1. Ir em: https://console.groq.com
+2. Criar conta (email + senha)
+3. Clicar em "API Keys"
+4. Clicar em "Create API Key"
+5. Copiar a chave (começa com `gsk_`)
 
-**Quando um cliente agenda:**
-1. Sistema salva no banco
-2. WhatsApp é enviado automaticamente
-3. Notificação aparece no admin em tempo real
-4. Log é registrado
+### Opção B: Google Gemini
+1. Ir em: https://makersuite.google.com/app/apikey
+2. Fazer login com Google
+3. Clicar em "Create API Key"
+4. Copiar a chave
 
-**Todos os dias às 9h (6h Brasília):**
-1. Sistema busca aniversariantes do dia
-2. Envia mensagem de parabéns com desconto
-3. Log é registrado
+### Inserir a Chave no Banco
+Voltar ao SQL Editor do Supabase e executar:
 
----
-
-## 📊 Ver Resultados
-
-### Ver Logs de WhatsApp:
-```
-https://supabase.com/dashboard/project/jfjbpjnnfnuiezchhust/editor
-```
-
-Execute:
 ```sql
-SELECT
-    message_type,
-    recipient_name,
-    status,
-    created_at
-FROM whatsapp_logs
-ORDER BY created_at DESC
-LIMIT 10;
-```
+-- Para Groq:
+INSERT INTO ai_provider_keys (provider, api_key, is_active)
+VALUES ('groq', 'gsk_SUA_CHAVE_AQUI', true)
+ON CONFLICT (provider) DO UPDATE
+SET api_key = EXCLUDED.api_key, is_active = true;
 
-### Ver Estatísticas:
-```sql
-SELECT
-    message_type,
-    COUNT(*) as total,
-    COUNT(*) FILTER (WHERE status = 'sent') as enviados,
-    COUNT(*) FILTER (WHERE status = 'failed') as falhas
-FROM whatsapp_logs
-GROUP BY message_type;
+UPDATE chatbot_settings
+SET ai_provider = 'groq', ai_model = 'llama3-70b-8192'
+WHERE enabled = true;
 ```
 
 ---
 
-## 🆘 Problemas?
+## 📱 RECONECTAR WHATSAPP (3 min)
 
-### WhatsApp não chegou?
+1. Abrir: http://localhost:5173/admin/whatsapp
+   - OU a URL de produção
 
-**Verificar:**
-1. Instance name está correto?
-2. Instância Evolution está conectada?
-3. Ver logs da function:
-   ```
-   https://supabase.com/dashboard/project/jfjbpjnnfnuiezchhust/functions
-   ```
-   - Clique em `auto-appointment-confirmation`
-   - Aba "Logs"
+2. Se aparecer "Desconectado":
+   - Clicar em "Conectar WhatsApp"
+   - Escanear QR Code
+   - Aguardar status "Conectado"
 
-### Notificação não apareceu?
-
-**Verificar:**
-1. Indicador "Tempo Real" está verde no admin?
-2. Recarregue a página do admin
-3. Abra o console (F12) e veja se tem erros
+3. Se já estiver "Conectado":
+   - Pular para próximo passo ✓
 
 ---
 
-## 📚 Documentação Completa
+## ✅ TESTAR (5 min)
 
-Se precisar de mais detalhes, consulte:
+### Teste 1: Chatbot
+1. Abrir WhatsApp do salão
+2. Enviar mensagem: "Olá"
+3. ✅ Deve responder de forma amigável
+4. ❌ Se responder "não entendi": Verificar API key
 
-1. **GUIA_AUTOMACOES_WHATSAPP.md** - Guia completo
-2. **GUIA_TESTES.md** - Testes detalhados
-3. **PROJETO_CONCLUIDO.md** - Resumo executivo
-
----
-
-## 🎉 Aproveite!
-
-Seu sistema agora:
-- ✅ Confirma agendamentos automaticamente
-- ✅ Envia mensagens de aniversário
-- ✅ Notifica em tempo real
-- ✅ Registra tudo em logs
-- ✅ Envia chave PIX automaticamente
-
-**Economia:** ~17 horas/mês de trabalho manual! 💰
+### Teste 2: Broadcast
+1. Abrir: http://localhost:5173/admin/broadcast-messages
+2. Clicar em "Carregar Contatos"
+3. Selecionar seu número
+4. Escrever: "Teste - ignore"
+5. Clicar em "Enviar"
+6. ✅ Deve receber no WhatsApp
 
 ---
 
-**Data:** 2026-02-18 19:08
-**Status:** ✅ TUDO PRONTO PARA USO!
+## 🎉 PRONTO!
+
+Se os 2 testes funcionaram, está tudo OK! 🚀
+
+**Tempo total:** ~20 minutos
+
+---
+
+## 📚 DOCUMENTAÇÃO COMPLETA
+
+Para mais detalhes, consulte:
+- `LEIA_PRIMEIRO.md` - Instruções detalhadas
+- `GUIA_CORRECAO.md` - Troubleshooting completo
+- `RESUMO_CORRECOES.md` - Resumo do que foi feito
+
+---
+
+## 🆘 PROBLEMAS?
+
+### Chatbot não responde
+→ Verificar se executou a inserção da API key
+
+### Broadcast não envia
+→ Verificar se WhatsApp está conectado
+
+### Erro "salon_id not found"
+→ Executar novamente o diagnóstico e copiar o ID correto
+
+---
+
+**Deploy automático:** GitHub Actions fará o deploy após o push ✓
+**Status:** Commit realizado com sucesso (35a157e)
