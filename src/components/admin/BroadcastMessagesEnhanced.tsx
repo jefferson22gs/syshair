@@ -657,44 +657,45 @@ export const BroadcastMessagesComponent = () => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto p-6 space-y-6">
+    <div className="w-full p-4 md:p-6 space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
         <div>
-          <h1 className="font-display text-3xl font-bold flex items-center gap-3">
+          <h1 className="font-display text-2xl md:text-3xl font-bold flex items-center gap-3">
             <Send className="text-primary" />
             Disparador de Mensagens
           </h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-muted-foreground mt-1 text-sm md:text-base">
             Envie mensagens para seus clientes de forma segura e automática
           </p>
         </div>
         <div className="flex items-center gap-4">
           <div className="text-right">
-            <p className="text-sm text-muted-foreground">Limite diário</p>
-            <p className="text-lg font-semibold">
+            <p className="text-xs md:text-sm text-muted-foreground">Limite diário</p>
+            <p className="text-lg md:text-xl font-semibold">
               <span className="text-primary">{todayStats.remaining}</span>
-              <span className="text-muted-foreground">/{todayStats.limit}</span>
+              <span className="text-muted-foreground text-sm">/{todayStats.limit}</span>
             </p>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* Coluna de contatos */}
-        <div className="lg:col-span-2 space-y-4">
+        <div className="xl:col-span-2 space-y-4">
           <Card>
             <CardHeader className="pb-3">
-              <div className="flex justify-between items-center">
-                <CardTitle className="flex items-center gap-2">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <CardTitle className="flex items-center gap-2 text-lg md:text-xl">
                   <Users size={20} />
                   Contatos ({contacts.length})
                 </CardTitle>
-                <div className="flex gap-2">
+                <div className="flex gap-2 w-full sm:w-auto">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => setShowAddManual(true)}
+                    className="flex-1 sm:flex-none"
                   >
                     <Plus size={16} className="mr-1" />
                     Adicionar
@@ -704,6 +705,7 @@ export const BroadcastMessagesComponent = () => {
                     size="sm"
                     onClick={loadContacts}
                     disabled={loadingContacts}
+                    className="flex-1 sm:flex-none"
                   >
                     {loadingContacts ? (
                       <Loader2 size={16} className="animate-spin" />
@@ -713,7 +715,7 @@ export const BroadcastMessagesComponent = () => {
                   </Button>
                 </div>
               </div>
-              <CardDescription>
+              <CardDescription className="text-sm">
                 {selectedCount > 0 ? (
                   <span className="text-primary font-medium">{selectedCount} selecionados</span>
                 ) : (
@@ -723,45 +725,59 @@ export const BroadcastMessagesComponent = () => {
             </CardHeader>
             <CardContent>
               {/* Busca e ações */}
-              <div className="flex gap-2 mb-4">
-                <div className="relative flex-1">
-                  <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <div className="space-y-3 mb-4">
+                <div className="relative w-full">
+                  <Search size={20} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                   <Input
-                    placeholder="Buscar por nome ou telefone..."
+                    placeholder="🔍 Buscar por nome ou telefone..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
+                    className="pl-10 h-12 text-base"
                   />
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => toggleAll(true)}
-                >
-                  Todos
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => toggleAll(false)}
-                >
-                  Nenhum
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => selectBatch(500)}
-                  title="Selecionar os primeiros 500 da lista"
-                >
-                  Lote 500
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => toggleAll(true)}
+                    className="flex-1 sm:flex-none"
+                  >
+                    ✓ Todos
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => toggleAll(false)}
+                    className="flex-1 sm:flex-none"
+                  >
+                    ✗ Nenhum
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => selectBatch(100)}
+                    title="Selecionar os primeiros 100 da lista"
+                    className="flex-1 sm:flex-none"
+                  >
+                    100
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => selectBatch(500)}
+                    title="Selecionar os primeiros 500 da lista"
+                    className="flex-1 sm:flex-none"
+                  >
+                    500
+                  </Button>
+                </div>
               </div>
 
               {/* Lista de contatos */}
               {contacts.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground">
                   <Users size={48} className="mx-auto mb-4 opacity-50" />
-                  <p>Nenhum contato carregado</p>
+                  <p className="text-sm md:text-base">Nenhum contato carregado</p>
                   <Button
                     variant="outline"
                     className="mt-4"
@@ -782,27 +798,57 @@ export const BroadcastMessagesComponent = () => {
                   </Button>
                 </div>
               ) : (
-                <div className="max-h-[500px] overflow-y-auto space-y-1">
-                  {filteredContacts.map((contact) => (
-                    <div
-                      key={contact.phone}
-                      className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${contact.selected
-                        ? 'bg-primary/20 border border-primary/30'
-                        : 'bg-surface-1 hover:bg-surface-2'
-                        }`}
-                      onClick={() => toggleContact(contact.phone)}
-                    >
-                      <Checkbox
-                        checked={contact.selected}
-                        onCheckedChange={() => toggleContact(contact.phone)}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{contact.name}</p>
-                        <p className="text-sm text-muted-foreground">{contact.phone}</p>
-                      </div>
-                      {getSourceBadge(contact.source)}
+                <div className="border rounded-lg overflow-hidden">
+                  <div className="max-h-[600px] overflow-y-auto">
+                    <table className="w-full">
+                      <thead className="bg-muted sticky top-0 z-10">
+                        <tr>
+                          <th className="w-12 p-3 text-left">
+                            <Checkbox
+                              checked={selectedCount === contacts.length && contacts.length > 0}
+                              onCheckedChange={(checked) => toggleAll(!!checked)}
+                            />
+                          </th>
+                          <th className="p-3 text-left text-sm font-semibold">Nome</th>
+                          <th className="p-3 text-left text-sm font-semibold hidden md:table-cell">Telefone</th>
+                          <th className="p-3 text-left text-sm font-semibold hidden sm:table-cell">Origem</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredContacts.map((contact, index) => (
+                          <tr
+                            key={contact.phone}
+                            className={`cursor-pointer transition-colors border-b last:border-b-0 ${
+                              contact.selected
+                                ? 'bg-primary/10 hover:bg-primary/15'
+                                : 'hover:bg-muted/50'
+                            }`}
+                            onClick={() => toggleContact(contact.phone)}
+                          >
+                            <td className="p-3">
+                              <Checkbox
+                                checked={contact.selected}
+                                onCheckedChange={() => toggleContact(contact.phone)}
+                              />
+                            </td>
+                            <td className="p-3">
+                              <div className="flex flex-col">
+                                <span className="font-medium text-sm md:text-base">{contact.name}</span>
+                                <span className="text-xs text-muted-foreground md:hidden">{contact.phone}</span>
+                              </div>
+                            </td>
+                            <td className="p-3 text-sm hidden md:table-cell">{contact.phone}</td>
+                            <td className="p-3 hidden sm:table-cell">{getSourceBadge(contact.source)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {filteredContacts.length === 0 && searchTerm && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <p className="text-sm">Nenhum contato encontrado para "{searchTerm}"</p>
                     </div>
-                  ))}
+                  )}
                 </div>
               )}
             </CardContent>
@@ -813,19 +859,19 @@ export const BroadcastMessagesComponent = () => {
         <div className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-lg md:text-xl">
                 <MessageSquare size={20} />
                 Mensagem
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label>Template</Label>
+                <Label className="text-sm font-semibold">Template</Label>
                 <div className="flex gap-2">
                   <select
                     value={selectedTemplate || ""}
                     onChange={(e) => loadTemplate(e.target.value)}
-                    className="flex-1 border rounded-md px-3 py-2 text-sm"
+                    className="flex-1 border rounded-md px-3 py-2 text-sm bg-background"
                   >
                     <option value="">Selecione um template</option>
                     {templates.map(template => (
@@ -838,67 +884,81 @@ export const BroadcastMessagesComponent = () => {
                     size="sm"
                     variant="outline"
                     onClick={() => setShowTemplateModal(true)}
+                    title="Salvar como template"
                   >
                     <FileText size={16} />
                   </Button>
                 </div>
               </div>
 
-              <div className="flex justify-end mb-2">
+              <div>
+                <Label className="text-sm font-semibold mb-2 block">Texto da Mensagem</Label>
+                <Textarea
+                  placeholder="Digite sua mensagem aqui...&#10;&#10;💡 Dica: Use {nome} para personalizar com o nome do contato"
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  rows={10}
+                  className="resize-none text-base"
+                />
+                <div className="flex justify-between items-center mt-2">
+                  <span className="text-xs text-muted-foreground">
+                    {message.length} caracteres
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={improveWithAI}
+                    disabled={isImproving || !message.trim()}
+                    className="text-primary hover:bg-primary/10 text-xs"
+                  >
+                    {isImproving ? (
+                      <Loader2 size={14} className="mr-1 animate-spin" />
+                    ) : (
+                      <Sparkles size={14} className="mr-1" />
+                    )}
+                    Melhorar com IA
+                  </Button>
+                </div>
+              </div>
+
+              <div className="pt-2 space-y-3">
                 <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={improveWithAI}
-                  disabled={isImproving || !message.trim()}
-                  className="text-primary hover:bg-primary/10"
+                  className="w-full h-12 text-base font-semibold"
+                  size="lg"
+                  onClick={sendBroadcast}
+                  disabled={isSending || selectedCount === 0 || !message.trim()}
                 >
-                  {isImproving ? <Loader2 size={14} className="mr-2 animate-spin" /> : <Sparkles size={14} className="mr-2" />}
-                  Melhorar com IA
+                  {isSending ? (
+                    <>
+                      <Loader2 size={20} className="mr-2 animate-spin" />
+                      Enviando...
+                    </>
+                  ) : (
+                    <>
+                      <Send size={20} className="mr-2" />
+                      Enviar para {selectedCount} contato{selectedCount !== 1 ? 's' : ''}
+                    </>
+                  )}
                 </Button>
-              </div>
 
-              <Textarea
-                placeholder="Digite sua mensagem aqui... (Use {nome} para personalizar)"
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                rows={8}
-                className="resize-none"
-              />
-              <div className="text-sm text-muted-foreground">
-                {message.length} caracteres
-              </div>
-
-              <Button
-                className="w-full"
-                size="lg"
-                onClick={sendBroadcast}
-                disabled={isSending || selectedCount === 0 || !message.trim()}
-              >
-                {isSending ? (
-                  <>
-                    <Loader2 size={18} className="mr-2 animate-spin" />
-                    Enviando...
-                  </>
-                ) : (
-                  <>
-                    <Send size={18} className="mr-2" />
-                    Enviar para {selectedCount} contatos
-                  </>
+                {selectedCount > 0 && (
+                  <div className="text-center space-y-1">
+                    <p className="text-xs text-muted-foreground">
+                      ⏱️ Tempo estimado: ~{Math.ceil((selectedCount * 5) / 60)} minuto{Math.ceil((selectedCount * 5) / 60) !== 1 ? 's' : ''}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      📊 Taxa de envio: 1 mensagem a cada 5 segundos
+                    </p>
+                  </div>
                 )}
-              </Button>
-
-              {selectedCount > 0 && (
-                <p className="text-xs text-center text-muted-foreground">
-                  Tempo estimado: ~{Math.ceil((selectedCount * 5) / 60)} minutos
-                </p>
-              )}
+              </div>
             </CardContent>
           </Card>
 
           {/* Histórico */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Histórico de Disparos</CardTitle>
+              <CardTitle className="text-base md:text-lg">📋 Histórico de Disparos</CardTitle>
             </CardHeader>
             <CardContent>
               {broadcasts.length === 0 ? (
@@ -906,14 +966,14 @@ export const BroadcastMessagesComponent = () => {
                   Nenhum disparo realizado
                 </p>
               ) : (
-                <div className="space-y-3 max-h-60 overflow-y-auto">
+                <div className="space-y-3 max-h-[400px] overflow-y-auto">
                   {broadcasts.slice(0, 5).map((broadcast) => (
                     <div
                       key={broadcast.id}
-                      className="p-3 bg-surface-1 rounded-lg"
+                      className="p-3 bg-muted/50 rounded-lg border hover:border-primary/50 transition-colors"
                     >
-                      <div className="flex justify-between items-start mb-2">
-                        <div className="flex items-center gap-2">
+                      <div className="flex justify-between items-start mb-2 gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           {getStatusBadge(broadcast.status)}
                           {broadcast.status === 'processing' && (
                             <Button
@@ -927,21 +987,26 @@ export const BroadcastMessagesComponent = () => {
                             </Button>
                           )}
                         </div>
-                        <span className="text-xs text-muted-foreground">
-                          {new Date(broadcast.created_at).toLocaleDateString('pt-BR')}
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">
+                          {new Date(broadcast.created_at).toLocaleDateString('pt-BR', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
                         </span>
                       </div>
-                      <p className="text-sm line-clamp-2 mb-2">{broadcast.message}</p>
-                      <div className="flex gap-4 text-xs text-muted-foreground">
-                        <span className="text-green-400">✓ {broadcast.sent_count || 0}</span>
-                        <span className="text-red-400">✗ {broadcast.failed_count || 0}</span>
-                        <span>Total: {broadcast.total_recipients}</span>
+                      <p className="text-sm line-clamp-2 mb-2 text-muted-foreground">{broadcast.message}</p>
+                      <div className="flex gap-4 text-xs mb-2">
+                        <span className="text-green-400 font-medium">✓ {broadcast.sent_count || 0}</span>
+                        <span className="text-red-400 font-medium">✗ {broadcast.failed_count || 0}</span>
+                        <span className="text-muted-foreground">📊 {broadcast.total_recipients}</span>
                       </div>
                       <Button
                         size="sm"
                         variant="ghost"
                         onClick={() => viewBroadcastDetails(broadcast)}
-                        className="w-full mt-2 h-7 text-xs"
+                        className="w-full h-8 text-xs hover:bg-primary/10"
                       >
                         <Eye size={12} className="mr-1" />
                         Ver Detalhes
@@ -1023,44 +1088,55 @@ export const BroadcastMessagesComponent = () => {
 
       {/* Modal de Detalhes do Histórico */}
       <Dialog open={showHistoryModal} onOpenChange={setShowHistoryModal}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
-            <DialogTitle>Detalhes do Disparo</DialogTitle>
+            <DialogTitle className="text-xl font-bold">📊 Detalhes do Disparo</DialogTitle>
           </DialogHeader>
 
           {selectedBroadcast && (
-            <div className="space-y-4">
+            <div className="space-y-4 overflow-y-auto flex-1 pr-2">
               {/* Resumo */}
-              <Card>
+              <Card className="border-2">
                 <CardContent className="pt-6">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Status</p>
-                      {getStatusBadge(selectedBroadcast.status)}
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                    <div className="text-center p-3 bg-muted/50 rounded-lg">
+                      <p className="text-xs text-muted-foreground mb-2">Status</p>
+                      <div className="flex justify-center">
+                        {getStatusBadge(selectedBroadcast.status)}
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Total</p>
-                      <p className="text-lg font-bold">{selectedBroadcast.total_recipients}</p>
+                    <div className="text-center p-3 bg-muted/50 rounded-lg">
+                      <p className="text-xs text-muted-foreground mb-2">Total</p>
+                      <p className="text-2xl font-bold">{selectedBroadcast.total_recipients}</p>
                     </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Enviados</p>
-                      <p className="text-lg font-bold text-green-400">{selectedBroadcast.sent_count || 0}</p>
+                    <div className="text-center p-3 bg-green-500/10 rounded-lg">
+                      <p className="text-xs text-muted-foreground mb-2">Enviados</p>
+                      <p className="text-2xl font-bold text-green-400">{selectedBroadcast.sent_count || 0}</p>
                     </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Falhas</p>
-                      <p className="text-lg font-bold text-red-400">{selectedBroadcast.failed_count || 0}</p>
+                    <div className="text-center p-3 bg-red-500/10 rounded-lg">
+                      <p className="text-xs text-muted-foreground mb-2">Falhas</p>
+                      <p className="text-2xl font-bold text-red-400">{selectedBroadcast.failed_count || 0}</p>
                     </div>
                   </div>
 
-                  <div className="mt-4 p-3 bg-muted rounded-lg">
-                    <p className="text-sm font-medium mb-1">Mensagem:</p>
-                    <p className="text-sm">{selectedBroadcast.message}</p>
+                  <div className="p-4 bg-muted/50 rounded-lg border">
+                    <p className="text-sm font-semibold mb-2 flex items-center gap-2">
+                      <MessageSquare size={16} />
+                      Mensagem Enviada:
+                    </p>
+                    <p className="text-sm leading-relaxed">{selectedBroadcast.message}</p>
                   </div>
 
-                  <div className="mt-2 text-xs text-muted-foreground">
-                    Criado em: {new Date(selectedBroadcast.created_at).toLocaleString('pt-BR')}
+                  <div className="mt-3 flex flex-wrap gap-4 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <Clock size={12} />
+                      Criado: {new Date(selectedBroadcast.created_at).toLocaleString('pt-BR')}
+                    </span>
                     {selectedBroadcast.completed_at && (
-                      <> • Concluído em: {new Date(selectedBroadcast.completed_at).toLocaleString('pt-BR')}</>
+                      <span className="flex items-center gap-1">
+                        <CheckCircle size={12} />
+                        Concluído: {new Date(selectedBroadcast.completed_at).toLocaleString('pt-BR')}
+                      </span>
                     )}
                   </div>
                 </CardContent>
@@ -1069,7 +1145,10 @@ export const BroadcastMessagesComponent = () => {
               {/* Lista de Mensagens */}
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-semibold">Mensagens Individuais</h3>
+                  <h3 className="font-semibold text-lg flex items-center gap-2">
+                    <Users size={18} />
+                    Mensagens Individuais ({broadcastMessages.length})
+                  </h3>
                   <Button
                     size="sm"
                     variant="outline"
@@ -1085,63 +1164,79 @@ export const BroadcastMessagesComponent = () => {
                 </div>
 
                 {loadingMessages ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 size={32} className="animate-spin text-primary" />
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 size={40} className="animate-spin text-primary" />
                   </div>
                 ) : broadcastMessages.length === 0 ? (
-                  <p className="text-center text-muted-foreground py-8">
-                    Nenhuma mensagem encontrada
-                  </p>
+                  <div className="text-center text-muted-foreground py-12 bg-muted/30 rounded-lg">
+                    <Users size={48} className="mx-auto mb-3 opacity-50" />
+                    <p>Nenhuma mensagem encontrada</p>
+                  </div>
                 ) : (
-                  <div className="space-y-2 max-h-96 overflow-y-auto">
-                    {broadcastMessages.map((msg) => (
-                      <div
-                        key={msg.id}
-                        className={`p-3 rounded-lg border ${
-                          msg.status === 'sent'
-                            ? 'bg-green-500/10 border-green-500/30'
-                            : msg.status === 'failed'
-                            ? 'bg-red-500/10 border-red-500/30'
-                            : 'bg-gray-500/10 border-gray-500/30'
-                        }`}
-                      >
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              {msg.status === 'sent' ? (
-                                <CheckCircle size={16} className="text-green-400" />
-                              ) : msg.status === 'failed' ? (
-                                <XCircle size={16} className="text-red-400" />
-                              ) : (
-                                <Clock size={16} className="text-gray-400" />
-                              )}
-                              <span className="font-medium">{msg.recipient_name || 'Sem nome'}</span>
-                            </div>
-                            <p className="text-sm text-muted-foreground">{msg.recipient_phone}</p>
-                            {msg.error_message && (
-                              <p className="text-xs text-red-400 mt-1">
-                                Erro: {msg.error_message}
-                              </p>
-                            )}
-                          </div>
-                          <div className="text-right text-xs text-muted-foreground">
-                            {msg.sent_at ? (
-                              <span>{new Date(msg.sent_at).toLocaleTimeString('pt-BR')}</span>
-                            ) : (
-                              <span>Pendente</span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+                  <div className="border rounded-lg overflow-hidden">
+                    <div className="max-h-[400px] overflow-y-auto">
+                      <table className="w-full">
+                        <thead className="bg-muted sticky top-0 z-10">
+                          <tr>
+                            <th className="p-3 text-left text-xs font-semibold">Status</th>
+                            <th className="p-3 text-left text-xs font-semibold">Nome</th>
+                            <th className="p-3 text-left text-xs font-semibold hidden md:table-cell">Telefone</th>
+                            <th className="p-3 text-left text-xs font-semibold hidden sm:table-cell">Horário</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {broadcastMessages.map((msg) => (
+                            <tr
+                              key={msg.id}
+                              className={`border-b last:border-b-0 ${
+                                msg.status === 'sent'
+                                  ? 'bg-green-500/5 hover:bg-green-500/10'
+                                  : msg.status === 'failed'
+                                  ? 'bg-red-500/5 hover:bg-red-500/10'
+                                  : 'hover:bg-muted/50'
+                              }`}
+                            >
+                              <td className="p-3">
+                                {msg.status === 'sent' ? (
+                                  <CheckCircle size={18} className="text-green-400" />
+                                ) : msg.status === 'failed' ? (
+                                  <XCircle size={18} className="text-red-400" />
+                                ) : (
+                                  <Clock size={18} className="text-gray-400" />
+                                )}
+                              </td>
+                              <td className="p-3">
+                                <div className="flex flex-col">
+                                  <span className="font-medium text-sm">{msg.recipient_name || 'Sem nome'}</span>
+                                  {msg.error_message && (
+                                    <span className="text-xs text-red-400 mt-1">
+                                      ⚠️ {msg.error_message}
+                                    </span>
+                                  )}
+                                  <span className="text-xs text-muted-foreground md:hidden">{msg.recipient_phone}</span>
+                                </div>
+                              </td>
+                              <td className="p-3 text-sm hidden md:table-cell">{msg.recipient_phone}</td>
+                              <td className="p-3 text-xs text-muted-foreground hidden sm:table-cell">
+                                {msg.sent_at ? (
+                                  new Date(msg.sent_at).toLocaleTimeString('pt-BR')
+                                ) : (
+                                  <span className="text-yellow-400">Pendente</span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 )}
               </div>
             </div>
           )}
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowHistoryModal(false)}>
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setShowHistoryModal(false)} className="w-full sm:w-auto">
               Fechar
             </Button>
           </DialogFooter>
