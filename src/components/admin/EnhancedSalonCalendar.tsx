@@ -32,11 +32,12 @@ interface Appointment {
   id: string;
   client_name: string;
   client_phone: string;
-  appointment_date: string;
+  date: string;
+  start_time: string;
   status: string;
   services: {
     name: string;
-    duration: number;
+    duration_minutes: number;
     price: number;
   };
   professionals: {
@@ -47,7 +48,7 @@ interface Appointment {
 interface Service {
   id: string;
   name: string;
-  duration: number;
+  duration_minutes: number;
   price: number;
 }
 
@@ -114,21 +115,18 @@ export function EnhancedSalonCalendar() {
     setLoading(true);
     try {
       // Carregar agendamentos do dia
-      const startOfDayDate = startOfDay(selectedDate);
-      const endOfDayDate = new Date(startOfDayDate);
-      endOfDayDate.setHours(23, 59, 59, 999);
+      const dateStr = format(selectedDate, 'yyyy-MM-dd');
 
       const { data: appointmentsData, error: appointmentsError } = await supabase
         .from("appointments")
         .select(`
           *,
-          services (name, duration, price),
+          services (name, duration_minutes, price),
           professionals (name)
         `)
         .eq("salon_id", salonId)
-        .gte("appointment_date", startOfDayDate.toISOString())
-        .lte("appointment_date", endOfDayDate.toISOString())
-        .order("appointment_date", { ascending: true });
+        .eq("date", dateStr)
+        .order("start_time", { ascending: true });
 
       if (appointmentsError) throw appointmentsError;
 
@@ -137,9 +135,9 @@ export function EnhancedSalonCalendar() {
       // Carregar serviços
       const { data: servicesData, error: servicesError } = await supabase
         .from("services")
-        .select("id, name, duration, price")
+        .select("id, name, duration_minutes, price")
         .eq("salon_id", salonId)
-        .eq("active", true);
+        .eq("is_active", true);
 
       if (servicesError) throw servicesError;
       setServices(servicesData || []);
@@ -149,7 +147,7 @@ export function EnhancedSalonCalendar() {
         .from("professionals")
         .select("id, name")
         .eq("salon_id", salonId)
-        .eq("active", true);
+        .eq("is_active", true);
 
       if (professionalsError) throw professionalsError;
       setProfessionals(professionalsData || []);
@@ -180,8 +178,7 @@ export function EnhancedSalonCalendar() {
 
         // Verificar se há agendamentos neste horário
         const appointmentsAtTime = appointmentsData.filter(apt => {
-          const aptTime = format(new Date(apt.appointment_date), "HH:mm");
-          return aptTime === time;
+          return apt.start_time === time;
         });
 
         slots.push({
@@ -232,9 +229,19 @@ export function EnhancedSalonCalendar() {
 
     setSaving(true);
     try {
+      // Buscar duração do serviço
+      const selectedService = services.find(s => s.id === newAppointment.service_id);
+      if (!selectedService) {
+        throw new Error("Serviço não encontrado");
+      }
+
+      // Calcular end_time
       const [hours, minutes] = selectedTime.split(":");
-      const appointmentDate = new Date(selectedDate);
-      appointmentDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+      const startMinutes = parseInt(hours) * 60 + parseInt(minutes);
+      const endMinutes = startMinutes + selectedService.duration_minutes;
+      const endHours = Math.floor(endMinutes / 60);
+      const endMins = endMinutes % 60;
+      const endTime = `${endHours.toString().padStart(2, "0")}:${endMins.toString().padStart(2, "0")}`;
 
       const { error } = await supabase
         .from("appointments")
@@ -244,8 +251,12 @@ export function EnhancedSalonCalendar() {
           professional_id: newAppointment.professional_id,
           client_name: newAppointment.client_name,
           client_phone: newAppointment.client_phone,
-          appointment_date: appointmentDate.toISOString(),
+          date: format(selectedDate, 'yyyy-MM-dd'),
+          start_time: selectedTime,
+          end_time: endTime,
           status: "confirmed",
+          price: selectedService.price,
+          final_price: selectedService.price,
         });
 
       if (error) throw error;
@@ -256,6 +267,12 @@ export function EnhancedSalonCalendar() {
       });
 
       setShowAddModal(false);
+      setNewAppointment({
+        client_name: "",
+        client_phone: "",
+        service_id: "",
+        professional_id: "",
+      });
       loadData();
     } catch (error: any) {
       console.error("Error creating appointment:", error);
@@ -411,7 +428,7 @@ export function EnhancedSalonCalendar() {
                                 </span>
                                 <span className="flex items-center gap-1">
                                   <Clock size={12} />
-                                  {apt.services.duration}min
+                                  {apt.services.duration_minutes}min
                                 </span>
                               </div>
                             </div>
@@ -467,7 +484,7 @@ export function EnhancedSalonCalendar() {
                 <option value="">Selecione um serviço</option>
                 {services.map((service) => (
                   <option key={service.id} value={service.id}>
-                    {service.name} - {service.duration}min - R$ {service.price.toFixed(2)}
+                    {service.name} - {service.duration_minutes}min - R$ {service.price.toFixed(2)}
                   </option>
                 ))}
               </select>
