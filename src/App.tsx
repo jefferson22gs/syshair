@@ -27,6 +27,8 @@ import PublicBookingAdvanced from "./pages/PublicBookingAdvanced";
 // Lazy loaded Public Pages
 const PublicWaitlist = lazy(() => import("./pages/PublicWaitlist"));
 const RatingPage = lazy(() => import("./pages/RatingPage"));
+const ManageAppointment = lazy(() => import("./pages/ManageAppointment"));
+const AppointmentConfirmation = lazy(() => import("./pages/AppointmentConfirmation"));
 
 // Lazy loaded Admin Pages
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
@@ -91,6 +93,20 @@ const App = () => (
               <Route path="/agendar" element={<PublicBookingAdvanced />} />
               <Route path="/agendar/:salonSlug" element={<PublicBookingAdvanced />} />
               <Route path="/avaliar/:appointmentId" element={<Suspense fallback={<LoadingScreen />}><RatingPage /></Suspense>} />
+
+              {/* Manage Appointment - Public */}
+              <Route path="/manage-appointment" element={
+                <Suspense fallback={<LoadingScreen />}>
+                  <ManageAppointment />
+                </Suspense>
+              } />
+
+              {/* Appointment Confirmation - Public */}
+              <Route path="/appointment-confirmation" element={
+                <Suspense fallback={<LoadingScreen />}>
+                  <AppointmentConfirmation />
+                </Suspense>
+              } />
 
               {/* Super Admin */}
               <Route path="/super-admin" element={
