@@ -53,6 +53,7 @@ const StatusScheduler = lazy(() => import("./pages/admin/StatusScheduler"));
 const WhatsAppConnection = lazy(() => import("./pages/admin/WhatsAppConnection"));
 const BroadcastMessages = lazy(() => import("./pages/admin/BroadcastMessages"));
 const ImportContacts = lazy(() => import("./pages/admin/ImportContacts"));
+const ExportContacts = lazy(() => import("./pages/admin/ExportContacts"));
 
 // Lazy loaded Professional Pages
 const ProfessionalDashboard = lazy(() => import("./pages/professional/ProfessionalDashboard"));
@@ -281,6 +282,13 @@ const App = () => (
                 <ProtectedRoute>
                   <Suspense fallback={<LoadingScreen />}>
                     <ImportContacts />
+                  </Suspense>
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/export-contacts" element={
+                <ProtectedRoute>
+                  <Suspense fallback={<LoadingScreen />}>
+                    <ExportContacts />
                   </Suspense>
                 </ProtectedRoute>
               } />
