@@ -268,6 +268,7 @@ const Clients = () => {
               </div>
             </DialogContent>
           </Dialog>
+          </div>
         </div>
 
         {/* Search */}
