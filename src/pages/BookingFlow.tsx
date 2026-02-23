@@ -322,6 +322,13 @@ const BookingFlow = () => {
           const salonName = salon?.name || "Salão";
           const serviceName = firstService.service.name;
           const professionalName = selectedProfessionalData?.name || "Profissional disponível";
+          const phoneNumber = clientPhone.trim().replace(/\D/g, '');
+
+          console.log('📱 ===== ENVIANDO WHATSAPP =====');
+          console.log('📞 Telefone original:', clientPhone);
+          console.log('📞 Telefone formatado:', phoneNumber);
+          console.log('🆔 Appointment ID:', appointmentData.id);
+          console.log('🔗 Link de gerenciamento:', manageLink);
 
           const whatsappMessage = `
 🎉 *Agendamento Confirmado!*
@@ -338,20 +345,36 @@ ${manageLink}
 _Você pode cancelar ou reagendar até 2 horas antes do horário._
           `.trim();
 
+          console.log('📝 Mensagem:', whatsappMessage);
+
           // Enviar via Evolution API
-          await fetch('https://api.tubaraoemprestimo.com.br/message/sendText/syshair_daniel_cabelos_1777c2a7', {
+          const response = await fetch('https://api.tubaraoemprestimo.com.br/message/sendText/syshair_daniel_cabelos_1777c2a7', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
               'apikey': 'B8959800-F546-407C-99E8-C40306E747F5'
             },
             body: JSON.stringify({
-              number: clientPhone.trim().replace(/\D/g, ''),
+              number: phoneNumber,
               text: whatsappMessage
             })
           });
-        } catch (whatsappError) {
-          console.error('Erro ao enviar WhatsApp:', whatsappError);
+
+          console.log('📊 Status da resposta:', response.status);
+          console.log('📊 Status OK?:', response.ok);
+
+          const responseData = await response.json();
+          console.log('📦 Resposta da API:', responseData);
+
+          if (!response.ok) {
+            throw new Error(`Erro ${response.status}: ${JSON.stringify(responseData)}`);
+          }
+
+          console.log('✅ WhatsApp enviado com sucesso!');
+        } catch (whatsappError: any) {
+          console.error('❌ ===== ERRO AO ENVIAR WHATSAPP =====');
+          console.error('❌ Erro:', whatsappError);
+          console.error('❌ Mensagem:', whatsappError.message);
           // Não bloquear o fluxo se o WhatsApp falhar
         }
 
