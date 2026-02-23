@@ -193,14 +193,17 @@ export function EnhancedSalonCalendar() {
       ? Math.min(...services.map(s => s.duration_minutes))
       : 30;
 
-    // Gerar horários baseados na menor duração de serviço
+    // Gerar TODOS os horários baseados na menor duração de serviço
     for (let currentMinutes = openMinutes; currentMinutes < closeMinutes; currentMinutes += minDuration) {
       const hours = Math.floor(currentMinutes / 60);
       const minutes = currentMinutes % 60;
       const time = `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
 
-      // Verificar se há agendamentos que ocupam este horário
-      const appointmentsAtTime = appointmentsData.filter(apt => {
+      // Pegar agendamentos que começam exatamente neste horário
+      const appointmentsStartingHere = appointmentsData.filter(apt => apt.start_time === time);
+
+      // Verificar se há agendamentos que ocupam este horário (considerando duração)
+      const isOccupied = appointmentsData.some(apt => {
         const aptStartMinutes = parseInt(apt.start_time.split(':')[0]) * 60 + parseInt(apt.start_time.split(':')[1]);
         const aptEndMinutes = aptStartMinutes + (apt.services?.duration_minutes || 0);
 
@@ -208,12 +211,9 @@ export function EnhancedSalonCalendar() {
         return currentMinutes >= aptStartMinutes && currentMinutes < aptEndMinutes;
       });
 
-      // Também pegar agendamentos que começam exatamente neste horário
-      const appointmentsStartingHere = appointmentsData.filter(apt => apt.start_time === time);
-
       slots.push({
         time,
-        available: appointmentsAtTime.length === 0,
+        available: !isOccupied,
         appointments: appointmentsStartingHere,
       });
     }
@@ -264,6 +264,9 @@ export function EnhancedSalonCalendar() {
         throw new Error("Serviço não encontrado");
       }
 
+      // Buscar nome do profissional
+      const selectedProfessional = professionals.find(p => p.id === newAppointment.professional_id);
+
       // Calcular end_time
       const [hours, minutes] = selectedTime.split(":");
       const startMinutes = parseInt(hours) * 60 + parseInt(minutes);
@@ -272,7 +275,7 @@ export function EnhancedSalonCalendar() {
       const endMins = endMinutes % 60;
       const endTime = `${endHours.toString().padStart(2, "0")}:${endMins.toString().padStart(2, "0")}`;
 
-      const { error } = await supabase
+      const { data: appointment, error } = await supabase
         .from("appointments")
         .insert({
           salon_id: salonId,
@@ -286,13 +289,61 @@ export function EnhancedSalonCalendar() {
           status: "confirmed",
           price: selectedService.price,
           final_price: selectedService.price,
-        });
+        })
+        .select()
+        .single();
 
       if (error) throw error;
 
+      // Enviar WhatsApp com link de gerenciamento
+      if (appointment) {
+        try {
+          // Buscar nome do salão
+          const { data: salonData } = await supabase
+            .from("salons")
+            .select("name")
+            .eq("id", salonId)
+            .single();
+
+          const salonName = salonData?.name || "Salão";
+          const manageLink = `${window.location.origin}/manage-appointment?id=${appointment.id}&phone=${newAppointment.client_phone.trim()}`;
+
+          const whatsappMessage = `
+🎉 *Agendamento Confirmado!*
+
+📍 *Salão:* ${salonName}
+✂️ *Serviço:* ${selectedService.name}
+👤 *Profissional:* ${selectedProfessional?.name || 'Profissional'}
+📅 *Data:* ${format(selectedDate, 'dd/MM/yyyy')}
+⏰ *Horário:* ${selectedTime}
+
+🔗 *Gerenciar agendamento:*
+${manageLink}
+
+_Você pode cancelar ou reagendar até 2 horas antes do horário._
+          `.trim();
+
+          // Enviar via Evolution API
+          await fetch('https://api.tubaraoemprestimo.com.br/message/sendText/syshair_daniel_cabelos_1777c2a7', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': 'B8959800-F546-407C-99E8-C40306E747F5'
+            },
+            body: JSON.stringify({
+              number: newAppointment.client_phone.trim().replace(/\D/g, ''),
+              text: whatsappMessage
+            })
+          });
+        } catch (whatsappError) {
+          console.error('Erro ao enviar WhatsApp:', whatsappError);
+          // Não bloquear o fluxo se o WhatsApp falhar
+        }
+      }
+
       toast({
         title: "Agendamento criado",
-        description: "O agendamento foi adicionado com sucesso",
+        description: "O agendamento foi adicionado e o cliente receberá uma confirmação via WhatsApp",
       });
 
       setShowAddModal(false);
