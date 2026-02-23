@@ -72,6 +72,11 @@ export function EnhancedSalonCalendar() {
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
   const [loading, setLoading] = useState(true);
   const [salonId, setSalonId] = useState<string | null>(null);
+  const [salonConfig, setSalonConfig] = useState<{
+    opening_time: string;
+    closing_time: string;
+    working_days: number[];
+  } | null>(null);
 
   // Modal de adicionar agendamento
   const [showAddModal, setShowAddModal] = useState(false);
@@ -100,12 +105,17 @@ export function EnhancedSalonCalendar() {
 
     const { data: salon } = await supabase
       .from("salons")
-      .select("id")
+      .select("id, opening_time, closing_time, working_days")
       .eq("owner_id", user.id)
       .single();
 
     if (salon) {
       setSalonId(salon.id);
+      setSalonConfig({
+        opening_time: salon.opening_time || '08:00',
+        closing_time: salon.closing_time || '20:00',
+        working_days: salon.working_days || [1, 2, 3, 4, 5, 6],
+      });
     }
   };
 
@@ -167,26 +177,45 @@ export function EnhancedSalonCalendar() {
   };
 
   const generateTimeSlots = (appointmentsData: Appointment[]) => {
+    if (!salonConfig) return;
+
     const slots: TimeSlot[] = [];
 
-    // Gerar horários de 8h às 20h (intervalos de 30min)
-    for (let hour = 8; hour <= 20; hour++) {
-      for (let minute = 0; minute < 60; minute += 30) {
-        if (hour === 20 && minute > 0) break; // Parar em 20:00
+    // Pegar horários de funcionamento do salão
+    const [openHour, openMin] = salonConfig.opening_time.split(':').map(Number);
+    const [closeHour, closeMin] = salonConfig.closing_time.split(':').map(Number);
 
-        const time = `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`;
+    const openMinutes = openHour * 60 + openMin;
+    const closeMinutes = closeHour * 60 + closeMin;
 
-        // Verificar se há agendamentos neste horário
-        const appointmentsAtTime = appointmentsData.filter(apt => {
-          return apt.start_time === time;
-        });
+    // Encontrar a menor duração de serviço para usar como intervalo
+    const minDuration = services.length > 0
+      ? Math.min(...services.map(s => s.duration_minutes))
+      : 30;
 
-        slots.push({
-          time,
-          available: appointmentsAtTime.length === 0,
-          appointments: appointmentsAtTime,
-        });
-      }
+    // Gerar horários baseados na menor duração de serviço
+    for (let currentMinutes = openMinutes; currentMinutes < closeMinutes; currentMinutes += minDuration) {
+      const hours = Math.floor(currentMinutes / 60);
+      const minutes = currentMinutes % 60;
+      const time = `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
+
+      // Verificar se há agendamentos que ocupam este horário
+      const appointmentsAtTime = appointmentsData.filter(apt => {
+        const aptStartMinutes = parseInt(apt.start_time.split(':')[0]) * 60 + parseInt(apt.start_time.split(':')[1]);
+        const aptEndMinutes = aptStartMinutes + (apt.services?.duration_minutes || 0);
+
+        // Verifica se o horário atual está dentro do período do agendamento
+        return currentMinutes >= aptStartMinutes && currentMinutes < aptEndMinutes;
+      });
+
+      // Também pegar agendamentos que começam exatamente neste horário
+      const appointmentsStartingHere = appointmentsData.filter(apt => apt.start_time === time);
+
+      slots.push({
+        time,
+        available: appointmentsAtTime.length === 0,
+        appointments: appointmentsStartingHere,
+      });
     }
 
     setTimeSlots(slots);
@@ -378,6 +407,22 @@ export function EnhancedSalonCalendar() {
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="animate-spin text-primary" size={40} />
+            </div>
+          ) : salonConfig && !salonConfig.working_days.includes(selectedDate.getDay()) ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <XCircle size={48} className="text-muted-foreground mb-4" />
+              <p className="text-lg font-medium text-foreground">Salão fechado neste dia</p>
+              <p className="text-sm text-muted-foreground">
+                Selecione outro dia para visualizar os horários
+              </p>
+            </div>
+          ) : timeSlots.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <Clock size={48} className="text-muted-foreground mb-4" />
+              <p className="text-lg font-medium text-foreground">Nenhum horário disponível</p>
+              <p className="text-sm text-muted-foreground">
+                Configure os horários de funcionamento e serviços do salão
+              </p>
             </div>
           ) : (
             <div className="space-y-1 max-h-[600px] overflow-y-auto">
