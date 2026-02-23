@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     Calendar as CalendarIcon,
@@ -18,6 +19,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Logo } from "@/components/icons/Logo";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { format } from "date-fns";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 // Types
 interface Professional {
@@ -144,6 +150,7 @@ const generateTimeSlots = (): TimeSlot[] => {
 };
 
 const PublicBookingAdvanced = () => {
+    const navigate = useNavigate();
     const [step, setStep] = useState<'service' | 'professional' | 'datetime' | 'confirm'>('service');
     const [selectedService, setSelectedService] = useState<Service | null>(null);
     const [selectedProfessional, setSelectedProfessional] = useState<Professional | null>(null);
@@ -151,6 +158,12 @@ const PublicBookingAdvanced = () => {
     const [selectedTime, setSelectedTime] = useState<string | null>(null);
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [wantsPrepayment, setWantsPrepayment] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
+
+    // Client info
+    const [clientName, setClientName] = useState("");
+    const [clientPhone, setClientPhone] = useState("");
+    const [clientEmail, setClientEmail] = useState("");
 
     const timeSlots = useMemo(() => generateTimeSlots(), [selectedDate]);
 
@@ -197,9 +210,99 @@ const PublicBookingAdvanced = () => {
     const totalDuration = selectedService?.duration || 0;
     const totalPrice = selectedService?.price || 0;
 
-    const handleConfirmBooking = () => {
-        // In real app, this would submit to Supabase
-        alert('Agendamento confirmado! Você receberá uma confirmação por WhatsApp.');
+    const handleConfirmBooking = async () => {
+        if (!selectedService || !selectedDate || !selectedTime || !clientName.trim() || !clientPhone.trim()) {
+            toast.error("Preencha todos os campos obrigatórios");
+            return;
+        }
+
+        setSubmitting(true);
+        try {
+            // Mock salon ID - em produção, isso viria da URL ou contexto
+            const salonId = "mock-salon-id";
+
+            // Calcular end_time baseado na duração do serviço
+            const [hours, minutes] = selectedTime.split(':').map(Number);
+            const startDate = new Date(selectedDate);
+            startDate.setHours(hours, minutes, 0, 0);
+
+            const endDate = new Date(startDate);
+            endDate.setMinutes(endDate.getMinutes() + totalDuration);
+
+            const endTime = `${endDate.getHours().toString().padStart(2, '0')}:${endDate.getMinutes().toString().padStart(2, '0')}`;
+
+            // Criar agendamento no Supabase
+            const { data: appointment, error } = await supabase
+                .from("appointments")
+                .insert({
+                    salon_id: salonId,
+                    service_id: selectedService.id,
+                    professional_id: selectedProfessional?.id || mockProfessionals[0].id,
+                    client_name: clientName.trim(),
+                    client_phone: clientPhone.trim(),
+                    client_email: clientEmail.trim() || null,
+                    date: format(selectedDate, 'yyyy-MM-dd'),
+                    start_time: selectedTime,
+                    end_time: endTime,
+                    status: 'confirmed',
+                    price: totalPrice,
+                    final_price: wantsPrepayment ? totalPrice * 0.95 : totalPrice,
+                })
+                .select()
+                .single();
+
+            if (error) throw error;
+
+            if (appointment) {
+                // Gerar link de gerenciamento
+                const manageLink = `${window.location.origin}/manage-appointment?id=${appointment.id}&phone=${clientPhone.trim()}`;
+
+                // Enviar WhatsApp com link de gerenciamento
+                try {
+                    const salonName = "Salão Elegance"; // Em produção, buscar do banco
+                    const whatsappMessage = `
+🎉 *Agendamento Confirmado!*
+
+📍 *Salão:* ${salonName}
+✂️ *Serviço:* ${selectedService.name}
+👤 *Profissional:* ${selectedProfessional?.name || 'Qualquer disponível'}
+📅 *Data:* ${format(selectedDate, 'dd/MM/yyyy')}
+⏰ *Horário:* ${selectedTime}
+
+🔗 *Gerenciar agendamento:*
+${manageLink}
+
+_Você pode cancelar ou reagendar até 2 horas antes do horário._
+                    `.trim();
+
+                    // Enviar via Evolution API
+                    await fetch('https://api.tubaraoemprestimo.com.br/message/sendText/syshair_daniel_cabelos_1777c2a7', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'apikey': 'B8959800-F546-407C-99E8-C40306E747F5'
+                        },
+                        body: JSON.stringify({
+                            number: clientPhone.trim().replace(/\D/g, ''),
+                            text: whatsappMessage
+                        })
+                    });
+                } catch (whatsappError) {
+                    console.error('Erro ao enviar WhatsApp:', whatsappError);
+                    // Não bloquear o fluxo se o WhatsApp falhar
+                }
+
+                toast.success("Agendamento confirmado!");
+
+                // Redirecionar para página de confirmação
+                navigate(`/appointment-confirmation?id=${appointment.id}`);
+            }
+        } catch (error: any) {
+            console.error("Erro ao criar agendamento:", error);
+            toast.error(error.message || "Erro ao criar agendamento");
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     return (
@@ -548,6 +651,45 @@ const PublicBookingAdvanced = () => {
                                 </div>
 
                                 <CardContent className="p-6 space-y-6">
+                                    {/* Client Info Form */}
+                                    <div className="space-y-4">
+                                        <h3 className="font-semibold text-foreground">Seus dados</h3>
+
+                                        <div className="space-y-2">
+                                            <Label htmlFor="clientName">Nome completo *</Label>
+                                            <Input
+                                                id="clientName"
+                                                value={clientName}
+                                                onChange={(e) => setClientName(e.target.value)}
+                                                placeholder="Digite seu nome completo"
+                                                className="h-12"
+                                            />
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label htmlFor="clientPhone">WhatsApp *</Label>
+                                            <Input
+                                                id="clientPhone"
+                                                value={clientPhone}
+                                                onChange={(e) => setClientPhone(e.target.value)}
+                                                placeholder="(00) 00000-0000"
+                                                type="tel"
+                                                className="h-12"
+                                            />
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label htmlFor="clientEmail">E-mail (opcional)</Label>
+                                            <Input
+                                                id="clientEmail"
+                                                value={clientEmail}
+                                                onChange={(e) => setClientEmail(e.target.value)}
+                                                placeholder="seu@email.com"
+                                                type="email"
+                                                className="h-12"
+                                            />
+                                        </div>
+                                    </div>
                                     {/* Service */}
                                     <div className="flex items-center gap-4 p-4 rounded-xl bg-secondary/30">
                                         <img
@@ -616,8 +758,19 @@ const PublicBookingAdvanced = () => {
                                     </div>
 
                                     {/* Confirm Button */}
-                                    <Button variant="gold" size="lg" className="w-full" onClick={handleConfirmBooking}>
-                                        {wantsPrepayment ? (
+                                    <Button
+                                        variant="gold"
+                                        size="lg"
+                                        className="w-full"
+                                        onClick={handleConfirmBooking}
+                                        disabled={submitting || !clientName.trim() || !clientPhone.trim()}
+                                    >
+                                        {submitting ? (
+                                            <>
+                                                <Clock size={18} className="mr-2 animate-spin" />
+                                                Processando...
+                                            </>
+                                        ) : wantsPrepayment ? (
                                             <>
                                                 <CreditCard size={18} className="mr-2" />
                                                 Pagar e Confirmar

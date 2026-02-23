@@ -296,10 +296,9 @@ const BookingFlow = () => {
       const finalServicePrice = servicesTotal - discount;
 
       // Create appointment for the first service (main service)
-      // In a real scenario, you might want to create multiple appointments or handle this differently
       const firstService = selectedServices[0];
-      
-      await createAppointment({
+
+      const appointmentData = await createAppointment({
         serviceId: firstService.service.id,
         professionalId: finalProfessionalId!,
         date: format(selectedDate, 'yyyy-MM-dd'),
@@ -314,8 +313,53 @@ const BookingFlow = () => {
         finalPrice: finalServicePrice + cartTotal,
       });
 
-      toast.success("Agendamento realizado com sucesso!");
-      setStep(5); // Success step
+      if (appointmentData) {
+        // Gerar link de gerenciamento
+        const manageLink = `${window.location.origin}/manage-appointment?id=${appointmentData.id}&phone=${clientPhone.trim()}`;
+
+        // Enviar WhatsApp com link de gerenciamento
+        try {
+          const salonName = salon?.name || "Salão";
+          const serviceName = firstService.service.name;
+          const professionalName = selectedProfessionalData?.name || "Profissional disponível";
+
+          const whatsappMessage = `
+🎉 *Agendamento Confirmado!*
+
+📍 *Salão:* ${salonName}
+✂️ *Serviço:* ${serviceName}
+👤 *Profissional:* ${professionalName}
+📅 *Data:* ${format(selectedDate, 'dd/MM/yyyy')}
+⏰ *Horário:* ${selectedTime}
+
+🔗 *Gerenciar agendamento:*
+${manageLink}
+
+_Você pode cancelar ou reagendar até 2 horas antes do horário._
+          `.trim();
+
+          // Enviar via Evolution API
+          await fetch('https://api.tubaraoemprestimo.com.br/message/sendText/syshair_daniel_cabelos_1777c2a7', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': 'B8959800-F546-407C-99E8-C40306E747F5'
+            },
+            body: JSON.stringify({
+              number: clientPhone.trim().replace(/\D/g, ''),
+              text: whatsappMessage
+            })
+          });
+        } catch (whatsappError) {
+          console.error('Erro ao enviar WhatsApp:', whatsappError);
+          // Não bloquear o fluxo se o WhatsApp falhar
+        }
+
+        toast.success("Agendamento realizado com sucesso!");
+
+        // Redirecionar para página de confirmação
+        navigate(`/appointment-confirmation?id=${appointmentData.id}`);
+      }
     } catch (err: any) {
       console.error("Error creating appointment:", err);
       toast.error(err.message || "Erro ao criar agendamento");
