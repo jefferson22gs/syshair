@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -9,7 +10,7 @@ import { toast } from "sonner";
 import { AdminLayout } from "@/components/layouts/AdminLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Edit2, Trash2, Users, Mail, Phone, DollarSign, Calendar, Cake } from "lucide-react";
+import { Plus, Edit2, Trash2, Users, Mail, Phone, DollarSign, Calendar, Cake, Download } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Tables } from "@/integrations/supabase/types";
@@ -18,6 +19,7 @@ type Client = Tables<"clients">;
 
 const Clients = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [clients, setClients] = useState<Client[]>([]);
   const [salonId, setSalonId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -190,16 +192,24 @@ const Clients = () => {
             <h1 className="font-display text-3xl font-bold text-foreground">Clientes</h1>
             <p className="text-muted-foreground mt-1">Gerencie sua base de clientes</p>
           </div>
-          <Dialog open={dialogOpen} onOpenChange={(open) => {
-            setDialogOpen(open);
-            if (!open) resetForm();
-          }}>
-            <DialogTrigger asChild>
-              <Button variant="gold">
-                <Plus size={18} className="mr-2" />
-                Novo Cliente
-              </Button>
-            </DialogTrigger>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => navigate('/admin/export-contacts')}
+            >
+              <Download size={18} className="mr-2" />
+              Exportar
+            </Button>
+            <Dialog open={dialogOpen} onOpenChange={(open) => {
+              setDialogOpen(open);
+              if (!open) resetForm();
+            }}>
+              <DialogTrigger asChild>
+                <Button variant="gold">
+                  <Plus size={18} className="mr-2" />
+                  Novo Cliente
+                </Button>
+              </DialogTrigger>
             <DialogContent className="sm:max-w-md">
               <DialogHeader>
                 <DialogTitle>
@@ -258,6 +268,7 @@ const Clients = () => {
               </div>
             </DialogContent>
           </Dialog>
+          </div>
         </div>
 
         {/* Search */}
