@@ -546,9 +546,8 @@ export const BroadcastMessagesComponent = () => {
 
       const response = await supabase.functions.invoke('broadcast-messages-v2', {
         body: {
-          action: 'send_broadcast',
+          action: 'create_broadcast',
           salonId,
-          instanceName,
           message: message.trim(),
           recipients: recipients
         }
