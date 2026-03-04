@@ -183,7 +183,7 @@ export const BroadcastMessagesComponent = () => {
 
     setLoadingContacts(true);
     try {
-      const response = await supabase.functions.invoke('broadcast-messages', {
+      const response = await supabase.functions.invoke('broadcast-messages-v2', {
         body: {
           action: 'fetch_contacts',
           salonId,
@@ -544,7 +544,7 @@ export const BroadcastMessagesComponent = () => {
     try {
       const recipients = selectedContacts.map(c => c.phone);
 
-      const response = await supabase.functions.invoke('broadcast-messages', {
+      const response = await supabase.functions.invoke('broadcast-messages-v2', {
         body: {
           action: 'send_broadcast',
           salonId,
