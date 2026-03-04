@@ -1,0 +1,407 @@
+/* ============================================
+   MELHORIAS ESPECÍFICAS - PublicSalon.tsx
+   Adicione estas classes aos elementos
+   ============================================ */
+
+/* ========== HEADER DO SALÃO ========== */
+.salon-header {
+  @apply relative overflow-hidden rounded-2xl mb-6 sm:mb-8;
+  background: linear-gradient(135deg, hsl(var(--card)) 0%, hsl(var(--surface-2)) 100%);
+}
+
+.salon-header-content {
+  @apply p-6 sm:p-8 lg:p-10;
+}
+
+.salon-logo {
+  @apply w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 rounded-2xl object-cover;
+  @apply border-2 border-border shadow-lg;
+}
+
+.salon-title {
+  @apply text-2xl sm:text-3xl lg:text-4xl font-display font-bold mb-2;
+}
+
+.salon-info-grid {
+  @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mt-4;
+}
+
+.salon-info-item {
+  @apply flex items-center gap-2 text-sm text-muted-foreground;
+}
+
+/* ========== STEPPER RESPONSIVO ========== */
+.booking-stepper {
+  @apply mb-6 sm:mb-8;
+}
+
+.stepper-container {
+  @apply flex items-center justify-between relative;
+  @apply px-4 sm:px-6 lg:px-8;
+}
+
+.stepper-line {
+  @apply absolute top-1/2 left-0 right-0 h-0.5 bg-border -z-10;
+  transform: translateY(-50%);
+}
+
+.stepper-line-progress {
+  @apply absolute top-1/2 left-0 h-0.5 bg-primary transition-all duration-500 -z-10;
+  transform: translateY(-50%);
+}
+
+.stepper-step {
+  @apply flex flex-col items-center gap-2 relative z-10;
+}
+
+.stepper-circle {
+  @apply w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center;
+  @apply border-2 transition-all duration-300;
+  @apply bg-background;
+}
+
+.stepper-circle.active {
+  @apply border-primary bg-primary text-primary-foreground;
+  box-shadow: 0 0 0 4px hsl(var(--primary) / 0.1);
+}
+
+.stepper-circle.completed {
+  @apply border-primary bg-primary text-primary-foreground;
+}
+
+.stepper-circle.inactive {
+  @apply border-border text-muted-foreground;
+}
+
+.stepper-label {
+  @apply text-xs sm:text-sm font-medium text-center;
+  @apply hidden sm:block;
+}
+
+.stepper-label.active {
+  @apply text-foreground;
+}
+
+/* ========== GRID DE SERVIÇOS ========== */
+.services-grid {
+  @apply grid gap-3 sm:gap-4 lg:gap-6;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+}
+
+.service-card {
+  @apply relative bg-card rounded-xl border border-border p-4 sm:p-5;
+  @apply transition-all duration-300 cursor-pointer;
+  @apply hover:border-primary/50 hover:shadow-lg;
+}
+
+.service-card.selected {
+  @apply border-primary bg-primary/5;
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2);
+}
+
+.service-card-header {
+  @apply flex items-start justify-between gap-3 mb-3;
+}
+
+.service-icon {
+  @apply w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center;
+  @apply bg-primary/10 text-primary;
+}
+
+.service-checkbox {
+  @apply w-5 h-5 rounded border-2 flex items-center justify-center;
+  @apply transition-all duration-200;
+}
+
+.service-title {
+  @apply text-base sm:text-lg font-semibold mb-1;
+}
+
+.service-description {
+  @apply text-sm text-muted-foreground mb-3 line-clamp-2;
+}
+
+.service-meta {
+  @apply flex items-center justify-between text-sm;
+}
+
+.service-duration {
+  @apply flex items-center gap-1 text-muted-foreground;
+}
+
+.service-price {
+  @apply text-lg font-bold text-primary;
+}
+
+/* ========== GRID DE PROFISSIONAIS ========== */
+.professionals-grid {
+  @apply grid gap-3 sm:gap-4;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 160px), 1fr));
+}
+
+.professional-card {
+  @apply relative bg-card rounded-xl border border-border p-4;
+  @apply transition-all duration-300 cursor-pointer text-center;
+  @apply hover:border-primary/50 hover:shadow-lg;
+}
+
+.professional-card.selected {
+  @apply border-primary bg-primary/5;
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2);
+}
+
+.professional-avatar {
+  @apply w-16 h-16 sm:w-20 sm:h-20 rounded-full mx-auto mb-3;
+  @apply border-2 border-border object-cover;
+}
+
+.professional-avatar.selected {
+  @apply border-primary;
+}
+
+.professional-name {
+  @apply font-semibold text-sm sm:text-base mb-1;
+}
+
+.professional-specialty {
+  @apply text-xs text-muted-foreground;
+}
+
+/* ========== CALENDÁRIO E HORÁRIOS ========== */
+.datetime-container {
+  @apply grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8;
+}
+
+.calendar-wrapper {
+  @apply bg-card rounded-xl border border-border p-4 sm:p-6;
+}
+
+.time-slots-wrapper {
+  @apply bg-card rounded-xl border border-border p-4 sm:p-6;
+}
+
+.time-slots-grid {
+  @apply grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-3;
+}
+
+.time-slot {
+  @apply px-3 py-2.5 rounded-lg border border-border;
+  @apply text-sm font-medium text-center;
+  @apply transition-all duration-200 cursor-pointer;
+  @apply hover:border-primary/50 hover:bg-primary/5;
+}
+
+.time-slot.selected {
+  @apply border-primary bg-primary text-primary-foreground;
+}
+
+.time-slot.disabled {
+  @apply opacity-40 cursor-not-allowed hover:border-border hover:bg-transparent;
+}
+
+/* ========== FORMULÁRIO DE DADOS ========== */
+.client-form {
+  @apply space-y-4 sm:space-y-6;
+}
+
+.form-group {
+  @apply space-y-2;
+}
+
+.form-label {
+  @apply flex items-center gap-2 text-sm font-medium;
+}
+
+.form-input {
+  @apply input-modern;
+}
+
+.form-grid {
+  @apply grid grid-cols-1 sm:grid-cols-2 gap-4;
+}
+
+/* ========== RESUMO DO PEDIDO ========== */
+.order-summary {
+  @apply bg-card rounded-xl border border-border p-4 sm:p-6;
+  @apply sticky top-4;
+}
+
+.summary-header {
+  @apply text-lg font-semibold mb-4 pb-4 border-b border-border;
+}
+
+.summary-items {
+  @apply space-y-3 mb-4;
+}
+
+.summary-item {
+  @apply flex items-start gap-3 p-3 rounded-lg bg-secondary/30;
+}
+
+.summary-item-icon {
+  @apply w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0;
+}
+
+.summary-item-details {
+  @apply flex-1 min-w-0;
+}
+
+.summary-item-name {
+  @apply font-medium text-sm mb-1;
+}
+
+.summary-item-meta {
+  @apply text-xs text-muted-foreground;
+}
+
+.summary-item-price {
+  @apply font-semibold text-primary;
+}
+
+.summary-total {
+  @apply flex items-center justify-between pt-4 border-t border-border;
+}
+
+.summary-total-label {
+  @apply text-lg font-semibold;
+}
+
+.summary-total-value {
+  @apply text-2xl font-bold text-primary;
+}
+
+/* ========== NAVEGAÇÃO (MOBILE) ========== */
+.booking-navigation {
+  @apply sticky-footer;
+  @apply flex items-center justify-between gap-3;
+}
+
+.nav-button {
+  @apply btn-modern flex-1 sm:flex-initial;
+}
+
+.nav-button-back {
+  @apply nav-button btn-outline;
+}
+
+.nav-button-next {
+  @apply nav-button btn-primary;
+}
+
+/* ========== CARRINHO FLUTUANTE (MOBILE) ========== */
+.floating-cart {
+  @apply fixed bottom-0 left-0 right-0 z-40;
+  @apply bg-background/95 backdrop-blur-xl border-t border-border;
+  @apply px-4 py-3 sm:hidden;
+  padding-bottom: calc(0.75rem + var(--spacing-safe-bottom));
+}
+
+.floating-cart-content {
+  @apply flex items-center justify-between gap-3;
+}
+
+.floating-cart-info {
+  @apply flex-1;
+}
+
+.floating-cart-count {
+  @apply text-sm text-muted-foreground;
+}
+
+.floating-cart-total {
+  @apply text-lg font-bold text-primary;
+}
+
+.floating-cart-button {
+  @apply btn-primary btn-sm;
+}
+
+/* ========== ANIMAÇÕES ========== */
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-in-up {
+  animation: slideInUp 0.4s ease-out;
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.3s ease-out;
+}
+
+/* ========== RESPONSIVIDADE ESPECÍFICA ========== */
+
+/* Mobile (< 640px) */
+@media (max-width: 639px) {
+  .salon-header-content {
+    @apply p-4;
+  }
+
+  .services-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .professionals-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .time-slots-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Tablet (640px - 1023px) */
+@media (min-width: 640px) and (max-width: 1023px) {
+  .services-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .professionals-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .time-slots-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* Desktop (>= 1024px) */
+@media (min-width: 1024px) {
+  .services-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .professionals-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .booking-layout {
+    @apply grid grid-cols-12 gap-8;
+  }
+
+  .booking-main {
+    @apply col-span-8;
+  }
+
+  .booking-sidebar {
+    @apply col-span-4;
+  }
+}
