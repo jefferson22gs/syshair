@@ -179,33 +179,33 @@ export const BroadcastMessagesComponent = () => {
   };
 
   const loadContacts = async () => {
-    if (!salonId || !instanceName) return;
+    if (!salonId) return;
 
     setLoadingContacts(true);
     try {
-      const response = await supabase.functions.invoke('broadcast-messages-v2', {
-        body: {
-          action: 'fetch_contacts',
-          salonId,
-          instanceName
-        }
+      // Buscar contatos diretamente do banco de dados
+      const { data: clientsData, error: clientsError } = await supabase
+        .from('clients')
+        .select('name, phone')
+        .eq('salon_id', salonId)
+        .not('phone', 'is', null)
+        .neq('phone', '');
+
+      if (clientsError) throw clientsError;
+
+      const contactsWithSelection = (clientsData || []).map((c: any) => ({
+        name: c.name,
+        phone: c.phone,
+        selected: false
+      }));
+
+      setContacts(contactsWithSelection);
+      setFilteredContacts(contactsWithSelection);
+
+      toast({
+        title: "Contatos carregados",
+        description: `${contactsWithSelection.length} contatos encontrados`,
       });
-
-      if (response.error) throw new Error(response.error.message);
-
-      if (response.data?.contacts) {
-        const contactsWithSelection = response.data.contacts.map((c: Contact) => ({
-          ...c,
-          selected: false
-        }));
-        setContacts(contactsWithSelection);
-        setFilteredContacts(contactsWithSelection);
-
-        toast({
-          title: "Contatos carregados",
-          description: `${response.data.stats.total} contatos encontrados (${response.data.stats.fromDatabase} do sistema, ${response.data.stats.fromWhatsApp} do WhatsApp)`,
-        });
-      }
     } catch (error: any) {
       console.error("Error loading contacts:", error);
       toast({
