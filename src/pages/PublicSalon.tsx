@@ -207,6 +207,40 @@ const PublicSalon = () => {
     }
   }, [slug]);
 
+  // Registrar Service Worker e configurar PWA
+  useEffect(() => {
+    if (slug && 'serviceWorker' in navigator) {
+      // Registrar service worker
+      navigator.serviceWorker.register('/sw.js')
+        .then(registration => {
+          console.log('Service Worker registrado:', registration);
+        })
+        .catch(error => {
+          console.error('Erro ao registrar Service Worker:', error);
+        });
+
+      // Adicionar link do manifest dinâmico
+      const manifestLink = document.querySelector('link[rel="manifest"]');
+      if (manifestLink) {
+        manifestLink.setAttribute('href', `/api/manifest/${slug}`);
+      } else {
+        const link = document.createElement('link');
+        link.rel = 'manifest';
+        link.href = `/api/manifest/${slug}`;
+        document.head.appendChild(link);
+      }
+
+      // Adicionar meta tags para PWA
+      const themeColorMeta = document.querySelector('meta[name="theme-color"]');
+      if (!themeColorMeta) {
+        const meta = document.createElement('meta');
+        meta.name = 'theme-color';
+        meta.content = '#000000';
+        document.head.appendChild(meta);
+      }
+    }
+  }, [slug]);
+
   // Auto-selecionar "any" quando entrar no step 2 sem profissional selecionado
   useEffect(() => {
     if (step === 2 && !selectedProfessional && hasBookableItems) {
@@ -784,10 +818,9 @@ const PublicSalon = () => {
 
       if (error) throw error;
 
-      // Trigger automático via database trigger irá chamar a Edge Function
-      // Mas também podemos chamar manualmente para garantir
+      // Enviar confirmação WhatsApp
       try {
-        await supabase.functions.invoke('auto-appointment-confirmation', {
+        const { error: whatsappError } = await supabase.functions.invoke('auto-appointment-confirmation', {
           body: {
             id: appointmentData.id,
             salon_id: salon.id,
@@ -801,9 +834,31 @@ const PublicSalon = () => {
             status: 'pending'
           }
         });
+
+        if (whatsappError) {
+          console.error("WhatsApp confirmation error:", whatsappError);
+        }
       } catch (whatsappError) {
         console.error("WhatsApp confirmation error:", whatsappError);
         // Não bloqueia o agendamento se WhatsApp falhar
+      }
+
+      // Enviar notificação push para o dono do salão
+      try {
+        await supabase.functions.invoke('send-push-notification', {
+          body: {
+            salonId: salon.id,
+            title: '🎉 Novo Agendamento!',
+            body: `${clientName.trim()} agendou ${mainService.name} para ${format(selectedDate, 'dd/MM')} às ${selectedTime}`,
+            data: {
+              appointmentId: appointmentData.id,
+              type: 'new_appointment'
+            }
+          }
+        });
+      } catch (pushError) {
+        console.error("Push notification error:", pushError);
+        // Não bloqueia o agendamento se push falhar
       }
 
       // Auto-create or update client in clients table with loyalty points
@@ -883,6 +938,32 @@ const PublicSalon = () => {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  // Gerar link do Google Calendar
+  const generateGoogleCalendarLink = () => {
+    if (!selectedDate || !selectedTime || !salon) return '';
+
+    const [hours, minutes] = selectedTime.split(':').map(Number);
+    const endMinutes = hours * 60 + minutes + cartServicesDuration;
+    const endHours = Math.floor(endMinutes / 60);
+    const endMins = endMinutes % 60;
+
+    const startDateTime = `${format(selectedDate, 'yyyyMMdd')}T${selectedTime.replace(':', '')}00`;
+    const endDateTime = `${format(selectedDate, 'yyyyMMdd')}T${endHours.toString().padStart(2, '0')}${endMins.toString().padStart(2, '0')}00`;
+
+    const servicesText = cartServices.map(s => s.name).join(', ');
+    const professionalName = selectedProfessional === "any" ? "A definir" : selectedProfessionalData?.name || "Profissional";
+
+    const params = new URLSearchParams({
+      action: 'TEMPLATE',
+      text: `${servicesText} - ${salon.name}`,
+      dates: `${startDateTime}/${endDateTime}`,
+      details: `Agendamento confirmado!\n\nServiços: ${servicesText}\nProfissional: ${professionalName}\nValor: R$ ${finalPrice.toFixed(2)}\n\nCliente: ${clientName}`,
+      location: salon.address || salon.name,
+    });
+
+    return `https://calendar.google.com/calendar/render?${params.toString()}`;
   };
 
   const isDateDisabled = (date: Date) => {
@@ -990,18 +1071,29 @@ const PublicSalon = () => {
             </div>
           </div>
 
-          {salon.whatsapp && (
-            <a
-              href={`https://wa.me/${salon.whatsapp.replace(/\D/g, '')}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-white font-medium transition-all hover:opacity-90"
-              style={{ backgroundColor: '#25D366' }}
+          <div className="flex flex-col gap-3">
+            <button
+              onClick={() => window.open(generateGoogleCalendarLink(), '_blank')}
+              className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-white font-medium transition-all hover:opacity-90"
+              style={{ backgroundColor: primaryColor }}
             >
-              <MessageCircle size={20} />
-              Falar no WhatsApp
-            </a>
-          )}
+              <Calendar size={20} />
+              Adicionar ao Google Calendar
+            </button>
+
+            {salon.whatsapp && (
+              <a
+                href={`https://wa.me/${salon.whatsapp.replace(/\D/g, '')}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-white font-medium transition-all hover:opacity-90"
+                style={{ backgroundColor: '#25D366' }}
+              >
+                <MessageCircle size={20} />
+                Falar no WhatsApp
+              </a>
+            )}
+          </div>
         </div>
       </div>
     );
