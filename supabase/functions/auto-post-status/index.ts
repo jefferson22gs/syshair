@@ -27,53 +27,61 @@ serve(async (req) => {
 
         console.log("🤖 Processando auto-posts de status...");
 
-        // Buscar salões que devem postar status
-        const { data: salons, error } = await supabase
-            .rpc('process_auto_status_posts');
+        // Buscar postagens pendentes
+        const { data: pendingPosts, error: postsError } = await supabase
+            .from('whatsapp_status_posts')
+            .select(`
+                id,
+                salon_id,
+                status_text,
+                status_image_url,
+                salons!inner(
+                    name,
+                    slug,
+                    whatsapp_instances!inner(
+                        instance_name,
+                        status
+                    )
+                )
+            `)
+            .eq('success', false)
+            .is('error_message', null)
+            .limit(10);
 
-        if (error) {
-            throw new Error("Erro ao buscar salões: " + error.message);
+        if (postsError) {
+            throw new Error("Erro ao buscar posts pendentes: " + postsError.message);
         }
 
-        if (!salons || salons.length === 0) {
-            console.log("✅ Nenhum salão para postar status agora");
+        if (!pendingPosts || pendingPosts.length === 0) {
+            console.log("✅ Nenhuma postagem pendente");
             return new Response(
                 JSON.stringify({
                     success: true,
-                    message: "Nenhum salão para postar",
+                    message: "Nenhuma postagem pendente",
                     processed: 0
                 }),
                 { headers: { ...corsHeaders, "Content-Type": "application/json" } }
             );
         }
 
-        console.log(`📤 Processando ${salons.length} salões`);
+        console.log(`📤 Processando ${pendingPosts.length} postagens`);
 
         let posted = 0;
         let failed = 0;
 
-        for (const salon of salons) {
+        for (const post of pendingPosts) {
             try {
-                console.log(`📱 Postando status para ${salon.salon_name}...`);
+                const salon = post.salons;
+                const instance = salon.whatsapp_instances[0];
 
-                // Criar registro de histórico
-                const { data: history, error: historyError } = await supabase
-                    .from('status_post_history')
-                    .insert({
-                        salon_id: salon.salon_id,
-                        message: salon.message,
-                        status: 'pending'
-                    })
-                    .select()
-                    .single();
-
-                if (historyError) {
-                    console.error("Erro ao criar histórico:", historyError);
-                    continue;
+                if (!instance || instance.status !== 'connected') {
+                    throw new Error("WhatsApp não conectado");
                 }
 
+                console.log(`📱 Postando status para ${salon.name}...`);
+
                 // Postar status via Evolution API
-                const response = await fetch(`${EVOLUTION_API_URL}/message/sendStatus/${salon.instance_name}`, {
+                const response = await fetch(`${EVOLUTION_API_URL}/message/sendStatus/${instance.instance_name}`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
@@ -81,7 +89,7 @@ serve(async (req) => {
                     },
                     body: JSON.stringify({
                         type: "text",
-                        content: salon.message,
+                        content: post.status_text,
                         backgroundColor: "#0d1117",
                         font: 1,
                         allContacts: true
@@ -95,40 +103,28 @@ serve(async (req) => {
 
                 const result = await response.json();
 
-                if (result.key) {
-                    // Sucesso
-                    await supabase
-                        .from('status_post_history')
-                        .update({
-                            status: 'sent',
-                            whatsapp_status_id: result.key.id,
-                            posted_at: new Date().toISOString()
-                        })
-                        .eq('id', history.id);
+                // Atualizar como sucesso
+                await supabase
+                    .from('whatsapp_status_posts')
+                    .update({
+                        success: true,
+                        posted_at: new Date().toISOString()
+                    })
+                    .eq('id', post.id);
 
-                    // Marcar como postado
-                    await supabase.rpc('mark_status_posted', {
-                        p_salon_id: salon.salon_id
-                    });
-
-                    console.log(`✅ Status postado para ${salon.salon_name}`);
-                    posted++;
-                } else {
-                    throw new Error("Resposta sem key");
-                }
+                console.log(`✅ Status postado para ${salon.name}`);
+                posted++;
 
             } catch (error: any) {
-                console.error(`❌ Erro ao postar para ${salon.salon_name}:`, error.message);
+                console.error(`❌ Erro ao postar:`, error.message);
 
-                // Atualizar histórico com erro
+                // Atualizar com erro
                 await supabase
-                    .from('status_post_history')
+                    .from('whatsapp_status_posts')
                     .update({
-                        status: 'failed',
                         error_message: error.message.substring(0, 500)
                     })
-                    .eq('salon_id', salon.salon_id)
-                    .eq('status', 'pending');
+                    .eq('id', post.id);
 
                 failed++;
             }
