@@ -19,6 +19,7 @@ import Dashboard from "./pages/Dashboard";
 import BookingFlow from "./pages/BookingFlow";
 import PublicSalon from "./pages/PublicSalon";
 import PublicProfessional from "./pages/PublicProfessional";
+import ManageAppointment from "./pages/ManageAppointment";
 import NotFound from "./pages/NotFound";
 import Install from "./pages/Install";
 import Checkout from "./pages/Checkout";
@@ -87,6 +88,8 @@ const App = () => (
               <Route path="/s/:slug" element={<PublicSalon />} />
               {/* Public Professional Booking Page */}
               <Route path="/s/:salonSlug/:professionalSlug" element={<PublicProfessional />} />
+              {/* Manage Appointment by Token */}
+              <Route path="/appointment/:token" element={<ManageAppointment />} />
               <Route path="/checkout" element={<Checkout />} />
               <Route path="/agendar" element={<PublicBookingAdvanced />} />
               <Route path="/agendar/:salonSlug" element={<PublicBookingAdvanced />} />

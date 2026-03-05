@@ -64,7 +64,7 @@ function formatDate(dateStr: string): string {
 /**
  * Gera mensagem de confirmação personalizada
  */
-function generateConfirmationMessage(appointment: AppointmentData, salonName: string, pixKey?: string): string {
+function generateConfirmationMessage(appointment: AppointmentData, salonName: string, cancellationToken: string, pixKey?: string): string {
     const date = formatDate(appointment.appointment_date);
     const time = appointment.appointment_time;
     const professional = appointment.professional_name || "Qualquer profissional";
@@ -90,6 +90,12 @@ function generateConfirmationMessage(appointment: AppointmentData, salonName: st
     message += `⚠️ *Importante:*\n`;
     message += `• Chegue com 10 minutos de antecedência\n`;
     message += `• Em caso de cancelamento, avise com 24h de antecedência\n\n`;
+
+    // Adicionar link de gerenciamento
+    message += `🔗 *Gerenciar Agendamento:*\n`;
+    message += `https://syshair.vercel.app/appointment/${cancellationToken}\n`;
+    message += `_(Cancelar ou alterar data/horário)_\n\n`;
+
     message += `📞 Dúvidas? Entre em contato conosco!\n\n`;
     message += `Aguardamos você! 💇‍♀️✨`;
 
@@ -144,7 +150,7 @@ serve(async (req) => {
 
         console.log("Processing appointment confirmation:", appointment.id);
 
-        // Buscar dados do salão
+        // Buscar dados do salão e token de cancelamento
         const { data: salon, error: salonError } = await supabase
             .from("salons")
             .select("name, pix_key, whatsapp_instance_name")
@@ -154,6 +160,19 @@ serve(async (req) => {
         if (salonError || !salon) {
             throw new Error("Salon not found");
         }
+
+        // Buscar token de cancelamento do agendamento
+        const { data: appointmentData, error: appointmentError } = await supabase
+            .from("appointments")
+            .select("cancellation_token")
+            .eq("id", appointment.id)
+            .single();
+
+        if (appointmentError || !appointmentData?.cancellation_token) {
+            console.error("Could not fetch cancellation token");
+        }
+
+        const cancellationToken = appointmentData?.cancellation_token || "";
 
         // Verificar se tem instância do WhatsApp configurada
         if (!salon.whatsapp_instance_name) {
@@ -177,6 +196,7 @@ serve(async (req) => {
         const message = generateConfirmationMessage(
             appointment,
             salon.name,
+            cancellationToken,
             salon.pix_key
         );
 
