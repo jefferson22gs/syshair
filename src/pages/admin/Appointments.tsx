@@ -9,9 +9,11 @@ import { AdminLayout } from "@/components/layouts/AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Calendar, Clock, User, Check, X, ChevronLeft, ChevronRight, MoreVertical, CheckCircle, XCircle, Edit, Ban, UserX, Phone, MessageCircle } from "lucide-react";
 import { Tables } from "@/integrations/supabase/types";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { EnhancedSalonCalendar } from "@/components/admin/EnhancedSalonCalendar";
 
 type Appointment = Tables<"appointments"> & {
   services?: { name: string; duration_minutes: number } | null;
@@ -382,8 +384,16 @@ const Appointments = () => {
           </Dialog>
         </div>
 
-        {/* Date Navigation */}
-        <Card className="glass-card">
+        {/* Tabs para alternar entre visualizações */}
+        <Tabs defaultValue="list" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 max-w-md">
+            <TabsTrigger value="list">Lista de Agendamentos</TabsTrigger>
+            <TabsTrigger value="calendar">Agenda Completa</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="list" className="space-y-6">
+            {/* Date Navigation */}
+            <Card className="glass-card">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <Button variant="ghost" size="icon" onClick={() => changeDate(-1)}>
@@ -573,6 +583,12 @@ const Appointments = () => {
             ))}
           </div>
         )}
+          </TabsContent>
+
+          <TabsContent value="calendar">
+            <EnhancedSalonCalendar />
+          </TabsContent>
+        </Tabs>
       </div>
     </AdminLayout>
   );

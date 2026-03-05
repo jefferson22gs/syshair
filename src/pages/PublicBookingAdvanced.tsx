@@ -1,11 +1,12 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { useSalon } from "@/hooks/useSalon";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     Calendar as CalendarIcon,
     ChevronLeft,
     ChevronRight,
     Clock,
-    Star,
     User,
     Scissors,
     CreditCard,
@@ -18,141 +19,58 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Logo } from "@/components/icons/Logo";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { format } from "date-fns";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
-// Types
-interface Professional {
-    id: string;
-    name: string;
-    avatar: string;
-    specialty: string;
-    rating: number;
-    reviewCount: number;
-    available: boolean;
-}
-
-interface Service {
-    id: string;
-    name: string;
-    duration: number;
-    price: number;
-    image: string;
-    category: string;
-}
-
-interface TimeSlot {
-    time: string;
-    available: boolean;
-}
-
-// Mock Data
-const mockProfessionals: Professional[] = [
-    {
-        id: '1',
-        name: 'Julia Santos',
-        avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop',
-        specialty: 'Coloração & Mechas',
-        rating: 4.9,
-        reviewCount: 127,
-        available: true,
-    },
-    {
-        id: '2',
-        name: 'Carlos Eduardo',
-        avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop',
-        specialty: 'Cortes Masculinos',
-        rating: 4.8,
-        reviewCount: 89,
-        available: true,
-    },
-    {
-        id: '3',
-        name: 'Ana Oliveira',
-        avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop',
-        specialty: 'Penteados & Eventos',
-        rating: 5.0,
-        reviewCount: 156,
-        available: false,
-    },
-];
-
-const mockServices: Service[] = [
-    {
-        id: '1',
-        name: 'Corte Feminino',
-        duration: 45,
-        price: 80,
-        image: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=200&h=200&fit=crop',
-        category: 'Cortes',
-    },
-    {
-        id: '2',
-        name: 'Corte Masculino',
-        duration: 30,
-        price: 50,
-        image: 'https://images.unsplash.com/photo-1599351431202-1e0f0137899a?w=200&h=200&fit=crop',
-        category: 'Cortes',
-    },
-    {
-        id: '3',
-        name: 'Coloração',
-        duration: 90,
-        price: 180,
-        image: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=200&h=200&fit=crop',
-        category: 'Coloração',
-    },
-    {
-        id: '4',
-        name: 'Mechas',
-        duration: 120,
-        price: 250,
-        image: 'https://images.unsplash.com/photo-1492106087820-71f1a00d2b11?w=200&h=200&fit=crop',
-        category: 'Coloração',
-    },
-    {
-        id: '5',
-        name: 'Escova',
-        duration: 45,
-        price: 60,
-        image: 'https://images.unsplash.com/photo-1595476108010-b4d1f102b1b1?w=200&h=200&fit=crop',
-        category: 'Finalização',
-    },
-    {
-        id: '6',
-        name: 'Barba',
-        duration: 30,
-        price: 40,
-        image: 'https://images.unsplash.com/photo-1621605815971-fbc98d665033?w=200&h=200&fit=crop',
-        category: 'Barba',
-    },
-];
-
-const generateTimeSlots = (): TimeSlot[] => {
-    const slots: TimeSlot[] = [];
-    for (let hour = 8; hour <= 19; hour++) {
-        slots.push({
-            time: `${hour.toString().padStart(2, '0')}:00`,
-            available: Math.random() > 0.3,
-        });
-        if (hour < 19) {
-            slots.push({
-                time: `${hour.toString().padStart(2, '0')}:30`,
-                available: Math.random() > 0.3,
-            });
-        }
-    }
-    return slots;
-};
+// Types removidos - usando tipos do useSalon hook
 
 const PublicBookingAdvanced = () => {
+    const navigate = useNavigate();
+    const { salonSlug } = useParams();
+    const { salon, services, professionals, loading, getAvailableTimeSlots } = useSalon(salonSlug);
+
     const [step, setStep] = useState<'service' | 'professional' | 'datetime' | 'confirm'>('service');
-    const [selectedService, setSelectedService] = useState<Service | null>(null);
-    const [selectedProfessional, setSelectedProfessional] = useState<Professional | null>(null);
+    const [selectedService, setSelectedService] = useState<any | null>(null);
+    const [selectedProfessional, setSelectedProfessional] = useState<any | null>(null);
     const [selectedDate, setSelectedDate] = useState<Date>(new Date());
     const [selectedTime, setSelectedTime] = useState<string | null>(null);
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [wantsPrepayment, setWantsPrepayment] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
+    const [timeSlots, setTimeSlots] = useState<string[]>([]);
+    const [loadingSlots, setLoadingSlots] = useState(false);
 
-    const timeSlots = useMemo(() => generateTimeSlots(), [selectedDate]);
+    // Client info
+    const [clientName, setClientName] = useState("");
+    const [clientPhone, setClientPhone] = useState("");
+    const [clientEmail, setClientEmail] = useState("");
+
+    // Buscar horários disponíveis quando serviço, profissional ou data mudar
+    useEffect(() => {
+        const fetchSlots = async () => {
+            if (!selectedService || !selectedDate || !salon) return;
+
+            setLoadingSlots(true);
+            try {
+                const slots = await getAvailableTimeSlots(
+                    selectedDate,
+                    selectedService.id,
+                    selectedProfessional?.id
+                );
+                setTimeSlots(slots);
+            } catch (error) {
+                console.error('Erro ao buscar horários:', error);
+                toast.error('Erro ao carregar horários disponíveis');
+            } finally {
+                setLoadingSlots(false);
+            }
+        };
+
+        fetchSlots();
+    }, [selectedService, selectedProfessional, selectedDate, salon, getAvailableTimeSlots]);
 
     // Calendar helpers
     const getDaysInMonth = (date: Date) => {
@@ -194,12 +112,133 @@ const PublicBookingAdvanced = () => {
     const days = getDaysInMonth(currentMonth);
     const weekDays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
-    const totalDuration = selectedService?.duration || 0;
+    // Usar duration_minutes do Supabase, não duration
+    const totalDuration = selectedService?.duration_minutes || 0;
     const totalPrice = selectedService?.price || 0;
 
-    const handleConfirmBooking = () => {
-        // In real app, this would submit to Supabase
-        alert('Agendamento confirmado! Você receberá uma confirmação por WhatsApp.');
+    const handleConfirmBooking = async () => {
+        if (!selectedService || !selectedDate || !selectedTime || !clientName.trim() || !clientPhone.trim()) {
+            toast.error("Preencha todos os campos obrigatórios");
+            return;
+        }
+
+        setSubmitting(true);
+        try {
+            if (!salon) {
+                toast.error("Erro: Salão não encontrado");
+                return;
+            }
+
+            // Calcular end_time baseado na duração do serviço
+            const [hours, minutes] = selectedTime.split(':').map(Number);
+            const startDate = new Date(selectedDate);
+            startDate.setHours(hours, minutes, 0, 0);
+
+            const endDate = new Date(startDate);
+            endDate.setMinutes(endDate.getMinutes() + totalDuration);
+
+            const endTime = `${endDate.getHours().toString().padStart(2, '0')}:${endDate.getMinutes().toString().padStart(2, '0')}`;
+
+            // Criar agendamento no Supabase
+            const { data: appointment, error } = await supabase
+                .from("appointments")
+                .insert({
+                    salon_id: salon.id,
+                    service_id: selectedService.id,
+                    professional_id: selectedProfessional?.id || professionals[0]?.id,
+                    client_name: clientName.trim(),
+                    client_phone: clientPhone.trim(),
+                    client_email: clientEmail.trim() || null,
+                    date: format(selectedDate, 'yyyy-MM-dd'),
+                    start_time: selectedTime,
+                    end_time: endTime,
+                    status: 'confirmed',
+                    price: totalPrice,
+                    final_price: wantsPrepayment ? totalPrice * 0.95 : totalPrice,
+                })
+                .select()
+                .single();
+
+            if (error) throw error;
+
+            if (appointment) {
+                // Gerar link de gerenciamento
+                const manageLink = `${window.location.origin}/manage-appointment?id=${appointment.id}&phone=${clientPhone.trim()}`;
+
+                // Enviar WhatsApp com link de gerenciamento
+                try {
+                    const salonName = salon.name;
+                    const phoneNumber = clientPhone.trim().replace(/\D/g, '');
+
+                    console.log('📱 ===== ENVIANDO WHATSAPP =====');
+                    console.log('📞 Telefone original:', clientPhone);
+                    console.log('📞 Telefone formatado:', phoneNumber);
+                    console.log('🆔 Appointment ID:', appointment.id);
+                    console.log('🔗 Link de gerenciamento:', manageLink);
+
+                    const whatsappMessage = `
+🎉 *Agendamento Confirmado!*
+
+📍 *Salão:* ${salonName}
+✂️ *Serviço:* ${selectedService.name}
+👤 *Profissional:* ${selectedProfessional?.name || 'Qualquer disponível'}
+📅 *Data:* ${format(selectedDate, 'dd/MM/yyyy')}
+⏰ *Horário:* ${selectedTime}
+
+🔗 *Gerenciar agendamento:*
+${manageLink}
+
+_Você pode cancelar ou reagendar até 2 horas antes do horário._
+                    `.trim();
+
+                    console.log('📝 Mensagem:', whatsappMessage);
+
+                    // Enviar via Evolution API
+                    const response = await fetch('https://api.tubaraoemprestimo.com.br/message/sendText/syshair_daniel_cabelos_1777c2a7', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'apikey': 'B8959800-F546-407C-99E8-C40306E747F5'
+                        },
+                        body: JSON.stringify({
+                            number: phoneNumber,
+                            text: whatsappMessage
+                        })
+                    });
+
+                    console.log('📊 Status da resposta:', response.status);
+                    console.log('📊 Status OK?:', response.ok);
+
+                    const responseData = await response.json();
+                    console.log('📦 Resposta da API:', responseData);
+
+                    if (!response.ok) {
+                        throw new Error(`Erro ${response.status}: ${JSON.stringify(responseData)}`);
+                    }
+
+                    console.log('✅ WhatsApp enviado com sucesso!');
+                    toast.success("WhatsApp enviado com sucesso!");
+                } catch (whatsappError: any) {
+                    console.error('❌ ===== ERRO AO ENVIAR WHATSAPP =====');
+                    console.error('❌ Erro:', whatsappError);
+                    console.error('❌ Mensagem:', whatsappError.message);
+                    console.error('❌ Stack:', whatsappError.stack);
+
+                    toast.error("Agendamento criado, mas não foi possível enviar WhatsApp");
+                    // Não bloquear o fluxo se o WhatsApp falhar
+                }
+
+                toast.success("Agendamento confirmado!");
+
+                // Redirecionar para página de confirmação
+                navigate(`/appointment-confirmation?id=${appointment.id}`);
+            }
+        } catch (error: any) {
+            console.error("Erro ao criar agendamento:", error);
+            toast.error(error.message || "Erro ao criar agendamento");
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     return (
@@ -210,7 +249,7 @@ const PublicBookingAdvanced = () => {
                     <Logo size="sm" />
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <MapPin size={14} />
-                        <span>Salão Elegance</span>
+                        <span>{salon?.name || 'Carregando...'}</span>
                     </div>
                 </div>
             </header>
@@ -266,41 +305,51 @@ const PublicBookingAdvanced = () => {
                             </h2>
 
                             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                                {mockServices.map((service) => (
-                                    <motion.div
-                                        key={service.id}
-                                        whileHover={{ scale: 1.02 }}
-                                        whileTap={{ scale: 0.98 }}
-                                        onClick={() => {
-                                            setSelectedService(service);
-                                            setStep('professional');
-                                        }}
-                                        className={cn(
-                                            "cursor-pointer rounded-2xl overflow-hidden border-2 transition-colors",
-                                            selectedService?.id === service.id
-                                                ? "border-primary shadow-gold"
-                                                : "border-border/50 hover:border-primary/50"
-                                        )}
-                                    >
-                                        <img
-                                            src={service.image}
-                                            alt={service.name}
-                                            className="w-full aspect-square object-cover"
-                                        />
-                                        <div className="p-4 bg-card">
-                                            <h3 className="font-medium text-foreground">{service.name}</h3>
-                                            <div className="flex items-center justify-between mt-2">
-                                                <span className="text-sm text-muted-foreground flex items-center gap-1">
-                                                    <Clock size={14} />
-                                                    {service.duration}min
-                                                </span>
-                                                <span className="font-bold text-primary">
-                                                    R$ {service.price}
-                                                </span>
+                                {loading ? (
+                                    <div className="col-span-full text-center py-8 text-muted-foreground">
+                                        Carregando serviços...
+                                    </div>
+                                ) : services.length === 0 ? (
+                                    <div className="col-span-full text-center py-8 text-muted-foreground">
+                                        Nenhum serviço disponível
+                                    </div>
+                                ) : (
+                                    services.map((service) => (
+                                        <motion.div
+                                            key={service.id}
+                                            whileHover={{ scale: 1.02 }}
+                                            whileTap={{ scale: 0.98 }}
+                                            onClick={() => {
+                                                setSelectedService(service);
+                                                setStep('professional');
+                                            }}
+                                            className={cn(
+                                                "cursor-pointer rounded-2xl overflow-hidden border-2 transition-colors",
+                                                selectedService?.id === service.id
+                                                    ? "border-primary shadow-gold"
+                                                    : "border-border/50 hover:border-primary/50"
+                                            )}
+                                        >
+                                            {service.icon && (
+                                                <div className="w-full aspect-square bg-gradient-to-br from-primary/20 to-gold-light/20 flex items-center justify-center text-6xl">
+                                                    {service.icon}
+                                                </div>
+                                            )}
+                                            <div className="p-4 bg-card">
+                                                <h3 className="font-medium text-foreground">{service.name}</h3>
+                                                <div className="flex items-center justify-between mt-2">
+                                                    <span className="text-sm text-muted-foreground flex items-center gap-1">
+                                                        <Clock size={14} />
+                                                        {service.duration_minutes}min
+                                                    </span>
+                                                    <span className="font-bold text-primary">
+                                                        R$ {service.price}
+                                                    </span>
+                                                </div>
                                             </div>
-                                        </div>
-                                    </motion.div>
-                                ))}
+                                        </motion.div>
+                                    ))
+                                )}
                             </div>
                         </motion.div>
                     )}
@@ -324,79 +373,90 @@ const PublicBookingAdvanced = () => {
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                {mockProfessionals.map((professional) => (
-                                    <motion.div
-                                        key={professional.id}
-                                        whileHover={{ scale: 1.02 }}
-                                        whileTap={{ scale: 0.98 }}
-                                    >
-                                        <Card
-                                            onClick={() => {
-                                                if (professional.available) {
-                                                    setSelectedProfessional(professional);
-                                                    setStep('datetime');
-                                                }
-                                            }}
-                                            className={cn(
-                                                "cursor-pointer transition-all overflow-hidden",
-                                                !professional.available && "opacity-50 cursor-not-allowed",
-                                                selectedProfessional?.id === professional.id && "ring-2 ring-primary shadow-gold"
-                                            )}
-                                        >
-                                            <CardContent className="p-6">
-                                                <div className="flex items-start gap-4">
-                                                    <img
-                                                        src={professional.avatar}
-                                                        alt={professional.name}
-                                                        className="w-16 h-16 rounded-full object-cover ring-2 ring-primary/20"
-                                                    />
-                                                    <div className="flex-1">
-                                                        <div className="flex items-center gap-2">
-                                                            <h3 className="font-semibold text-foreground">{professional.name}</h3>
-                                                            {!professional.available && (
-                                                                <Badge variant="secondary" className="text-xs">Indisponível</Badge>
+                                {loading ? (
+                                    <div className="col-span-full text-center py-8 text-muted-foreground">
+                                        Carregando profissionais...
+                                    </div>
+                                ) : professionals.length === 0 ? (
+                                    <div className="col-span-full text-center py-8 text-muted-foreground">
+                                        Nenhum profissional disponível
+                                    </div>
+                                ) : (
+                                    <>
+                                        {professionals.map((professional) => (
+                                            <motion.div
+                                                key={professional.id}
+                                                whileHover={{ scale: 1.02 }}
+                                                whileTap={{ scale: 0.98 }}
+                                            >
+                                                <Card
+                                                    onClick={() => {
+                                                        if (professional.is_active) {
+                                                            setSelectedProfessional(professional);
+                                                            setStep('datetime');
+                                                        }
+                                                    }}
+                                                    className={cn(
+                                                        "cursor-pointer transition-all overflow-hidden",
+                                                        !professional.is_active && "opacity-50 cursor-not-allowed",
+                                                        selectedProfessional?.id === professional.id && "ring-2 ring-primary shadow-gold"
+                                                    )}
+                                                >
+                                                    <CardContent className="p-6">
+                                                        <div className="flex items-start gap-4">
+                                                            {professional.avatar_url ? (
+                                                                <img
+                                                                    src={professional.avatar_url}
+                                                                    alt={professional.name}
+                                                                    className="w-16 h-16 rounded-full object-cover ring-2 ring-primary/20"
+                                                                />
+                                                            ) : (
+                                                                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary to-gold-light flex items-center justify-center text-primary-foreground font-bold text-xl">
+                                                                    {professional.name.charAt(0).toUpperCase()}
+                                                                </div>
                                                             )}
-                                                        </div>
-                                                        <p className="text-sm text-muted-foreground mt-1">
-                                                            {professional.specialty}
-                                                        </p>
-                                                        <div className="flex items-center gap-2 mt-2">
-                                                            <div className="flex items-center gap-1 text-yellow-500">
-                                                                <Star size={14} className="fill-current" />
-                                                                <span className="font-medium text-foreground">{professional.rating}</span>
+                                                            <div className="flex-1">
+                                                                <div className="flex items-center gap-2">
+                                                                    <h3 className="font-semibold text-foreground">{professional.name}</h3>
+                                                                    {!professional.is_active && (
+                                                                        <Badge variant="secondary" className="text-xs">Indisponível</Badge>
+                                                                    )}
+                                                                </div>
+                                                                {professional.specialty && (
+                                                                    <p className="text-sm text-muted-foreground mt-1">
+                                                                        {professional.specialty}
+                                                                    </p>
+                                                                )}
                                                             </div>
-                                                            <span className="text-xs text-muted-foreground">
-                                                                ({professional.reviewCount} avaliações)
-                                                            </span>
                                                         </div>
-                                                    </div>
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-                                    </motion.div>
-                                ))}
+                                                    </CardContent>
+                                                </Card>
+                                            </motion.div>
+                                        ))}
 
-                                {/* Any Professional Option */}
-                                <motion.div
-                                    whileHover={{ scale: 1.02 }}
-                                    whileTap={{ scale: 0.98 }}
-                                >
-                                    <Card
-                                        onClick={() => {
-                                            setSelectedProfessional(null);
-                                            setStep('datetime');
-                                        }}
-                                        className="cursor-pointer transition-all border-dashed"
-                                    >
-                                        <CardContent className="p-6 flex items-center justify-center h-full min-h-[120px]">
-                                            <div className="text-center">
-                                                <User className="w-10 h-10 mx-auto text-muted-foreground mb-2" />
-                                                <p className="font-medium text-foreground">Sem preferência</p>
-                                                <p className="text-sm text-muted-foreground">Qualquer profissional</p>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                </motion.div>
+                                        {/* Any Professional Option */}
+                                        <motion.div
+                                            whileHover={{ scale: 1.02 }}
+                                            whileTap={{ scale: 0.98 }}
+                                        >
+                                            <Card
+                                                onClick={() => {
+                                                    setSelectedProfessional(null);
+                                                    setStep('datetime');
+                                                }}
+                                                className="cursor-pointer transition-all border-dashed"
+                                            >
+                                                <CardContent className="p-6 flex items-center justify-center h-full min-h-[120px]">
+                                                    <div className="text-center">
+                                                        <User className="w-10 h-10 mx-auto text-muted-foreground mb-2" />
+                                                        <p className="font-medium text-foreground">Sem preferência</p>
+                                                        <p className="text-sm text-muted-foreground">Qualquer profissional</p>
+                                                    </div>
+                                                </CardContent>
+                                            </Card>
+                                        </motion.div>
+                                    </>
+                                )}
                             </div>
                         </motion.div>
                     )}
@@ -481,21 +541,29 @@ const PublicBookingAdvanced = () => {
                                         </h3>
 
                                         <div className="grid grid-cols-3 gap-2 max-h-[400px] overflow-y-auto py-2">
-                                            {timeSlots.map((slot) => (
-                                                <button
-                                                    key={slot.time}
-                                                    onClick={() => slot.available && setSelectedTime(slot.time)}
-                                                    disabled={!slot.available}
-                                                    className={cn(
-                                                        "p-3 rounded-lg text-sm font-medium transition-colors",
-                                                        slot.available && "hover:bg-primary/20 cursor-pointer border border-border/50",
-                                                        !slot.available && "bg-secondary/30 text-muted-foreground/50 cursor-not-allowed line-through",
-                                                        selectedTime === slot.time && "bg-primary text-primary-foreground border-primary"
-                                                    )}
-                                                >
-                                                    {slot.time}
-                                                </button>
-                                            ))}
+                                            {loadingSlots ? (
+                                                <div className="col-span-3 text-center py-8 text-muted-foreground">
+                                                    Carregando horários...
+                                                </div>
+                                            ) : timeSlots.length === 0 ? (
+                                                <div className="col-span-3 text-center py-8 text-muted-foreground">
+                                                    Nenhum horário disponível para esta data
+                                                </div>
+                                            ) : (
+                                                timeSlots.map((slot) => (
+                                                    <button
+                                                        key={slot}
+                                                        onClick={() => setSelectedTime(slot)}
+                                                        className={cn(
+                                                            "p-3 rounded-lg text-sm font-medium transition-colors",
+                                                            "hover:bg-primary/20 cursor-pointer border border-border/50",
+                                                            selectedTime === slot && "bg-primary text-primary-foreground border-primary"
+                                                        )}
+                                                    >
+                                                        {slot}
+                                                    </button>
+                                                ))
+                                            )}
                                         </div>
 
                                         {selectedTime && (
@@ -548,13 +616,52 @@ const PublicBookingAdvanced = () => {
                                 </div>
 
                                 <CardContent className="p-6 space-y-6">
+                                    {/* Client Info Form */}
+                                    <div className="space-y-4">
+                                        <h3 className="font-semibold text-foreground">Seus dados</h3>
+
+                                        <div className="space-y-2">
+                                            <Label htmlFor="clientName">Nome completo *</Label>
+                                            <Input
+                                                id="clientName"
+                                                value={clientName}
+                                                onChange={(e) => setClientName(e.target.value)}
+                                                placeholder="Digite seu nome completo"
+                                                className="h-12"
+                                            />
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label htmlFor="clientPhone">WhatsApp *</Label>
+                                            <Input
+                                                id="clientPhone"
+                                                value={clientPhone}
+                                                onChange={(e) => setClientPhone(e.target.value)}
+                                                placeholder="(00) 00000-0000"
+                                                type="tel"
+                                                className="h-12"
+                                            />
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label htmlFor="clientEmail">E-mail (opcional)</Label>
+                                            <Input
+                                                id="clientEmail"
+                                                value={clientEmail}
+                                                onChange={(e) => setClientEmail(e.target.value)}
+                                                placeholder="seu@email.com"
+                                                type="email"
+                                                className="h-12"
+                                            />
+                                        </div>
+                                    </div>
                                     {/* Service */}
                                     <div className="flex items-center gap-4 p-4 rounded-xl bg-secondary/30">
-                                        <img
-                                            src={selectedService?.image}
-                                            alt={selectedService?.name}
-                                            className="w-16 h-16 rounded-lg object-cover"
-                                        />
+                                        {selectedService?.icon && (
+                                            <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-primary/20 to-gold-light/20 flex items-center justify-center text-3xl">
+                                                {selectedService.icon}
+                                            </div>
+                                        )}
                                         <div className="flex-1">
                                             <p className="font-medium text-foreground">{selectedService?.name}</p>
                                             <p className="text-sm text-muted-foreground flex items-center gap-1">
@@ -568,14 +675,22 @@ const PublicBookingAdvanced = () => {
                                     {/* Professional */}
                                     {selectedProfessional && (
                                         <div className="flex items-center gap-4 p-4 rounded-xl bg-secondary/30">
-                                            <img
-                                                src={selectedProfessional.avatar}
-                                                alt={selectedProfessional.name}
-                                                className="w-12 h-12 rounded-full object-cover"
-                                            />
+                                            {selectedProfessional.avatar_url ? (
+                                                <img
+                                                    src={selectedProfessional.avatar_url}
+                                                    alt={selectedProfessional.name}
+                                                    className="w-12 h-12 rounded-full object-cover"
+                                                />
+                                            ) : (
+                                                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-gold-light flex items-center justify-center text-primary-foreground font-bold">
+                                                    {selectedProfessional.name.charAt(0).toUpperCase()}
+                                                </div>
+                                            )}
                                             <div>
                                                 <p className="font-medium text-foreground">{selectedProfessional.name}</p>
-                                                <p className="text-sm text-muted-foreground">{selectedProfessional.specialty}</p>
+                                                {selectedProfessional.specialty && (
+                                                    <p className="text-sm text-muted-foreground">{selectedProfessional.specialty}</p>
+                                                )}
                                             </div>
                                         </div>
                                     )}
@@ -616,8 +731,19 @@ const PublicBookingAdvanced = () => {
                                     </div>
 
                                     {/* Confirm Button */}
-                                    <Button variant="gold" size="lg" className="w-full" onClick={handleConfirmBooking}>
-                                        {wantsPrepayment ? (
+                                    <Button
+                                        variant="gold"
+                                        size="lg"
+                                        className="w-full"
+                                        onClick={handleConfirmBooking}
+                                        disabled={submitting || !clientName.trim() || !clientPhone.trim()}
+                                    >
+                                        {submitting ? (
+                                            <>
+                                                <Clock size={18} className="mr-2 animate-spin" />
+                                                Processando...
+                                            </>
+                                        ) : wantsPrepayment ? (
                                             <>
                                                 <CreditCard size={18} className="mr-2" />
                                                 Pagar e Confirmar

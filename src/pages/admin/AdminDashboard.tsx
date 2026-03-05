@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SalonInsights } from "@/components/admin/SalonInsights";
 import { ClientMetricsCard } from "@/components/admin/ClientMetricsCard";
 import { OnboardingWizard } from "@/components/admin/OnboardingWizard";
+import { AdminNotificationCenter } from "@/components/admin/AdminNotificationCenter";
 import { SkeletonDashboard } from "@/components/ui/skeleton-card";
 import {
   Calendar,
@@ -171,6 +172,9 @@ const AdminDashboard = () => {
             {hasSalon ? "Acompanhe o desempenho do seu salão" : "Configure seu salão para começar"}
           </p>
         </div>
+
+        {/* Notificações */}
+        {hasSalon && <AdminNotificationCenter />}
 
         {/* Welcome Card for New Users */}
         {!hasSalon && (

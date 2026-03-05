@@ -296,10 +296,9 @@ const BookingFlow = () => {
       const finalServicePrice = servicesTotal - discount;
 
       // Create appointment for the first service (main service)
-      // In a real scenario, you might want to create multiple appointments or handle this differently
       const firstService = selectedServices[0];
-      
-      await createAppointment({
+
+      const appointmentData = await createAppointment({
         serviceId: firstService.service.id,
         professionalId: finalProfessionalId!,
         date: format(selectedDate, 'yyyy-MM-dd'),
@@ -314,8 +313,76 @@ const BookingFlow = () => {
         finalPrice: finalServicePrice + cartTotal,
       });
 
-      toast.success("Agendamento realizado com sucesso!");
-      setStep(5); // Success step
+      if (appointmentData) {
+        // Gerar link de gerenciamento
+        const manageLink = `${window.location.origin}/manage-appointment?id=${appointmentData.id}&phone=${clientPhone.trim()}`;
+
+        // Enviar WhatsApp com link de gerenciamento
+        try {
+          const salonName = salon?.name || "Salão";
+          const serviceName = firstService.service.name;
+          const professionalName = selectedProfessionalData?.name || "Profissional disponível";
+          const phoneNumber = clientPhone.trim().replace(/\D/g, '');
+
+          console.log('📱 ===== ENVIANDO WHATSAPP =====');
+          console.log('📞 Telefone original:', clientPhone);
+          console.log('📞 Telefone formatado:', phoneNumber);
+          console.log('🆔 Appointment ID:', appointmentData.id);
+          console.log('🔗 Link de gerenciamento:', manageLink);
+
+          const whatsappMessage = `
+🎉 *Agendamento Confirmado!*
+
+📍 *Salão:* ${salonName}
+✂️ *Serviço:* ${serviceName}
+👤 *Profissional:* ${professionalName}
+📅 *Data:* ${format(selectedDate, 'dd/MM/yyyy')}
+⏰ *Horário:* ${selectedTime}
+
+🔗 *Gerenciar agendamento:*
+${manageLink}
+
+_Você pode cancelar ou reagendar até 2 horas antes do horário._
+          `.trim();
+
+          console.log('📝 Mensagem:', whatsappMessage);
+
+          // Enviar via Evolution API
+          const response = await fetch('https://api.tubaraoemprestimo.com.br/message/sendText/syshair_daniel_cabelos_1777c2a7', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': 'B8959800-F546-407C-99E8-C40306E747F5'
+            },
+            body: JSON.stringify({
+              number: phoneNumber,
+              text: whatsappMessage
+            })
+          });
+
+          console.log('📊 Status da resposta:', response.status);
+          console.log('📊 Status OK?:', response.ok);
+
+          const responseData = await response.json();
+          console.log('📦 Resposta da API:', responseData);
+
+          if (!response.ok) {
+            throw new Error(`Erro ${response.status}: ${JSON.stringify(responseData)}`);
+          }
+
+          console.log('✅ WhatsApp enviado com sucesso!');
+        } catch (whatsappError: any) {
+          console.error('❌ ===== ERRO AO ENVIAR WHATSAPP =====');
+          console.error('❌ Erro:', whatsappError);
+          console.error('❌ Mensagem:', whatsappError.message);
+          // Não bloquear o fluxo se o WhatsApp falhar
+        }
+
+        toast.success("Agendamento realizado com sucesso!");
+
+        // Redirecionar para página de confirmação
+        navigate(`/appointment-confirmation?id=${appointmentData.id}`);
+      }
     } catch (err: any) {
       console.error("Error creating appointment:", err);
       toast.error(err.message || "Erro ao criar agendamento");
