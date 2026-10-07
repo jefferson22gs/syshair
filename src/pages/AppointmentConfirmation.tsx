@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { getAppointmentManageLink } from "@/lib/appointmentLink";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AddToGoogleCalendar } from "@/components/booking/AddToGoogleCalendar";
@@ -81,7 +82,7 @@ export default function AppointmentConfirmation() {
 
   const getManageLink = () => {
     if (!appointment) return "";
-    return `${window.location.origin}/manage-appointment?id=${appointment.id}&phone=${appointment.client_phone}`;
+    return getAppointmentManageLink(appointment);
   };
 
   const copyManageLink = async () => {

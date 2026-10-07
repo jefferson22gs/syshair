@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { getAppointmentManageLink } from "@/lib/appointmentLink";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -306,7 +307,7 @@ export function EnhancedSalonCalendar() {
             .single();
 
           const salonName = salonData?.name || "Salão";
-          const manageLink = `${window.location.origin}/manage-appointment?id=${appointment.id}&phone=${newAppointment.client_phone.trim()}`;
+          const manageLink = getAppointmentManageLink(appointment);
 
           const whatsappMessage = `
 🎉 *Agendamento Confirmado!*

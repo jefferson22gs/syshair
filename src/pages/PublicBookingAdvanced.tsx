@@ -20,6 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { Logo } from "@/components/icons/Logo";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { getAppointmentManageLink } from "@/lib/appointmentLink";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { Input } from "@/components/ui/input";
@@ -163,7 +164,7 @@ const PublicBookingAdvanced = () => {
 
             if (appointment) {
                 // Gerar link de gerenciamento
-                const manageLink = `${window.location.origin}/manage-appointment?id=${appointment.id}&phone=${clientPhone.trim()}`;
+                const manageLink = getAppointmentManageLink(appointment);
 
                 // Enviar WhatsApp com link de gerenciamento
                 try {

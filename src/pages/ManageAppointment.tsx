@@ -115,7 +115,8 @@ export default function ManageAppointment() {
         p_salon_id: appointment.salon_id,
         p_professional_id: appointment.professional_id,
         p_service_id: appointment.service_id,
-        p_date: format(date, 'yyyy-MM-dd')
+        p_date: format(date, 'yyyy-MM-dd'),
+        p_exclude_appointment_id: appointment.id
       });
 
       if (error) throw error;

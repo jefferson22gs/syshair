@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { format, addDays, isBefore, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { getAppointmentManageLink } from "@/lib/appointmentLink";
 
 interface CartItem {
   product: Product;
@@ -315,7 +316,7 @@ const BookingFlow = () => {
 
       if (appointmentData) {
         // Gerar link de gerenciamento
-        const manageLink = `${window.location.origin}/manage-appointment?id=${appointmentData.id}&phone=${clientPhone.trim()}`;
+        const manageLink = getAppointmentManageLink(appointmentData);
 
         // Enviar WhatsApp com link de gerenciamento
         try {
