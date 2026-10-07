@@ -35,10 +35,10 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
 // Configuração da API
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://jfjbpjnnfnuiezchhust.supabase.co';
-const SUPABASE_WEBHOOK_URL = import.meta.env.VITE_SUPABASE_WEBHOOK_URL || 'https://jfjbpjnnfnuiezchhust.supabase.co/functions/v1/evolution-webhook';
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://ocbwsaydgkiseeardjga.supabase.co';
+const SUPABASE_WEBHOOK_URL = import.meta.env.VITE_SUPABASE_WEBHOOK_URL || 'https://ocbwsaydgkiseeardjga.supabase.co/functions/v1/evolution-webhook';
 const WHATSAPP_INSTANCES_URL = `${SUPABASE_URL}/functions/v1/whatsapp-instances`;
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmamJwam5uZm51aWV6Y2hodXN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY1OTI5MTksImV4cCI6MjA4MjE2ODkxOX0.hBIcT4HOxX04qs1Rl6wcPD57kWrmBEyokqgeMV601o0';
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9jYndzYXlkZ2tpc2VlYXJkamdhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEzMjkzNzMsImV4cCI6MjEwNjkwNTM3M30.qxt_4WcCKYSJ5AqN5Scl7V_mBQ3ZaN1V29AIe2JfvoA';
 
 // Helper function to call the WhatsApp Instances Edge Function
 const callWhatsAppAPI = async (action: string, params: Record<string, any> = {}) => {

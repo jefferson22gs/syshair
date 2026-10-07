@@ -1,4 +1,5 @@
 # SysHair Supabase Configuration
+project_id = "ocbwsaydgkiseeardjga"
 
 [api]
 enabled = true
@@ -46,4 +47,8 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.broadcast-messages]
+verify_jwt = false
+
+# Webhook externo (Mercado Pago não envia JWT do Supabase)
+[functions.mercadopago-webhook]
 verify_jwt = false

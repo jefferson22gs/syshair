@@ -23,3 +23,11 @@ dist-ssr
 *.sln
 *.sw?
 supabase/.temp/*
+
+# Segredos e artefatos de migração (nunca versionar)
+.env
+.env.*
+!.env.example
+backup_banco_antigo/
+migracao_novo_banco/
+.remember/

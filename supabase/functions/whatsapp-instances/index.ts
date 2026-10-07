@@ -119,7 +119,7 @@ async function createInstance(request: InstanceRequest, supabase: any) {
             qrcode: true,
             webhook: {
                 enabled: true,
-                url: webhookUrl || Deno.env.get("SUPABASE_WEBHOOK_URL"),
+                url: webhookUrl || (Deno.env.get("EVOLUTION_WEBHOOK_URL") || `${Deno.env.get("SUPABASE_URL")}/functions/v1/evolution-webhook`),
                 webhookByEvents: true,
                 events: [
                     'MESSAGES_UPSERT',
@@ -160,7 +160,7 @@ async function createInstance(request: InstanceRequest, supabase: any) {
         instance_token: instanceToken,
         api_url: EVOLUTION_API_URL,
         status: 'disconnected',
-        webhook_url: webhookUrl || Deno.env.get("SUPABASE_WEBHOOK_URL"),
+        webhook_url: webhookUrl || (Deno.env.get("EVOLUTION_WEBHOOK_URL") || `${Deno.env.get("SUPABASE_URL")}/functions/v1/evolution-webhook`),
     };
 
     // Check if instance already exists

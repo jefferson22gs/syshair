@@ -1,8 +1,8 @@
 // Custom Service Worker for Push Notifications
 // SysHair - BelezaTech
 
-const SUPABASE_URL = 'https://jfjbpjnnfnuiezchhust.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impmamjwam5uZm51aWV6Y2hodXN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzM0MTc2NDIsImV4cCI6MjA0ODk5MzY0Mn0.pV0gHdIQHpEfyZH8xqUn1OsP5I_HwvH3gxcXmfCVuFA';
+const SUPABASE_URL = 'https://ocbwsaydgkiseeardjga.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9jYndzYXlkZ2tpc2VlYXJkamdhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEzMjkzNzMsImV4cCI6MjEwNjkwNTM3M30.qxt_4WcCKYSJ5AqN5Scl7V_mBQ3ZaN1V29AIe2JfvoA';
 
 // Evento de instalação
 self.addEventListener('install', (event) => {
