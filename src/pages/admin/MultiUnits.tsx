@@ -177,7 +177,7 @@ const MultiUnitsPage = () => {
     <AdminLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4" data-tour="multi-units-header">
           <div>
             <h1 className="font-display text-3xl font-bold text-foreground">
               Multi-Unidades
@@ -190,12 +190,12 @@ const MultiUnitsPage = () => {
           {!group && (
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
-                <Button variant="gold">
+                <Button variant="gold" data-tour="multi-units-create-button">
                   <Plus size={18} className="mr-2" />
                   Criar Grupo
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent data-tour="multi-units-dialog">
                 <DialogHeader>
                   <DialogTitle>Criar Grupo de Salões</DialogTitle>
                 </DialogHeader>
@@ -203,12 +203,13 @@ const MultiUnitsPage = () => {
                   <div className="space-y-2">
                     <Label>Nome do Grupo</Label>
                     <Input
+                      data-tour="multi-units-group-name"
                       value={groupName}
                       onChange={(e) => setGroupName(e.target.value)}
                       placeholder="Ex: Rede Beauty Hair"
                     />
                   </div>
-                  <Button variant="gold" className="w-full" onClick={createGroup}>
+                  <Button variant="gold" className="w-full" onClick={createGroup} data-tour="multi-units-save">
                     Criar Grupo
                   </Button>
                 </div>
@@ -219,7 +220,7 @@ const MultiUnitsPage = () => {
 
         {/* Consolidated Stats */}
         {group && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4" data-tour="multi-units-totals">
             <Card className="glass-card">
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
@@ -288,7 +289,7 @@ const MultiUnitsPage = () => {
 
         {/* Units Grid */}
         {units.length === 0 ? (
-          <Card className="glass-card">
+          <Card className="glass-card" data-tour="multi-units-empty">
             <CardContent className="flex flex-col items-center justify-center py-12">
               <Building2 size={48} className="text-muted-foreground mb-4" />
               <p className="text-muted-foreground mb-2">Nenhuma unidade encontrada</p>
@@ -298,7 +299,7 @@ const MultiUnitsPage = () => {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" data-tour="multi-units-list">
             {units.map((unit) => (
               <Card key={unit.id} className="glass-card">
                 <CardHeader className="pb-2">

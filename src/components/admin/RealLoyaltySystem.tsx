@@ -224,13 +224,13 @@ export const RealLoyaltySystem = ({ salonId }: RealLoyaltySystemProps) => {
     }
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6" data-tour="advanced-loyalty-panel">
             {/* Card do Cliente */}
             <Card className="glass-card overflow-hidden">
                 {/* Seletor de Cliente */}
                 <div className="p-4 border-b border-border">
                     <Select value={selectedClientId} onValueChange={setSelectedClientId}>
-                        <SelectTrigger>
+                        <SelectTrigger data-tour="advanced-loyalty-client">
                             <SelectValue placeholder="Selecione um cliente" />
                         </SelectTrigger>
                         <SelectContent>
@@ -246,7 +246,7 @@ export const RealLoyaltySystem = ({ salonId }: RealLoyaltySystemProps) => {
                 {selectedClient && (
                     <>
                         {/* Header com Nível */}
-                        <div className={`bg-gradient-to-r ${currentLevel.color} p-6 text-white relative overflow-hidden`}>
+                        <div className={`bg-gradient-to-r ${currentLevel.color} p-6 text-white relative overflow-hidden`} data-tour="advanced-loyalty-points">
                             <div className="absolute inset-0 overflow-hidden">
                                 {[...Array(5)].map((_, i) => (
                                     <motion.div
@@ -333,7 +333,7 @@ export const RealLoyaltySystem = ({ salonId }: RealLoyaltySystemProps) => {
                             </div>
 
                             {/* Ações rápidas */}
-                            <div className="flex gap-2">
+                            <div className="flex gap-2" data-tour="advanced-loyalty-bonus">
                                 <Button
                                     size="sm"
                                     onClick={() => addBonusPoints(100, 'Bônus manual')}

@@ -14,6 +14,7 @@ import { Plus, Calendar, Clock, User, Check, X, ChevronLeft, ChevronRight, MoreV
 import { Tables } from "@/integrations/supabase/types";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { EnhancedSalonCalendar } from "@/components/admin/EnhancedSalonCalendar";
+import { TrainingEmptyActions } from "@/features/training/TrainingEmptyActions";
 
 type Appointment = Tables<"appointments"> & {
   services?: { name: string; duration_minutes: number } | null;
@@ -265,7 +266,7 @@ const Appointments = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between" data-tour="appointments-header">
           <div>
             <h1 className="font-display text-3xl font-bold text-foreground">Agendamentos</h1>
             <p className="text-muted-foreground mt-1">Gerencie os agendamentos do salão</p>
@@ -275,12 +276,12 @@ const Appointments = () => {
             if (!open) resetForm();
           }}>
             <DialogTrigger asChild>
-              <Button variant="gold">
+              <Button variant="gold" data-tour="appointments-new-button">
                 <Plus size={18} className="mr-2" />
                 Novo Agendamento
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="sm:max-w-md" data-tour="appointments-new-dialog">
               <DialogHeader>
                 <DialogTitle>Novo Agendamento</DialogTitle>
                 <DialogDescription>
@@ -292,6 +293,7 @@ const Appointments = () => {
                   <Label htmlFor="client_name">Nome do Cliente *</Label>
                   <Input
                     id="client_name"
+                    data-tour="appointments-new-client"
                     value={formData.client_name}
                     onChange={(e) => setFormData({ ...formData, client_name: e.target.value })}
                     placeholder="Nome do cliente"
@@ -301,6 +303,7 @@ const Appointments = () => {
                   <Label htmlFor="client_phone">Telefone</Label>
                   <Input
                     id="client_phone"
+                    data-tour="appointments-new-phone"
                     value={formData.client_phone}
                     onChange={(e) => setFormData({ ...formData, client_phone: e.target.value })}
                     placeholder="(00) 00000-0000"
@@ -312,7 +315,7 @@ const Appointments = () => {
                     value={formData.service_id}
                     onValueChange={(value) => setFormData({ ...formData, service_id: value })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger data-tour="appointments-new-service">
                       <SelectValue placeholder="Selecione o serviço" />
                     </SelectTrigger>
                     <SelectContent>
@@ -330,7 +333,7 @@ const Appointments = () => {
                     value={formData.professional_id}
                     onValueChange={(value) => setFormData({ ...formData, professional_id: value })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger data-tour="appointments-new-professional">
                       <SelectValue placeholder="Selecione o profissional" />
                     </SelectTrigger>
                     <SelectContent>
@@ -347,6 +350,7 @@ const Appointments = () => {
                     <Label htmlFor="date">Data *</Label>
                     <Input
                       id="date"
+                      data-tour="appointments-new-date"
                       type="date"
                       value={formData.date}
                       onChange={(e) => setFormData({ ...formData, date: e.target.value })}
@@ -358,7 +362,7 @@ const Appointments = () => {
                       value={formData.start_time}
                       onValueChange={(value) => setFormData({ ...formData, start_time: value })}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger data-tour="appointments-new-time">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -376,7 +380,7 @@ const Appointments = () => {
                 <Button variant="outline" onClick={() => setDialogOpen(false)}>
                   Cancelar
                 </Button>
-                <Button variant="gold" onClick={handleSubmit}>
+                <Button variant="gold" onClick={handleSubmit} data-tour="appointments-new-save">
                   Criar
                 </Button>
               </div>
@@ -387,16 +391,16 @@ const Appointments = () => {
         {/* Tabs para alternar entre visualizações */}
         <Tabs defaultValue="list" className="w-full">
           <TabsList className="grid w-full grid-cols-2 max-w-md">
-            <TabsTrigger value="list">Lista de Agendamentos</TabsTrigger>
-            <TabsTrigger value="calendar">Agenda Completa</TabsTrigger>
+            <TabsTrigger value="list" data-tour="appointments-list-tab">Lista de Agendamentos</TabsTrigger>
+            <TabsTrigger value="calendar" data-tour="appointments-calendar-tab">Agenda Completa</TabsTrigger>
           </TabsList>
 
           <TabsContent value="list" className="space-y-6">
             {/* Date Navigation */}
-            <Card className="glass-card">
+            <Card className="glass-card" data-tour="appointments-date-navigation">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
-              <Button variant="ghost" size="icon" onClick={() => changeDate(-1)}>
+              <Button variant="ghost" size="icon" onClick={() => changeDate(-1)} aria-label="Dia anterior">
                 <ChevronLeft size={20} />
               </Button>
               <div className="flex items-center gap-4">
@@ -415,7 +419,7 @@ const Appointments = () => {
                   })}
                 </span>
               </div>
-              <Button variant="ghost" size="icon" onClick={() => changeDate(1)}>
+              <Button variant="ghost" size="icon" onClick={() => changeDate(1)} aria-label="Próximo dia">
                 <ChevronRight size={20} />
               </Button>
             </div>
@@ -424,16 +428,17 @@ const Appointments = () => {
 
         {/* Appointments List */}
         {appointments.length === 0 ? (
-          <Card className="glass-card">
+          <Card className="glass-card" data-tour="appointments-empty">
             <CardContent className="flex flex-col items-center justify-center py-12">
               <Calendar size={48} className="text-muted-foreground mb-4" />
               <p className="text-muted-foreground text-center">
                 Nenhum agendamento para esta data
               </p>
+              <TrainingEmptyActions tourId="appointments" className="mt-4" />
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-3" data-tour="appointments-list">
             {appointments.map((appointment) => (
               <Card key={appointment.id} className="glass-card">
                 <CardContent className="p-4">
@@ -470,7 +475,7 @@ const Appointments = () => {
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className={`text-xs font-medium px-3 py-1.5 rounded-full ${statusColors[appointment.status as keyof typeof statusColors]}`}>
+                      <span data-tour="appointments-status" className={`text-xs font-medium px-3 py-1.5 rounded-full ${statusColors[appointment.status as keyof typeof statusColors]}`}>
                         {statusLabels[appointment.status as keyof typeof statusLabels]}
                       </span>
                       <div className="text-right">
@@ -480,7 +485,7 @@ const Appointments = () => {
                       </div>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
+                          <Button variant="ghost" size="icon" data-tour="appointments-actions" aria-label="Ações do agendamento">
                             <MoreVertical size={18} />
                           </Button>
                         </DropdownMenuTrigger>

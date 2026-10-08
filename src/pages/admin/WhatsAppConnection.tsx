@@ -451,7 +451,7 @@ const WhatsAppConnection = () => {
         <AdminLayout>
             <div className="space-y-6 max-w-4xl mx-auto">
                 {/* Header */}
-                <div className="text-center">
+                <div className="text-center" data-tour="whatsapp-header">
                     <h1 className="text-3xl font-bold flex items-center justify-center gap-3">
                         <Smartphone className="w-8 h-8 text-primary" />
                         Conexão WhatsApp
@@ -463,7 +463,7 @@ const WhatsAppConnection = () => {
 
                 {/* Sem instância - Criar */}
                 {!instance ? (
-                    <Card className="border-dashed border-2">
+                    <Card className="border-dashed border-2" data-tour="whatsapp-empty">
                         <CardContent className="flex flex-col items-center justify-center py-12">
                             <div className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center mb-6">
                                 <MessageSquare className="w-10 h-10 text-primary" />
@@ -473,7 +473,7 @@ const WhatsAppConnection = () => {
                                 Crie uma instância do WhatsApp para começar a usar o chatbot IA
                                 e o agendador de posts.
                             </p>
-                            <Button variant="gold" size="lg" onClick={() => setShowCreateModal(true)}>
+                            <Button variant="gold" size="lg" onClick={() => setShowCreateModal(true)} data-tour="whatsapp-create-button">
                                 <Smartphone className="w-5 h-5 mr-2" />
                                 Criar Instância WhatsApp
                             </Button>
@@ -490,7 +490,7 @@ const WhatsAppConnection = () => {
                                             <statusInfo.icon className={cn("w-8 h-8", statusInfo.color, instance.status === 'connecting' && "animate-spin")} />
                                         </div>
                                         <div>
-                                            <h3 className="text-xl font-semibold">{statusInfo.label}</h3>
+                                            <h3 className="text-xl font-semibold" data-tour="whatsapp-status">{statusInfo.label}</h3>
                                             {instance.phone_number ? (
                                                 <p className="text-muted-foreground flex items-center gap-2">
                                                     <Phone size={14} />
@@ -509,6 +509,7 @@ const WhatsAppConnection = () => {
                                             <Button
                                                 variant="destructive"
                                                 onClick={disconnectInstance}
+                                                data-tour="whatsapp-disconnect"
                                                 disabled={isDisconnecting}
                                             >
                                                 {isDisconnecting ? (
@@ -522,6 +523,7 @@ const WhatsAppConnection = () => {
                                             <Button
                                                 variant="gold"
                                                 onClick={connectInstance}
+                                                data-tour="whatsapp-connect-button"
                                                 disabled={isConnecting}
                                             >
                                                 {isConnecting ? (
@@ -539,7 +541,7 @@ const WhatsAppConnection = () => {
 
                         {/* QR Code */}
                         {(instance.status === 'qrcode' || qrCode) && (
-                            <Card>
+                            <Card data-tour="whatsapp-qrcode">
                                 <CardHeader className="text-center">
                                     <CardTitle className="flex items-center justify-center gap-2">
                                         <QrCode className="w-5 h-5 text-primary" />
@@ -569,6 +571,7 @@ const WhatsAppConnection = () => {
                                         variant="outline"
                                         size="sm"
                                         className="mt-4"
+                                        data-tour="whatsapp-new-qrcode"
                                         onClick={connectInstance}
                                     >
                                         <RefreshCw className="w-4 h-4 mr-2" />
@@ -645,6 +648,7 @@ const WhatsAppConnection = () => {
                                         variant="ghost"
                                         className="text-red-500 hover:text-red-600 hover:bg-red-500/10"
                                         onClick={deleteInstance}
+                                        data-tour="whatsapp-delete"
                                     >
                                         <Trash2 className="w-4 h-4 mr-2" />
                                         Excluir Instância
@@ -654,7 +658,7 @@ const WhatsAppConnection = () => {
                         </Card>
 
                         {/* Dicas */}
-                        <Card className="bg-primary/5 border-primary/20">
+                        <Card className="bg-primary/5 border-primary/20" data-tour="whatsapp-tips">
                             <CardContent className="p-6">
                                 <div className="flex gap-4">
                                     <AlertCircle className="w-6 h-6 text-primary flex-shrink-0" />
@@ -709,7 +713,7 @@ const WhatsAppConnection = () => {
                             <Button variant="outline" onClick={() => setShowCreateModal(false)}>
                                 Cancelar
                             </Button>
-                            <Button variant="gold" onClick={createInstance} disabled={isCreating || !instanceName.trim()}>
+                            <Button variant="gold" onClick={createInstance} disabled={isCreating || !instanceName.trim()} data-tour="whatsapp-create-save">
                                 {isCreating ? (
                                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                                 ) : (

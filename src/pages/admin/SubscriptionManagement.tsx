@@ -125,7 +125,7 @@ const SubscriptionManagement = () => {
             <div className="space-y-6">
                 {/* Header */}
                 <div className="flex items-center justify-between">
-                    <div>
+                    <div data-tour="subscription-header">
                         <h1 className="font-display text-3xl font-bold text-foreground">
                             Minha Assinatura
                         </h1>
@@ -136,6 +136,7 @@ const SubscriptionManagement = () => {
                     <Button
                         variant="outline"
                         size="sm"
+                        data-tour="subscription-refresh"
                         onClick={handleRefresh}
                         disabled={isRefreshing}
                     >
@@ -157,7 +158,7 @@ const SubscriptionManagement = () => {
                                             <p className="text-white/80 text-sm">Plano Único - Tudo Incluso</p>
                                         </div>
                                     </div>
-                                    <Badge className={`${config.color} text-white`}>
+                                    <Badge className={`${config.color} text-white`} data-tour="subscription-status">
                                         <StatusIcon size={14} className="mr-1" />
                                         {config.label}
                                     </Badge>
@@ -170,6 +171,7 @@ const SubscriptionManagement = () => {
                                     <motion.div
                                         initial={{ opacity: 0, y: -10 }}
                                         animate={{ opacity: 1, y: 0 }}
+                                        data-tour="subscription-trial"
                                         className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/30"
                                     >
                                         <div className="flex items-center gap-3">
@@ -223,6 +225,7 @@ const SubscriptionManagement = () => {
                                             variant="gold"
                                             size="sm"
                                             className="w-full mt-4"
+                                            data-tour="subscription-renew"
                                             onClick={handleSubscribe}
                                         >
                                             <CreditCard size={16} className="mr-2" />
@@ -232,7 +235,7 @@ const SubscriptionManagement = () => {
                                 )}
 
                                 {/* Subscription details */}
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4" data-tour="subscription-details">
                                     <div className="p-4 rounded-xl bg-secondary/30">
                                         <p className="text-sm text-muted-foreground mb-1">Tipo de Plano</p>
                                         <p className="text-lg font-semibold text-foreground flex items-center gap-2">
@@ -266,7 +269,7 @@ const SubscriptionManagement = () => {
                                     </div>
 
                                     {subscription?.trialEndDate && subscription?.isTrial && (
-                                        <div className="p-4 rounded-xl bg-secondary/30">
+                                        <div className="p-4 rounded-xl bg-secondary/30" data-tour="subscription-trial-end">
                                             <p className="text-sm text-muted-foreground mb-1">Fim do período de teste</p>
                                             <p className="text-lg font-semibold text-foreground">
                                                 {subscription.trialEndDate.toLocaleDateString('pt-BR', {
@@ -279,7 +282,7 @@ const SubscriptionManagement = () => {
                                     )}
 
                                     {subscription?.currentPeriodEnd && !subscription?.isTrial && (
-                                        <div className="p-4 rounded-xl bg-secondary/30">
+                                        <div className="p-4 rounded-xl bg-secondary/30" data-tour="subscription-period-end">
                                             <p className="text-sm text-muted-foreground mb-1">
                                                 {subscription?.planType === 'annual' ? 'Vencimento da assinatura' : 'Próxima cobrança'}
                                             </p>
@@ -303,7 +306,7 @@ const SubscriptionManagement = () => {
                                 {(subscription?.isTrial || !subscription?.isActive) && (
                                     <div className="pt-4 border-t border-border/50">
                                         <p className="text-sm font-medium text-foreground mb-3">Escolha seu plano:</p>
-                                        <div className="grid grid-cols-2 gap-3 mb-4">
+                                        <div className="grid grid-cols-2 gap-3 mb-4" data-tour="subscription-plans">
                                             <button
                                                 onClick={() => setSelectedPlan('monthly')}
                                                 className={cn(
@@ -349,6 +352,7 @@ const SubscriptionManagement = () => {
                                         <Button
                                             variant="gold"
                                             className="flex-1"
+                                            data-tour="subscription-subscribe"
                                             onClick={handleSubscribe}
                                         >
                                             <CreditCard size={18} className="mr-2" />
@@ -357,6 +361,7 @@ const SubscriptionManagement = () => {
                                         </Button>
                                     ) : (
                                         <a
+                                            data-tour="subscription-manage"
                                             href="https://www.mercadopago.com.br/subscriptions"
                                             target="_blank"
                                             rel="noopener noreferrer"
@@ -373,11 +378,11 @@ const SubscriptionManagement = () => {
                                     {subscription?.isActive && !subscription?.isTrial && (
                                         <AlertDialog>
                                             <AlertDialogTrigger asChild>
-                                                <Button variant="ghost" className="text-red-500 hover:text-red-600 hover:bg-red-500/10">
+                                                <Button variant="ghost" className="text-red-500 hover:text-red-600 hover:bg-red-500/10" data-tour="subscription-cancel">
                                                     Cancelar assinatura
                                                 </Button>
                                             </AlertDialogTrigger>
-                                            <AlertDialogContent>
+                                            <AlertDialogContent data-tour="subscription-cancel-dialog">
                                                 <AlertDialogHeader>
                                                     <AlertDialogTitle>Tem certeza que deseja cancelar?</AlertDialogTitle>
                                                     <AlertDialogDescription>
@@ -388,6 +393,7 @@ const SubscriptionManagement = () => {
                                                 <AlertDialogFooter>
                                                     <AlertDialogCancel>Manter assinatura</AlertDialogCancel>
                                                     <AlertDialogAction
+                                                        data-tour="subscription-cancel-confirm"
                                                         onClick={handleCancelSubscription}
                                                         className="bg-red-500 hover:bg-red-600"
                                                     >
@@ -440,6 +446,7 @@ const SubscriptionManagement = () => {
                                 <Button
                                     variant="outline"
                                     size="sm"
+                                    data-tour="subscription-support"
                                     onClick={() => window.open('https://wa.me/5511986262240?text=Olá! Tenho uma dúvida sobre minha assinatura do SysHair.', '_blank')}
                                 >
                                     Falar com Código Base

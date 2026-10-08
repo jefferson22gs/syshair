@@ -336,7 +336,7 @@ const GalleryPage = () => {
     <AdminLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4" data-tour="gallery-header">
           <div>
             <h1 className="font-display text-3xl font-bold text-foreground">
               Galeria Antes & Depois
@@ -351,12 +351,12 @@ const GalleryPage = () => {
             if (!open) resetForm();
           }}>
             <DialogTrigger asChild>
-              <Button variant="gold">
+              <Button variant="gold" data-tour="gallery-new-button">
                 <Plus size={18} className="mr-2" />
                 Nova Transformação
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto" data-tour="gallery-dialog">
               <DialogHeader>
                 <DialogTitle>Adicionar Transformação</DialogTitle>
               </DialogHeader>
@@ -367,7 +367,7 @@ const GalleryPage = () => {
                     value={formData.client_id}
                     onValueChange={(value) => setFormData({ ...formData, client_id: value })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger data-tour="gallery-client">
                       <SelectValue placeholder="Selecione o cliente" />
                     </SelectTrigger>
                     <SelectContent>
@@ -382,10 +382,10 @@ const GalleryPage = () => {
 
                 <div className="space-y-4 border p-4 rounded-lg bg-secondary/10">
                   <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                    <TabsList className="grid w-full grid-cols-3 mb-4">
-                      <TabsTrigger value="link">Link</TabsTrigger>
-                      <TabsTrigger value="upload">Upload</TabsTrigger>
-                      <TabsTrigger value="camera">Câmera</TabsTrigger>
+                    <TabsList className="grid w-full grid-cols-3 mb-4" data-tour="gallery-source-tabs">
+                      <TabsTrigger value="link" data-tour="gallery-link-tab">Link</TabsTrigger>
+                      <TabsTrigger value="upload" data-tour="gallery-upload-tab">Upload</TabsTrigger>
+                      <TabsTrigger value="camera" data-tour="gallery-camera-tab">Câmera</TabsTrigger>
                     </TabsList>
 
                     <TabsContent value="link" className="space-y-4">
@@ -411,7 +411,7 @@ const GalleryPage = () => {
                       </div>
                     </TabsContent>
 
-                    <TabsContent value="upload" className="space-y-4">
+                    <TabsContent value="upload" className="space-y-4" data-tour="gallery-upload-fields">
                       <div className="space-y-2">
                         <Label>Upload "Antes"</Label>
                         <div className="flex items-center gap-2">
@@ -438,14 +438,14 @@ const GalleryPage = () => {
                       </div>
                     </TabsContent>
 
-                    <TabsContent value="camera" className="space-y-4">
+                    <TabsContent value="camera" className="space-y-4" data-tour="gallery-camera-panel">
                       {!cameraActive ? (
                         <div className="grid grid-cols-2 gap-4">
-                          <Button type="button" variant="outline" onClick={() => startCamera('before')} className="h-24 flex flex-col gap-2">
+                          <Button data-tour="gallery-capture-before" type="button" variant="outline" onClick={() => startCamera('before')} className="h-24 flex flex-col gap-2">
                             <Camera size={24} />
                             Capturar "Antes"
                           </Button>
-                          <Button type="button" variant="outline" onClick={() => startCamera('after')} className="h-24 flex flex-col gap-2">
+                          <Button data-tour="gallery-capture-after" type="button" variant="outline" onClick={() => startCamera('after')} className="h-24 flex flex-col gap-2">
                             <Camera size={24} />
                             Capturar "Depois"
                           </Button>
@@ -459,7 +459,7 @@ const GalleryPage = () => {
                             <Button type="button" variant="destructive" onClick={stopCamera} className="flex-1">
                               Cancelar
                             </Button>
-                            <Button type="button" variant="default" onClick={capturePhoto} className="flex-1">
+                            <Button data-tour="gallery-capture-photo" type="button" variant="default" onClick={capturePhoto} className="flex-1">
                               Capturar Foto
                             </Button>
                           </div>
@@ -506,7 +506,7 @@ const GalleryPage = () => {
                   />
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-2" data-tour="gallery-visibility">
                   <Label>Visibilidade</Label>
                   <Select
                     value={formData.visibility}
@@ -527,7 +527,7 @@ const GalleryPage = () => {
                   <Button type="button" variant="outline" className="flex-1" onClick={() => setIsDialogOpen(false)}>
                     Cancelar
                   </Button>
-                  <Button type="submit" variant="gold" className="flex-1" disabled={uploading}>
+                  <Button data-tour="gallery-save" type="submit" variant="gold" className="flex-1" disabled={uploading}>
                     {uploading ? 'Enviando...' : 'Adicionar'}
                   </Button>
                 </div>
@@ -538,7 +538,7 @@ const GalleryPage = () => {
 
         {/* Gallery Grid */}
         {gallery.length === 0 ? (
-          <Card className="glass-card">
+          <Card className="glass-card" data-tour="gallery-empty">
             <CardContent className="flex flex-col items-center justify-center py-12">
               <Image size={48} className="text-muted-foreground mb-4" />
               <p className="text-muted-foreground mb-2">Nenhuma transformação registrada</p>
@@ -548,7 +548,7 @@ const GalleryPage = () => {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-tour="gallery-list">
             {gallery.map((item) => (
               <Card key={item.id} className="glass-card overflow-hidden">
                 <div className="grid grid-cols-2 gap-1">
@@ -596,6 +596,8 @@ const GalleryPage = () => {
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8"
+                        data-tour="gallery-toggle-visibility"
+                        aria-label="Alterar visibilidade da transformação"
                         onClick={() => toggleVisibility(item.id, item.visibility)}
                       >
                         {item.visibility === 'public' ? (
@@ -609,6 +611,8 @@ const GalleryPage = () => {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8"
+                          data-tour="gallery-share"
+                          aria-label="Copiar link da transformação"
                           onClick={() => copyShareLink(item.share_token!)}
                         >
                           <Copy size={14} />
@@ -618,6 +622,8 @@ const GalleryPage = () => {
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8"
+                        data-tour="gallery-delete"
+                        aria-label="Excluir transformação"
                         onClick={() => handleDelete(item.id)}
                       >
                         <Trash2 size={14} className="text-destructive" />

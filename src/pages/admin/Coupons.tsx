@@ -215,7 +215,7 @@ const Coupons = () => {
     <AdminLayout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <div>
+          <div data-tour="coupons-header">
             <h1 className="font-display text-3xl font-bold text-foreground">Cupons</h1>
             <p className="text-muted-foreground mt-1">Gerencie cupons de desconto</p>
           </div>
@@ -224,12 +224,12 @@ const Coupons = () => {
             if (!open) resetForm();
           }}>
             <DialogTrigger asChild>
-              <Button variant="gold">
+              <Button variant="gold" data-tour="coupons-new-button">
                 <Plus size={18} className="mr-2" />
                 Novo Cupom
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="sm:max-w-md" data-tour="coupons-dialog">
               <DialogHeader>
                 <DialogTitle>
                   {editingCoupon ? "Editar Cupom" : "Novo Cupom"}
@@ -243,12 +243,13 @@ const Coupons = () => {
                   <Label htmlFor="code">Código *</Label>
                   <Input
                     id="code"
+                    data-tour="coupons-code"
                     value={formData.code}
                     onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
                     placeholder="Ex: DESCONTO10"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-4" data-tour="coupons-discount">
                   <div className="space-y-2">
                     <Label>Tipo</Label>
                     <Select
@@ -276,7 +277,7 @@ const Coupons = () => {
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-4" data-tour="coupons-limits">
                   <div className="space-y-2">
                     <Label htmlFor="min_purchase">Compra mínima (R$)</Label>
                     <Input
@@ -304,6 +305,7 @@ const Coupons = () => {
                   <Label htmlFor="valid_until">Válido até</Label>
                   <Input
                     id="valid_until"
+                    data-tour="coupons-valid-until"
                     type="date"
                     value={formData.valid_until}
                     onChange={(e) => setFormData({ ...formData, valid_until: e.target.value })}
@@ -317,6 +319,8 @@ const Coupons = () => {
                     </p>
                   </div>
                   <Switch
+                    data-tour="coupons-new-clients"
+                    aria-label="Apenas novos clientes"
                     checked={formData.is_new_clients_only}
                     onCheckedChange={(checked) => setFormData({ ...formData, is_new_clients_only: checked })}
                   />
@@ -326,7 +330,7 @@ const Coupons = () => {
                 <Button variant="outline" onClick={() => setDialogOpen(false)}>
                   Cancelar
                 </Button>
-                <Button variant="gold" onClick={handleSubmit}>
+                <Button variant="gold" onClick={handleSubmit} data-tour="coupons-save">
                   {editingCoupon ? "Salvar" : "Criar"}
                 </Button>
               </div>
@@ -335,7 +339,7 @@ const Coupons = () => {
         </div>
 
         {coupons.length === 0 ? (
-          <Card className="glass-card">
+          <Card className="glass-card" data-tour="coupons-empty">
             <CardContent className="flex flex-col items-center justify-center py-12">
               <Gift size={48} className="text-muted-foreground mb-4" />
               <p className="text-muted-foreground text-center">
@@ -344,7 +348,7 @@ const Coupons = () => {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3" data-tour="coupons-list">
             {coupons.map((coupon) => (
               <Card key={coupon.id} className={`glass-card ${isExpired(coupon.valid_until) ? 'opacity-60' : ''}`}>
                 <CardContent className="p-6">
@@ -362,6 +366,8 @@ const Coupons = () => {
                       <Button
                         variant="ghost"
                         size="icon"
+                        data-tour="coupons-edit"
+                        aria-label="Editar cupom"
                         onClick={() => handleEdit(coupon)}
                       >
                         <Edit2 size={16} />
@@ -369,6 +375,8 @@ const Coupons = () => {
                       <Button
                         variant="ghost"
                         size="icon"
+                        data-tour="coupons-delete"
+                        aria-label="Excluir cupom"
                         onClick={() => handleDelete(coupon.id)}
                       >
                         <Trash2 size={16} className="text-destructive" />
@@ -425,6 +433,8 @@ const Coupons = () => {
                       {isExpired(coupon.valid_until) ? 'Expirado' : coupon.is_active ? 'Ativo' : 'Inativo'}
                     </span>
                     <Switch
+                      data-tour="coupons-active"
+                      aria-label="Ativar ou desativar cupom"
                       checked={coupon.is_active || false}
                       onCheckedChange={() => toggleActive(coupon)}
                       disabled={isExpired(coupon.valid_until)}

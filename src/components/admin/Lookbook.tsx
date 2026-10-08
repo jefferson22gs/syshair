@@ -121,14 +121,14 @@ export const Lookbook = ({ salonId }: LookbookProps) => {
 
     return (
         <>
-            <Card className="glass-card">
+            <Card className="glass-card" data-tour="advanced-lookbook-panel">
                 <CardHeader>
                     <div className="flex items-center justify-between">
                         <CardTitle className="flex items-center gap-2">
                             <Image className="w-5 h-5 text-primary" />
                             Lookbook Social
                         </CardTitle>
-                        <Button variant="gold" size="sm">
+                        <Button variant="gold" size="sm" data-tour="advanced-lookbook-new">
                             <Sparkles size={16} className="mr-1" />
                             Novo Post
                         </Button>
@@ -136,7 +136,7 @@ export const Lookbook = ({ salonId }: LookbookProps) => {
                 </CardHeader>
                 <CardContent>
                     {/* Posts Grid */}
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4" data-tour="advanced-lookbook-grid">
                         {posts.map((post, index) => (
                             <motion.div
                                 key={post.id}
@@ -187,7 +187,7 @@ export const Lookbook = ({ salonId }: LookbookProps) => {
 
             {/* Post Detail Dialog */}
             <Dialog open={!!selectedPost} onOpenChange={() => setSelectedPost(null)}>
-                <DialogContent className="max-w-4xl p-0 overflow-hidden">
+                <DialogContent className="max-w-4xl p-0 overflow-hidden" data-tour="advanced-lookbook-detail">
                     {selectedPost && (
                         <div className="flex flex-col md:flex-row">
                             {/* Image Section */}
@@ -195,6 +195,7 @@ export const Lookbook = ({ salonId }: LookbookProps) => {
                                 {/* Before/After Slider */}
                                 <div
                                     className="relative w-full aspect-[4/5] overflow-hidden cursor-ew-resize"
+                                    data-tour="advanced-lookbook-slider"
                                     onMouseMove={(e) => {
                                         const rect = e.currentTarget.getBoundingClientRect();
                                         const x = ((e.clientX - rect.left) / rect.width) * 100;
@@ -310,7 +311,7 @@ export const Lookbook = ({ salonId }: LookbookProps) => {
 
                                 {/* CTA Buttons */}
                                 <div className="mt-auto space-y-3">
-                                    <Button variant="gold" className="w-full" size="lg">
+                                    <Button variant="gold" className="w-full" size="lg" data-tour="advanced-lookbook-cta">
                                         <Calendar size={18} className="mr-2" />
                                         Quero esse look! Agendar agora
                                     </Button>

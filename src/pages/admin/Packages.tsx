@@ -344,7 +344,7 @@ const PackagesPage = () => {
       <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
+          <div data-tour="packages-header">
             <h1 className="font-display text-3xl font-bold text-foreground">
               Pacotes de Serviços
             </h1>
@@ -358,12 +358,12 @@ const PackagesPage = () => {
             if (!open) resetForm();
           }}>
             <DialogTrigger asChild>
-              <Button variant="gold">
+              <Button variant="gold" data-tour="packages-new-button">
                 <Plus size={18} className="mr-2" />
                 Novo Pacote
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" data-tour="packages-dialog">
               <DialogHeader>
                 <DialogTitle>
                   {editingPackage ? 'Editar Pacote' : 'Novo Pacote'}
@@ -373,6 +373,7 @@ const PackagesPage = () => {
                 <div className="space-y-2">
                   <Label>Nome do Pacote</Label>
                   <Input
+                    data-tour="packages-name"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     placeholder="Ex:Combo: 5 Cortes + 5 Barbas"
@@ -383,6 +384,7 @@ const PackagesPage = () => {
                 <div className="space-y-2">
                   <Label>Descrição</Label>
                   <Input
+                    data-tour="packages-description"
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     placeholder="Descrição opcional"
@@ -400,7 +402,7 @@ const PackagesPage = () => {
                         value={selectedService}
                         onValueChange={setSelectedService}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger data-tour="packages-service">
                           <SelectValue placeholder="Selecione" />
                         </SelectTrigger>
                         <SelectContent>
@@ -418,6 +420,7 @@ const PackagesPage = () => {
                       <Input
                         type="number"
                         min={1}
+                        data-tour="packages-quantity"
                         value={selectedQuantity}
                         onChange={(e) => setSelectedQuantity(parseInt(e.target.value) || 1)}
                       />
@@ -428,6 +431,8 @@ const PackagesPage = () => {
                       <Button
                         type="button"
                         variant="outline"
+                        data-tour="packages-add-item"
+                        aria-label="Adicionar serviço ao pacote"
                         onClick={addItemToPackage}
                         disabled={!selectedService}
                         className="w-full"
@@ -439,7 +444,7 @@ const PackagesPage = () => {
 
                   {/* Lista de Serviços do Pacote */}
                   {formData.items.length > 0 && (
-                    <div className="space-y-2 mt-4">
+                    <div className="space-y-2 mt-4" data-tour="packages-items">
                       <Label>Serviços no Pacote</Label>
                       <div className="space-y-2">
                         {formData.items.map((item) => (
@@ -457,6 +462,8 @@ const PackagesPage = () => {
                               type="button"
                               variant="ghost"
                               size="icon"
+                              data-tour="packages-remove-item"
+                              aria-label="Remover serviço do pacote"
                               onClick={() => removeItemFromPackage(item.service_id)}
                             >
                               <X size={16} className="text-destructive" />
@@ -475,6 +482,7 @@ const PackagesPage = () => {
                       type="number"
                       min={0}
                       max={50}
+                      data-tour="packages-discount"
                       value={formData.discount_percent}
                       onChange={(e) => setFormData({ ...formData, discount_percent: parseInt(e.target.value) })}
                       required
@@ -486,6 +494,7 @@ const PackagesPage = () => {
                     <Input
                       type="number"
                       min={30}
+                      data-tour="packages-validity"
                       value={formData.validity_days}
                       onChange={(e) => setFormData({ ...formData, validity_days: parseInt(e.target.value) })}
                       required
@@ -495,7 +504,7 @@ const PackagesPage = () => {
 
                 {/* Resumo do Preço */}
                 {formData.items.length > 0 && (
-                  <div className="p-4 rounded-lg bg-primary/10 border border-primary/20 space-y-2">
+                  <div className="p-4 rounded-lg bg-primary/10 border border-primary/20 space-y-2" data-tour="packages-price-summary">
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Preço original:</span>
                       <span className="line-through">R$ {calculateOriginalPrice().toFixed(2)}</span>
@@ -527,6 +536,7 @@ const PackagesPage = () => {
                     type="submit" 
                     variant="gold" 
                     className="flex-1"
+                    data-tour="packages-save"
                     disabled={formData.items.length === 0}
                   >
                     {editingPackage ? 'Salvar' : 'Criar Pacote'}
@@ -539,7 +549,7 @@ const PackagesPage = () => {
 
         {/* Packages Grid */}
         {packages.length === 0 ? (
-          <Card className="glass-card">
+          <Card className="glass-card" data-tour="packages-empty">
             <CardContent className="flex flex-col items-center justify-center py-12">
               <Package size={48} className="text-muted-foreground mb-4" />
               <p className="text-muted-foreground mb-2">Nenhum pacote criado</p>
@@ -549,7 +559,7 @@ const PackagesPage = () => {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" data-tour="packages-list">
             {packages.map((pkg: any) => (
               <Card key={pkg.id} className="glass-card">
                 <CardContent className="p-6">
@@ -558,10 +568,10 @@ const PackagesPage = () => {
                       <Package size={24} className="text-primary-foreground" />
                     </div>
                     <div className="flex gap-1">
-                      <Button variant="ghost" size="icon" onClick={() => handleEdit(pkg)}>
+                      <Button variant="ghost" size="icon" onClick={() => handleEdit(pkg)} data-tour="packages-edit" aria-label="Editar pacote">
                         <Edit2 size={16} />
                       </Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleDelete(pkg.id)}>
+                      <Button variant="ghost" size="icon" onClick={() => handleDelete(pkg.id)} data-tour="packages-delete" aria-label="Excluir pacote">
                         <Trash2 size={16} className="text-destructive" />
                       </Button>
                     </div>

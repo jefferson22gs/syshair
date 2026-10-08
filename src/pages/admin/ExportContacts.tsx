@@ -22,7 +22,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 interface Client {
     id: string;
     name: string;
-    phone: string;
+    phone: string | null;
     email?: string;
     birth_date?: string;
     preferences?: any;
@@ -122,14 +122,14 @@ export default function ExportContacts() {
         let vcfContent = '';
 
         for (const client of selectedClientsData) {
-            const phone = normalizePhone(client.phone);
+            const phone = normalizePhone(client.phone ?? '');
             const birthDate = client.preferences?.birth_date || client.birth_date;
 
             vcfContent += 'BEGIN:VCARD\n';
             vcfContent += 'VERSION:3.0\n';
             vcfContent += `FN:${client.name}\n`;
             vcfContent += `N:${client.name};;;;\n`;
-            vcfContent += `TEL;TYPE=CELL:+${phone}\n`;
+            if (phone) vcfContent += `TEL;TYPE=CELL:+${phone}\n`;
 
             if (client.email) {
                 vcfContent += `EMAIL:${client.email}\n`;
@@ -152,7 +152,7 @@ export default function ExportContacts() {
         let csvContent = 'Nome,Telefone,Email,Data de Nascimento,Data de Cadastro\n';
 
         for (const client of selectedClientsData) {
-            const phone = client.phone;
+            const phone = client.phone ?? '';
             const email = client.email || '';
             const birthDate = client.preferences?.birth_date || client.birth_date || '';
             const createdAt = new Date(client.created_at).toLocaleDateString('pt-BR');
@@ -235,7 +235,7 @@ export default function ExportContacts() {
             <div className="container mx-auto py-8 px-4">
                 <div className="max-w-4xl mx-auto space-y-6">
                     {/* Header */}
-                    <div>
+                    <div data-tour="export-contacts-header">
                         <h1 className="text-3xl font-bold">Exportar Clientes</h1>
                         <p className="text-muted-foreground mt-2">
                             Exporte seus clientes em formato VCF (vCard) ou CSV
@@ -294,7 +294,7 @@ export default function ExportContacts() {
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <RadioGroup value={exportFormat} onValueChange={(value: any) => setExportFormat(value)}>
+                            <RadioGroup data-tour="export-contacts-format" value={exportFormat} onValueChange={(value: any) => setExportFormat(value)}>
                                 <div className="flex items-center space-x-2 p-4 border rounded-lg hover:bg-accent cursor-pointer">
                                     <RadioGroupItem value="vcf" id="vcf" />
                                     <Label htmlFor="vcf" className="flex-1 cursor-pointer">
@@ -342,6 +342,7 @@ export default function ExportContacts() {
                                     variant="outline"
                                     size="sm"
                                     onClick={toggleAll}
+                                    data-tour="export-contacts-select-all"
                                 >
                                     {selectedClients.size === clients.length ? 'Desmarcar Todos' : 'Selecionar Todos'}
                                 </Button>
@@ -353,12 +354,12 @@ export default function ExportContacts() {
                                     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                                 </div>
                             ) : clients.length === 0 ? (
-                                <div className="text-center py-12">
+                                <div className="text-center py-12" data-tour="export-contacts-empty">
                                     <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                                     <p className="text-muted-foreground">Nenhum cliente cadastrado</p>
                                 </div>
                             ) : (
-                                <ScrollArea className="h-[400px] pr-4">
+                                <ScrollArea className="h-[400px] pr-4" data-tour="export-contacts-list">
                                     <div className="space-y-2">
                                         {clients.map((client) => (
                                             <div
@@ -368,6 +369,7 @@ export default function ExportContacts() {
                                             >
                                                 <Checkbox
                                                     checked={selectedClients.has(client.id)}
+                                                    onClick={(event) => event.stopPropagation()}
                                                     onCheckedChange={() => toggleClient(client.id)}
                                                 />
                                                 <div className="flex-1">
@@ -399,6 +401,7 @@ export default function ExportContacts() {
 
                             <Button
                                 onClick={handleExport}
+                                data-tour="export-contacts-download"
                                 disabled={exporting || selectedClients.size === 0}
                                 className="w-full"
                                 size="lg"

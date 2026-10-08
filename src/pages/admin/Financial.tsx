@@ -178,7 +178,7 @@ const Financial = () => {
       <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
+          <div data-tour="financial-header">
             <h1 className="font-display text-3xl font-bold text-foreground">Financeiro</h1>
             <p className="text-muted-foreground mt-1">
               Acompanhe faturamento e comissões
@@ -186,10 +186,11 @@ const Financial = () => {
           </div>
 
           {/* Month Selector */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2" data-tour="financial-month">
             <Button
               variant="outline"
               size="icon"
+              aria-label="Mês anterior"
               onClick={() => setSelectedMonth(subMonths(selectedMonth, 1))}
             >
               <ChevronLeft size={18} />
@@ -202,6 +203,7 @@ const Financial = () => {
             <Button
               variant="outline"
               size="icon"
+              aria-label="Próximo mês"
               onClick={() => setSelectedMonth(addMonths(selectedMonth, 1))}
             >
               <ChevronRight size={18} />
@@ -211,7 +213,7 @@ const Financial = () => {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="glass-card">
+          <Card className="glass-card" data-tour="financial-revenue">
             <CardContent className="p-6">
               <div className="flex items-start justify-between mb-4">
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center">
@@ -229,7 +231,7 @@ const Financial = () => {
             </CardContent>
           </Card>
 
-          <Card className="glass-card">
+          <Card className="glass-card" data-tour="financial-appointments">
             <CardContent className="p-6">
               <div className="flex items-start justify-between mb-4">
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
@@ -246,7 +248,7 @@ const Financial = () => {
             </CardContent>
           </Card>
 
-          <Card className="glass-card">
+          <Card className="glass-card" data-tour="financial-ticket">
             <CardContent className="p-6">
               <div className="flex items-start justify-between mb-4">
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
@@ -260,7 +262,7 @@ const Financial = () => {
             </CardContent>
           </Card>
 
-          <Card className="glass-card">
+          <Card className="glass-card" data-tour="financial-net">
             <CardContent className="p-6">
               <div className="flex items-start justify-between mb-4">
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-gold-light flex items-center justify-center">
@@ -276,7 +278,7 @@ const Financial = () => {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4" data-tour="financial-summary">
           <Card className="glass-card">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
@@ -327,7 +329,7 @@ const Financial = () => {
         </div>
 
         {/* Professional Commissions */}
-        <Card className="glass-card">
+        <Card className="glass-card" data-tour="financial-commissions">
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2">
@@ -338,7 +340,7 @@ const Financial = () => {
           </CardHeader>
           <CardContent>
             {professionalCommissions.length === 0 ? (
-              <div className="text-center py-8">
+              <div className="text-center py-8" data-tour="financial-empty">
                 <Users size={48} className="mx-auto text-muted-foreground mb-4" />
                 <p className="text-muted-foreground">
                   Nenhum atendimento concluído neste período

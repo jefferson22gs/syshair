@@ -87,7 +87,7 @@ export const SalonInsights = ({ salonId }: SalonInsightsProps) => {
 
   if (loading) {
     return (
-      <Card className="glass-card">
+      <Card className="glass-card" data-tour="dashboard-insights">
         <CardHeader><CardTitle className="flex items-center gap-2"><Sparkles size={20} className="text-primary" />Assistente Inteligente</CardTitle></CardHeader>
         <CardContent><div className="animate-pulse space-y-3">{[1, 2, 3].map(i => <div key={i} className="h-16 bg-secondary/50 rounded-lg" />)}</div></CardContent>
       </Card>
@@ -96,7 +96,7 @@ export const SalonInsights = ({ salonId }: SalonInsightsProps) => {
 
   if (insights.length === 0) {
     return (
-      <Card className="glass-card">
+      <Card className="glass-card" data-tour="dashboard-insights">
         <CardHeader><CardTitle className="flex items-center gap-2"><Sparkles size={20} className="text-primary" />Assistente Inteligente</CardTitle></CardHeader>
         <CardContent>
           <div className="flex flex-col items-center justify-center py-8 text-center">
@@ -110,7 +110,7 @@ export const SalonInsights = ({ salonId }: SalonInsightsProps) => {
   }
 
   return (
-    <Card className="glass-card">
+    <Card className="glass-card" data-tour="dashboard-insights">
       <CardHeader><CardTitle className="flex items-center gap-2"><Sparkles size={20} className="text-primary" />Assistente Inteligente</CardTitle></CardHeader>
       <CardContent className="space-y-3">
         {insights.map((insight) => {

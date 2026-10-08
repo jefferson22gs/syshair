@@ -61,7 +61,7 @@ const AdvancedFeatures = () => {
         <AdminLayout>
             <div className="space-y-6">
                 {/* Header */}
-                <div>
+                <div data-tour="advanced-header">
                     <h1 className="font-display text-3xl font-bold text-foreground">
                         Recursos Avançados
                     </h1>
@@ -72,9 +72,11 @@ const AdvancedFeatures = () => {
 
                 {/* Tabs */}
                 <Tabs defaultValue="bi" className="w-full">
-                    <TabsList className="w-full grid grid-cols-2 md:grid-cols-6 h-auto gap-2 bg-transparent p-0">
+                    <TabsList className="w-full grid grid-cols-2 md:grid-cols-6 h-auto gap-2 bg-transparent p-0" data-tour="advanced-tabs">
                         <TabsTrigger
                             value="bi"
+                            data-tour="advanced-bi-tab"
+                            aria-label="BI & IA"
                             className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
                         >
                             <Brain size={16} />
@@ -82,6 +84,8 @@ const AdvancedFeatures = () => {
                         </TabsTrigger>
                         <TabsTrigger
                             value="loyalty"
+                            data-tour="advanced-loyalty-tab"
+                            aria-label="Fidelidade"
                             className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
                         >
                             <Trophy size={16} />
@@ -89,6 +93,8 @@ const AdvancedFeatures = () => {
                         </TabsTrigger>
                         <TabsTrigger
                             value="waitlist"
+                            data-tour="advanced-waitlist-tab"
+                            aria-label="Fila de Espera"
                             className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
                         >
                             <Clock size={16} />
@@ -96,6 +102,8 @@ const AdvancedFeatures = () => {
                         </TabsTrigger>
                         <TabsTrigger
                             value="referral"
+                            data-tour="advanced-referral-tab"
+                            aria-label="Indicações"
                             className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
                         >
                             <Share2 size={16} />
@@ -103,6 +111,8 @@ const AdvancedFeatures = () => {
                         </TabsTrigger>
                         <TabsTrigger
                             value="lookbook"
+                            data-tour="advanced-lookbook-tab"
+                            aria-label="Lookbook"
                             className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
                         >
                             <Image size={16} />
@@ -110,6 +120,8 @@ const AdvancedFeatures = () => {
                         </TabsTrigger>
                         <TabsTrigger
                             value="goals"
+                            data-tour="advanced-goals-tab"
+                            aria-label="Metas"
                             className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
                         >
                             <Target size={16} />

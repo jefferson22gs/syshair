@@ -80,6 +80,8 @@ const AnalyticsDashboard = () => {
     
     if (data) {
       setSalonId(data.id);
+    } else {
+      setLoading(false);
     }
   };
 
@@ -157,12 +159,24 @@ const AnalyticsDashboard = () => {
     );
   }
 
+  if (!salonId) {
+    return (
+      <AdminLayout>
+        <div className="flex items-center justify-center h-64" data-tour="analytics-no-salon">
+          <p className="text-muted-foreground text-center">
+            Configure seu salão em Configurações para ver os relatórios.
+          </p>
+        </div>
+      </AdminLayout>
+    );
+  }
+
   return (
     <AdminLayout>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
+          <div data-tour="analytics-header">
             <h1 className="font-display text-3xl font-bold text-foreground">
               Dashboard Analítico
             </h1>
@@ -171,7 +185,7 @@ const AnalyticsDashboard = () => {
             </p>
           </div>
           
-          <div className="flex gap-2">
+          <div className="flex gap-2" data-tour="analytics-period">
             {(['week', 'month', 'quarter', 'year'] as const).map((p) => (
               <Button
                 key={p}
@@ -189,7 +203,7 @@ const AnalyticsDashboard = () => {
         </div>
 
         {/* KPI Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4" data-tour="analytics-kpis">
           <Card className="glass-card">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
@@ -257,7 +271,7 @@ const AnalyticsDashboard = () => {
 
         {/* Suggestions */}
         {suggestions.length > 0 && (
-          <Card className="glass-card border-primary/30">
+          <Card className="glass-card border-primary/30" data-tour="analytics-suggestions">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Lightbulb size={20} className="text-primary" />
@@ -277,7 +291,7 @@ const AnalyticsDashboard = () => {
         {/* Charts Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Revenue by Day */}
-          <Card className="glass-card">
+          <Card className="glass-card" data-tour="analytics-by-day">
             <CardHeader>
               <CardTitle className="text-lg">Faturamento por Dia da Semana</CardTitle>
             </CardHeader>
@@ -302,7 +316,7 @@ const AnalyticsDashboard = () => {
           </Card>
 
           {/* Hourly Distribution */}
-          <Card className="glass-card">
+          <Card className="glass-card" data-tour="analytics-by-hour">
             <CardHeader>
               <CardTitle className="text-lg">Distribuição por Horário</CardTitle>
             </CardHeader>
@@ -333,7 +347,7 @@ const AnalyticsDashboard = () => {
           </Card>
 
           {/* Top Services */}
-          <Card className="glass-card">
+          <Card className="glass-card" data-tour="analytics-top-services">
             <CardHeader>
               <CardTitle className="text-lg">Top Serviços</CardTitle>
             </CardHeader>
@@ -365,7 +379,7 @@ const AnalyticsDashboard = () => {
           </Card>
 
           {/* Top Professionals */}
-          <Card className="glass-card">
+          <Card className="glass-card" data-tour="analytics-top-professionals">
             <CardHeader>
               <CardTitle className="text-lg">Top Profissionais</CardTitle>
             </CardHeader>
@@ -405,7 +419,7 @@ const AnalyticsDashboard = () => {
         </div>
 
         {/* Cancellation Rate */}
-        <Card className="glass-card">
+        <Card className="glass-card" data-tour="analytics-cancellations">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">

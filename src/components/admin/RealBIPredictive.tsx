@@ -355,7 +355,7 @@ export const RealBIPredictive = ({ salonId }: RealBIPredictiveProps) => {
     }
 
     return (
-        <Card className="glass-card">
+        <Card className="glass-card" data-tour="advanced-bi-panel">
             <CardHeader>
                 <div className="flex items-center justify-between">
                     <CardTitle className="flex items-center gap-2">
@@ -378,6 +378,7 @@ export const RealBIPredictive = ({ salonId }: RealBIPredictiveProps) => {
                     ].map((tab) => (
                         <button
                             key={tab.id}
+                            data-tour={tab.id === 'forecast' ? 'advanced-bi-forecast-tab' : tab.id === 'churn' ? 'advanced-bi-churn-tab' : 'advanced-bi-crosssell-tab'}
                             onClick={() => setActiveTab(tab.id as any)}
                             className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === tab.id
                                 ? 'bg-primary text-primary-foreground'
@@ -398,7 +399,7 @@ export const RealBIPredictive = ({ salonId }: RealBIPredictiveProps) => {
                         className="space-y-6"
                     >
                         {/* Revenue Forecast */}
-                        <div>
+                        <div data-tour="advanced-bi-forecast">
                             <div className="flex items-center justify-between mb-4">
                                 <div>
                                     <h4 className="font-medium text-foreground">Faturamento Real + Previsão</h4>
@@ -464,7 +465,7 @@ export const RealBIPredictive = ({ salonId }: RealBIPredictiveProps) => {
                         </div>
 
                         {/* Hourly Conversion */}
-                        <div>
+                        <div data-tour="advanced-bi-hourly">
                             <div className="flex items-center justify-between mb-4">
                                 <div>
                                     <h4 className="font-medium text-foreground">Taxa de Conclusão por Horário</h4>
@@ -519,7 +520,7 @@ export const RealBIPredictive = ({ salonId }: RealBIPredictiveProps) => {
 
                 {/* Churn Risk Tab */}
                 {activeTab === 'churn' && (
-                    <motion.div
+                    <motion.div data-tour="advanced-bi-churn"
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         className="space-y-4"
@@ -577,7 +578,7 @@ export const RealBIPredictive = ({ salonId }: RealBIPredictiveProps) => {
                                                 <Lightbulb size={14} className="text-yellow-500" />
                                                 <span className="text-muted-foreground">{client.suggestedAction}</span>
                                             </div>
-                                            <Button size="sm" variant="gold">
+                                            <Button size="sm" variant="gold" data-tour="advanced-bi-execute">
                                                 Executar Ação
                                                 <ChevronRight size={14} className="ml-1" />
                                             </Button>
@@ -591,7 +592,7 @@ export const RealBIPredictive = ({ salonId }: RealBIPredictiveProps) => {
 
                 {/* Cross-Sell Tab */}
                 {activeTab === 'crosssell' && (
-                    <motion.div
+                    <motion.div data-tour="advanced-bi-crosssell"
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         className="space-y-4"

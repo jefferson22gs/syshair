@@ -12,6 +12,7 @@ import { AdminLayout } from "@/components/layouts/AdminLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Save, Upload, Building2, Link2, Copy, ExternalLink, Globe, Bell, Camera } from "lucide-react";
 import { NotificationSettings } from "@/components/pwa/NotificationPrompt";
+import { useMarkLinkShared } from "@/features/training/useFirstSteps";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 interface SalonData {
@@ -85,6 +86,7 @@ const weekDays = [
 const SalonSettings = () => {
   const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
+  const markLinkShared = useMarkLinkShared();
   const [salon, setSalon] = useState<SalonData>(defaultSalon);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -363,11 +365,18 @@ const SalonSettings = () => {
     return `${window.location.origin}/s/${salon.slug}`;
   };
 
-  const copyLink = () => {
+  const copyLink = async () => {
     const link = getPublicLink();
     if (link) {
-      navigator.clipboard.writeText(link);
+      try {
+        await navigator.clipboard.writeText(link);
+      } catch (error) {
+        console.error("Error copying public link:", error);
+        toast.error("Não foi possível copiar o link");
+        return;
+      }
       toast.success("Link copiado!");
+      void markLinkShared();
     }
   };
 
@@ -393,7 +402,7 @@ const SalonSettings = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between" data-tour="settings-header">
           <div>
             <h1 className="font-display text-3xl font-bold text-foreground">
               {isNew ? "Configurar Salão" : "Configurações do Salão"}
@@ -402,7 +411,7 @@ const SalonSettings = () => {
               {isNew ? "Configure seu salão para começar" : "Gerencie as informações do seu estabelecimento"}
             </p>
           </div>
-          <Button variant="gold" onClick={handleSave} disabled={saving}>
+          <Button variant="gold" onClick={handleSave} disabled={saving} data-tour="settings-save">
             <Save size={18} className="mr-2" />
             {saving ? "Salvando..." : "Salvar"}
           </Button>
@@ -410,7 +419,7 @@ const SalonSettings = () => {
 
         {/* Link Público - Card em destaque */}
         {!isNew && salon.slug && (
-          <Card className="glass-card border-primary/30 bg-primary/5">
+          <Card className="glass-card border-primary/30 bg-primary/5" data-tour="settings-public-link">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Globe size={20} className="text-primary" />
@@ -422,23 +431,28 @@ const SalonSettings = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center gap-2">
-                <div className="flex-1 bg-background border border-border rounded-lg px-4 py-3 font-mono text-sm truncate">
+                <div className="flex-1 bg-background border border-border rounded-lg px-4 py-3 font-mono text-sm truncate" data-tour="settings-public-link-url">
                   {getPublicLink()}
                 </div>
-                <Button variant="outline" size="icon" onClick={copyLink} title="Copiar link">
+                <Button variant="outline" size="icon" onClick={copyLink} title="Copiar link" aria-label="Copiar link" data-tour="settings-public-link-copy">
                   <Copy size={18} />
                 </Button>
                 <Button
                   variant="outline"
                   size="icon"
-                  onClick={() => window.open(getPublicLink(), '_blank')}
+                  onClick={() => {
+                    const openedWindow = window.open(getPublicLink(), '_blank');
+                    if (openedWindow) void markLinkShared();
+                  }}
                   title="Abrir em nova aba"
+                  aria-label="Abrir link em nova aba"
+                  data-tour="settings-public-link-open"
                 >
                   <ExternalLink size={18} />
                 </Button>
               </div>
 
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between" data-tour="settings-public-booking-toggle">
                 <div className="space-y-1">
                   <Label htmlFor="public_booking">Agendamento Online Ativo</Label>
                   <p className="text-sm text-muted-foreground">
@@ -457,7 +471,7 @@ const SalonSettings = () => {
 
         <div className="grid gap-6 md:grid-cols-2">
           {/* Informações Básicas */}
-          <Card className="glass-card">
+          <Card className="glass-card" data-tour="settings-info">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Building2 size={20} className="text-primary" />
@@ -466,7 +480,7 @@ const SalonSettings = () => {
               <CardDescription>Dados principais do seu estabelecimento</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
+              <div className="space-y-2" data-tour="settings-name">
                 <Label htmlFor="name">Nome do Salão *</Label>
                 <Input
                   id="name"
@@ -482,7 +496,7 @@ const SalonSettings = () => {
                   placeholder="Ex: Barbearia Premium"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2" data-tour="settings-slug">
                 <Label htmlFor="slug">Slug do Link Público</Label>
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-muted-foreground">/s/</span>
@@ -498,7 +512,7 @@ const SalonSettings = () => {
                   Este será o endereço do seu link de agendamento
                 </p>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2" data-tour="settings-description">
                 <Label htmlFor="description">Descrição</Label>
                 <Textarea
                   id="description"
@@ -526,7 +540,7 @@ const SalonSettings = () => {
                   placeholder="00.000.000/0000-00"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-4" data-tour="settings-contact">
                 <div className="space-y-2">
                   <Label htmlFor="phone">Telefone</Label>
                   <Input
@@ -546,7 +560,7 @@ const SalonSettings = () => {
                   />
                 </div>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2" data-tour="settings-pix">
                 <Label htmlFor="pix_key">Chave PIX</Label>
                 <Input
                   id="pix_key"
@@ -558,7 +572,7 @@ const SalonSettings = () => {
                   Será exibida na confirmação de agendamento para pagamento
                 </p>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2" data-tour="settings-email">
                 <Label htmlFor="email">E-mail</Label>
                 <Input
                   id="email"
@@ -572,7 +586,7 @@ const SalonSettings = () => {
           </Card>
 
           {/* Endereço */}
-          <Card className="glass-card">
+          <Card className="glass-card" data-tour="settings-address">
             <CardHeader>
               <CardTitle>Endereço</CardTitle>
               <CardDescription>Localização do seu estabelecimento</CardDescription>
@@ -621,7 +635,7 @@ const SalonSettings = () => {
           </Card>
 
           {/* Horário de Funcionamento */}
-          <Card className="glass-card">
+          <Card className="glass-card" data-tour="settings-hours">
             <CardHeader>
               <CardTitle>Horário de Funcionamento</CardTitle>
               <CardDescription>Configure os dias e horários de atendimento</CardDescription>
@@ -633,6 +647,7 @@ const SalonSettings = () => {
                   <Button
                     variant="ghost"
                     size="sm"
+                    data-tour="settings-hours-copy-monday"
                     onClick={() => {
                       const monday = salon.working_hours?.["1"];
                       if (monday) {
@@ -649,7 +664,7 @@ const SalonSettings = () => {
                   </Button>
                 </div>
 
-                <div className="space-y-3">
+                <div className="space-y-3" data-tour="settings-hours-days">
                   {weekDays.map((day) => {
                     const dayConfig = salon.working_hours?.[day.value] || { isOpen: false, start: "09:00", end: "19:00" };
                     return (
@@ -702,7 +717,7 @@ const SalonSettings = () => {
               </div>
 
               {/* Lunch Break Section */}
-              <div className="pt-4 border-t border-border mt-4">
+              <div className="pt-4 border-t border-border mt-4" data-tour="settings-hours-lunch">
                 <div className="flex items-center justify-between mb-4">
                   <div className="space-y-1">
                     <Label>Pausa para Almoço</Label>
@@ -782,13 +797,13 @@ const SalonSettings = () => {
           </Card>
 
           {/* Personalização */}
-          <Card className="glass-card">
+          <Card className="glass-card" data-tour="settings-branding">
             <CardHeader>
               <CardTitle>Personalização</CardTitle>
               <CardDescription>Customize a aparência do seu salão</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
+              <div className="space-y-2" data-tour="settings-branding-color">
                 <Label htmlFor="primary_color">Cor Principal</Label>
                 <div className="flex gap-3">
                   <input
@@ -806,15 +821,15 @@ const SalonSettings = () => {
                   />
                 </div>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2" data-tour="settings-branding-logo">
                 <Label htmlFor="logo_url">Logo do Salão</Label>
 
                 <div className="p-4 border rounded-lg bg-secondary/10">
                   <Tabs value={activeLogoTab} onValueChange={setActiveLogoTab}>
                     <TabsList className="grid w-full grid-cols-3 mb-4">
-                      <TabsTrigger value="link">Link URL</TabsTrigger>
-                      <TabsTrigger value="upload">Upload</TabsTrigger>
-                      <TabsTrigger value="camera">Câmera</TabsTrigger>
+                      <TabsTrigger value="link" data-tour="settings-logo-link-tab">Link URL</TabsTrigger>
+                      <TabsTrigger value="upload" data-tour="settings-logo-upload-tab">Upload</TabsTrigger>
+                      <TabsTrigger value="camera" data-tour="settings-logo-camera-tab">Câmera</TabsTrigger>
                     </TabsList>
 
                     <TabsContent value="link" className="space-y-2">
@@ -874,7 +889,7 @@ const SalonSettings = () => {
           </Card>
 
           {/* Notificações Push */}
-          <Card className="glass-card md:col-span-2">
+          <Card className="glass-card md:col-span-2" data-tour="settings-notifications">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Bell size={20} className="text-primary" />

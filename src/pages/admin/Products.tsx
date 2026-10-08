@@ -178,7 +178,7 @@ const ProductsPage = () => {
       <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
+          <div data-tour="products-header">
             <h1 className="font-display text-3xl font-bold text-foreground">
               Produtos
             </h1>
@@ -192,12 +192,12 @@ const ProductsPage = () => {
             if (!open) resetForm();
           }}>
             <DialogTrigger asChild>
-              <Button variant="gold">
+              <Button variant="gold" data-tour="products-new-button">
                 <Plus size={18} className="mr-2" />
                 Novo Produto
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-md">
+            <DialogContent className="max-w-md" data-tour="products-dialog">
               <DialogHeader>
                 <DialogTitle>
                   {editingProduct ? 'Editar Produto' : 'Novo Produto'}
@@ -207,6 +207,7 @@ const ProductsPage = () => {
                 <div className="space-y-2">
                   <Label>Nome</Label>
                   <Input
+                    data-tour="products-name"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     placeholder="Ex: Shampoo Profissional"
@@ -217,6 +218,7 @@ const ProductsPage = () => {
                 <div className="space-y-2">
                   <Label>Descrição</Label>
                   <Input
+                    data-tour="products-description"
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     placeholder="Descrição do produto"
@@ -230,6 +232,7 @@ const ProductsPage = () => {
                       type="number"
                       step="0.01"
                       min="0"
+                      data-tour="products-price"
                       value={formData.price}
                       onChange={(e) => setFormData({ ...formData, price: e.target.value })}
                       required
@@ -241,6 +244,7 @@ const ProductsPage = () => {
                     <Input
                       type="number"
                       min="0"
+                      data-tour="products-stock"
                       value={formData.stock}
                       onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
                       required
@@ -251,6 +255,7 @@ const ProductsPage = () => {
                 <div className="space-y-2">
                   <Label>Categoria</Label>
                   <Input
+                    data-tour="products-category"
                     value={formData.category}
                     onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                     placeholder="Ex: Cabelo, Barba, Cuidados"
@@ -260,6 +265,7 @@ const ProductsPage = () => {
                 <div className="space-y-2">
                   <Label>URL da Imagem</Label>
                   <Input
+                    data-tour="products-image"
                     value={formData.image_url}
                     onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
                     placeholder="https://..."
@@ -270,7 +276,7 @@ const ProductsPage = () => {
                   <Button type="button" variant="outline" className="flex-1" onClick={() => setIsDialogOpen(false)}>
                     Cancelar
                   </Button>
-                  <Button type="submit" variant="gold" className="flex-1">
+                  <Button type="submit" variant="gold" className="flex-1" data-tour="products-save">
                     {editingProduct ? 'Salvar' : 'Criar Produto'}
                   </Button>
                 </div>
@@ -281,7 +287,7 @@ const ProductsPage = () => {
 
         {/* Products Grid */}
         {products.length === 0 ? (
-          <Card className="glass-card">
+          <Card className="glass-card" data-tour="products-empty">
             <CardContent className="flex flex-col items-center justify-center py-12">
               <ShoppingBag size={48} className="text-muted-foreground mb-4" />
               <p className="text-muted-foreground mb-2">Nenhum produto cadastrado</p>
@@ -291,7 +297,7 @@ const ProductsPage = () => {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" data-tour="products-list">
             {products.map((product) => (
               <Card key={product.id} className="glass-card overflow-hidden">
                 <div className="aspect-square bg-secondary/50 flex items-center justify-center">
@@ -314,10 +320,10 @@ const ProductsPage = () => {
                       )}
                     </div>
                     <div className="flex gap-1">
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(product)}>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(product)} data-tour="products-edit" aria-label="Editar produto">
                         <Edit2 size={14} />
                       </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDelete(product.id)}>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDelete(product.id)} data-tour="products-delete" aria-label="Excluir produto">
                         <Trash2 size={14} className="text-destructive" />
                       </Button>
                     </div>

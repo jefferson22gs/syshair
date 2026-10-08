@@ -517,7 +517,7 @@ const StatusScheduler = () => {
         <AdminLayout>
             <div className="space-y-6">
                 {/* Header */}
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4" data-tour="status-scheduler-header">
                     <div>
                         <h1 className="text-3xl font-bold flex items-center gap-3">
                             <CalendarDays className="w-8 h-8 text-primary" />
@@ -528,7 +528,7 @@ const StatusScheduler = () => {
                         </p>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3" data-tour="status-scheduler-connection">
                         {instance?.status === 'connected' ? (
                             <Badge className="bg-green-500/20 text-green-400 border-green-500/30 px-4 py-2">
                                 <CheckCircle size={14} className="mr-2" />
@@ -541,7 +541,7 @@ const StatusScheduler = () => {
                             </Badge>
                         )}
 
-                        <Button variant="gold" onClick={() => setIsModalOpen(true)}>
+                        <Button variant="gold" onClick={() => setIsModalOpen(true)} data-tour="status-scheduler-new">
                             <Plus className="w-4 h-4 mr-2" />
                             Agendar Post
                         </Button>
@@ -571,14 +571,14 @@ const StatusScheduler = () => {
                             <Calendar size={16} />
                             Calendário
                         </TabsTrigger>
-                        <TabsTrigger value="list" className="flex items-center gap-2">
+                        <TabsTrigger value="list" className="flex items-center gap-2" data-tour="status-scheduler-list-tab">
                             <CalendarDays size={16} />
                             Lista
                         </TabsTrigger>
                     </TabsList>
 
                     {/* Tab: Calendário */}
-                    <TabsContent value="calendar" className="mt-6">
+                    <TabsContent value="calendar" className="mt-6" data-tour="status-scheduler-calendar">
                         <Card>
                             <CardHeader>
                                 <div className="flex items-center justify-between">
@@ -687,7 +687,7 @@ const StatusScheduler = () => {
                                     {posts.filter(p => p.status === 'scheduled').length} posts aguardando publicação
                                 </CardDescription>
                             </CardHeader>
-                            <CardContent>
+                            <CardContent data-tour="status-scheduler-list">
                                 {posts.length === 0 ? (
                                     <div className="text-center py-12 text-muted-foreground">
                                         <CalendarDays className="w-12 h-12 mx-auto mb-3 opacity-50" />
@@ -768,7 +768,7 @@ const StatusScheduler = () => {
 
                 {/* Modal de Criação/Edição */}
                 <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-                    <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" data-tour="status-scheduler-dialog">
                         <DialogHeader>
                             <DialogTitle>
                                 {editingPost ? 'Editar Post' : 'Agendar Novo Post'}
@@ -777,7 +777,7 @@ const StatusScheduler = () => {
 
                         <div className="space-y-6 py-4">
                             {/* Tipo de conteúdo */}
-                            <div className="space-y-2">
+                            <div className="space-y-2" data-tour="status-scheduler-type">
                                 <Label>Tipo de Conteúdo</Label>
                                 <div className="grid grid-cols-3 gap-2">
                                     {[
@@ -804,7 +804,7 @@ const StatusScheduler = () => {
 
                             {/* Upload de mídia */}
                             {formData.content_type !== 'text' && (
-                                <div className="space-y-2">
+                                <div className="space-y-2" data-tour="status-scheduler-media">
                                     <Label>Mídia</Label>
                                     <input
                                         ref={fileInputRef}
@@ -858,7 +858,7 @@ const StatusScheduler = () => {
                             )}
 
                             {/* Texto/Legenda */}
-                            <div className="space-y-2">
+                            <div className="space-y-2" data-tour="status-scheduler-caption">
                                 <div className="flex items-center justify-between">
                                     <Label>{formData.content_type === 'text' ? 'Texto do Status' : 'Legenda (opcional)'}</Label>
                                     {formData.content_type !== 'text' && (formData.media_preview || editingPost?.media_url) && (
@@ -893,7 +893,7 @@ const StatusScheduler = () => {
                             </div>
 
                             {/* Data e Hora */}
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-2 gap-4" data-tour="status-scheduler-date-time">
                                 <div className="space-y-2">
                                     <Label>Data</Label>
                                     <Input
@@ -913,7 +913,7 @@ const StatusScheduler = () => {
                             </div>
 
                             {/* Recorrência */}
-                            <div className="space-y-4">
+                            <div className="space-y-4" data-tour="status-scheduler-recurrence">
                                 <div className="space-y-2">
                                     <Label>Recorrência</Label>
                                     <Select
@@ -968,10 +968,10 @@ const StatusScheduler = () => {
                         </div>
 
                         <DialogFooter>
-                            <Button variant="outline" onClick={handleCloseModal}>
+                            <Button variant="outline" onClick={handleCloseModal} data-tour="status-scheduler-cancel">
                                 Cancelar
                             </Button>
-                            <Button variant="gold" onClick={handleSubmit} disabled={isSubmitting}>
+                            <Button variant="gold" onClick={handleSubmit} disabled={isSubmitting} data-tour="status-scheduler-save">
                                 {isSubmitting ? (
                                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                                 ) : (

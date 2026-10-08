@@ -419,7 +419,7 @@ const ChatbotIA = () => {
         <AdminLayout>
             <div className="space-y-6">
                 {/* Header */}
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4" data-tour="chatbot-header">
                     <div>
                         <h1 className="text-3xl font-bold flex items-center gap-3">
                             <Bot className="w-8 h-8 text-primary" />
@@ -451,19 +451,19 @@ const ChatbotIA = () => {
                 {/* Tabs */}
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
                     <TabsList className="grid grid-cols-4 w-full max-w-2xl">
-                        <TabsTrigger value="settings" className="flex items-center gap-2">
+                        <TabsTrigger value="settings" className="flex items-center gap-2" data-tour="chatbot-settings-tab" aria-label="Configurações">
                             <Settings size={16} />
                             <span className="hidden sm:inline">Configurações</span>
                         </TabsTrigger>
-                        <TabsTrigger value="training" className="flex items-center gap-2">
+                        <TabsTrigger value="training" className="flex items-center gap-2" data-tour="chatbot-training-tab" aria-label="Treinamento">
                             <Brain size={16} />
                             <span className="hidden sm:inline">Treinamento</span>
                         </TabsTrigger>
-                        <TabsTrigger value="test" className="flex items-center gap-2">
+                        <TabsTrigger value="test" className="flex items-center gap-2" data-tour="chatbot-test-tab" aria-label="Testar">
                             <Play size={16} />
                             <span className="hidden sm:inline">Testar</span>
                         </TabsTrigger>
-                        <TabsTrigger value="history" className="flex items-center gap-2">
+                        <TabsTrigger value="history" className="flex items-center gap-2" data-tour="chatbot-history-tab" aria-label="Histórico">
                             <History size={16} />
                             <span className="hidden sm:inline">Histórico</span>
                         </TabsTrigger>
@@ -487,6 +487,8 @@ const ChatbotIA = () => {
                                         </div>
                                     </div>
                                     <Switch
+                                        data-tour="chatbot-enabled"
+                                        aria-label="Ativar Chatbot IA"
                                         checked={settings.enabled}
                                         onCheckedChange={(checked) => setSettings(prev => ({ ...prev, enabled: checked }))}
                                     />
@@ -514,7 +516,7 @@ const ChatbotIA = () => {
                                                 ai_model: AI_PROVIDERS.find(p => p.id === value)?.models[0] || ''
                                             }))}
                                         >
-                                            <SelectTrigger>
+                                            <SelectTrigger data-tour="chatbot-provider">
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -533,7 +535,7 @@ const ChatbotIA = () => {
                                             value={settings.ai_model}
                                             onValueChange={(value) => setSettings(prev => ({ ...prev, ai_model: value }))}
                                         >
-                                            <SelectTrigger>
+                                            <SelectTrigger data-tour="chatbot-model">
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -546,7 +548,7 @@ const ChatbotIA = () => {
                                         </Select>
                                     </div>
 
-                                    <div className="space-y-2">
+                                    <div className="space-y-2" data-tour="chatbot-api-key">
                                         <Label>API Key</Label>
                                         <Input
                                             type="password"
@@ -562,7 +564,7 @@ const ChatbotIA = () => {
                             </Card>
 
                             {/* Personalização */}
-                            <Card>
+                            <Card data-tour="chatbot-personalization">
                                 <CardHeader>
                                     <CardTitle className="flex items-center gap-2">
                                         <MessageSquare className="w-5 h-5 text-primary" />
@@ -652,7 +654,7 @@ const ChatbotIA = () => {
                             </Card>
 
                             {/* Horário de Funcionamento */}
-                            <Card>
+                            <Card data-tour="chatbot-hours">
                                 <CardHeader>
                                     <CardTitle className="flex items-center gap-2">
                                         <Clock className="w-5 h-5 text-primary" />
@@ -718,6 +720,7 @@ const ChatbotIA = () => {
                                 variant="gold"
                                 size="lg"
                                 onClick={handleSaveSettings}
+                                data-tour="chatbot-save-settings"
                                 disabled={isSaving}
                             >
                                 {isSaving ? (
@@ -745,6 +748,7 @@ const ChatbotIA = () => {
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <Textarea
+                                    data-tour="chatbot-prompt"
                                     placeholder="Defina como a IA deve se comportar..."
                                     value={settings.system_prompt}
                                     onChange={(e) => setSettings(prev => ({ ...prev, system_prompt: e.target.value }))}
@@ -755,6 +759,7 @@ const ChatbotIA = () => {
                                 <div className="space-y-2">
                                     <Label>Instruções Personalizadas (adicional)</Label>
                                     <Textarea
+                                        data-tour="chatbot-instructions"
                                         placeholder="Informações específicas do seu salão..."
                                         value={settings.custom_instructions}
                                         onChange={(e) => setSettings(prev => ({ ...prev, custom_instructions: e.target.value }))}
@@ -765,7 +770,7 @@ const ChatbotIA = () => {
                                     </p>
                                 </div>
 
-                                <Button onClick={handleSaveSettings} disabled={isSaving}>
+                                <Button onClick={handleSaveSettings} disabled={isSaving} data-tour="chatbot-save-prompt">
                                     {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
                                     Salvar Prompt
                                 </Button>
@@ -785,7 +790,7 @@ const ChatbotIA = () => {
                             </CardHeader>
                             <CardContent className="space-y-6">
                                 {/* Formulário para adicionar */}
-                                <div className="p-4 rounded-lg bg-secondary/30 space-y-4">
+                                <div className="p-4 rounded-lg bg-secondary/30 space-y-4" data-tour="chatbot-knowledge-form">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div className="space-y-2">
                                             <Label>Categoria</Label>
@@ -831,14 +836,14 @@ const ChatbotIA = () => {
                                             rows={3}
                                         />
                                     </div>
-                                    <Button onClick={handleAddKnowledge}>
+                                    <Button onClick={handleAddKnowledge} data-tour="chatbot-knowledge-add">
                                         <Plus className="w-4 h-4 mr-2" />
                                         Adicionar ao Conhecimento
                                     </Button>
                                 </div>
 
                                 {/* Lista de conhecimentos */}
-                                <div className="space-y-3">
+                                <div className="space-y-3" data-tour="chatbot-knowledge-list">
                                     {knowledgeBase.length === 0 ? (
                                         <div className="text-center py-8 text-muted-foreground">
                                             <Brain className="w-12 h-12 mx-auto mb-3 opacity-50" />
@@ -867,6 +872,7 @@ const ChatbotIA = () => {
                                                     variant="ghost"
                                                     className="text-red-500 hover:text-red-600 hover:bg-red-500/10"
                                                     onClick={() => handleDeleteKnowledge(item.id)}
+                                                    aria-label="Excluir conhecimento"
                                                 >
                                                     <Trash2 size={16} />
                                                 </Button>
@@ -880,7 +886,7 @@ const ChatbotIA = () => {
 
                     {/* Tab: Testar */}
                     <TabsContent value="test" className="space-y-6">
-                        <Card className="h-[600px] flex flex-col">
+                        <Card className="h-[600px] flex flex-col" data-tour="chatbot-test-panel">
                             <CardHeader>
                                 <CardTitle className="flex items-center gap-2">
                                     <Play className="w-5 h-5 text-primary" />
@@ -935,6 +941,7 @@ const ChatbotIA = () => {
                                 {/* Input de mensagem */}
                                 <div className="flex gap-2">
                                     <Input
+                                        data-tour="chatbot-test-input"
                                         placeholder="Digite uma mensagem para testar..."
                                         value={testInput}
                                         onChange={(e) => setTestInput(e.target.value)}
@@ -943,6 +950,8 @@ const ChatbotIA = () => {
                                     />
                                     <Button
                                         onClick={handleTestMessage}
+                                        data-tour="chatbot-test-send"
+                                        aria-label="Enviar mensagem de teste"
                                         disabled={isTesting || !testInput.trim() || !settings.api_key}
                                     >
                                         <Send size={16} />
@@ -977,19 +986,20 @@ const ChatbotIA = () => {
                                         <div className="relative">
                                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                                             <Input
+                                                data-tour="chatbot-history-search"
                                                 placeholder="Buscar..."
                                                 className="pl-9 w-64"
                                                 value={searchTerm}
                                                 onChange={(e) => setSearchTerm(e.target.value)}
                                             />
                                         </div>
-                                        <Button variant="outline" size="icon" onClick={() => loadConversations()}>
+                                        <Button variant="outline" size="icon" onClick={() => loadConversations()} data-tour="chatbot-history-refresh" aria-label="Atualizar histórico">
                                             <RefreshCw size={16} />
                                         </Button>
                                     </div>
                                 </div>
                             </CardHeader>
-                            <CardContent>
+                            <CardContent data-tour="chatbot-history-list">
                                 {conversations.length === 0 ? (
                                     <div className="text-center py-12 text-muted-foreground">
                                         <History className="w-12 h-12 mx-auto mb-3 opacity-50" />

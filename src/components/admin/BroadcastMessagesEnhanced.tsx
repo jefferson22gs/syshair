@@ -635,7 +635,7 @@ export const BroadcastMessagesComponent = () => {
   if (!isConnected) {
     return (
       <div className="max-w-4xl mx-auto p-6">
-        <Card className="bg-yellow-500/10 border-yellow-500/30">
+        <Card className="bg-yellow-500/10 border-yellow-500/30" data-tour="broadcast-disconnected">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <AlertTriangle className="text-yellow-500" />
@@ -658,7 +658,7 @@ export const BroadcastMessagesComponent = () => {
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4" data-tour="broadcast-header">
         <div>
           <h1 className="font-display text-3xl font-bold flex items-center gap-3">
             <Send className="text-primary" />
@@ -681,7 +681,7 @@ export const BroadcastMessagesComponent = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Coluna de contatos */}
-        <div className="lg:col-span-2 space-y-4">
+        <div className="lg:col-span-2 space-y-4" data-tour="broadcast-contacts">
           <Card>
             <CardHeader className="pb-3">
               <div className="flex justify-between items-center">
@@ -701,6 +701,8 @@ export const BroadcastMessagesComponent = () => {
                   <Button
                     variant="outline"
                     size="sm"
+                    data-tour="broadcast-load-contacts"
+                    aria-label="Carregar contatos"
                     onClick={loadContacts}
                     disabled={loadingContacts}
                   >
@@ -726,6 +728,7 @@ export const BroadcastMessagesComponent = () => {
                 <div className="relative flex-1">
                   <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                   <Input
+                    data-tour="broadcast-search"
                     placeholder="Buscar por nome ou telefone..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
@@ -758,7 +761,7 @@ export const BroadcastMessagesComponent = () => {
 
               {/* Lista de contatos */}
               {contacts.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">
+                <div className="text-center py-12 text-muted-foreground" data-tour="broadcast-contacts-empty">
                   <Users size={48} className="mx-auto mb-4 opacity-50" />
                   <p>Nenhum contato carregado</p>
                   <Button
@@ -781,7 +784,7 @@ export const BroadcastMessagesComponent = () => {
                   </Button>
                 </div>
               ) : (
-                <div className="max-h-[500px] overflow-y-auto space-y-1">
+                <div className="max-h-[500px] overflow-y-auto space-y-1" data-tour="broadcast-contact-list">
                   {filteredContacts.map((contact) => (
                     <div
                       key={contact.phone}
@@ -822,6 +825,7 @@ export const BroadcastMessagesComponent = () => {
                 <Label>Template</Label>
                 <div className="flex gap-2">
                   <select
+                    data-tour="broadcast-template"
                     value={selectedTemplate || ""}
                     onChange={(e) => loadTemplate(e.target.value)}
                     className="flex-1 border rounded-md px-3 py-2 text-sm"
@@ -857,6 +861,7 @@ export const BroadcastMessagesComponent = () => {
               </div>
 
               <Textarea
+                data-tour="broadcast-message"
                 placeholder="Digite sua mensagem aqui... (Use {nome} para personalizar)"
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
@@ -871,6 +876,7 @@ export const BroadcastMessagesComponent = () => {
                 className="w-full"
                 size="lg"
                 onClick={sendBroadcast}
+                data-tour="broadcast-send"
                 disabled={isSending || selectedCount === 0 || !message.trim()}
               >
                 {isSending ? (
@@ -895,7 +901,7 @@ export const BroadcastMessagesComponent = () => {
           </Card>
 
           {/* Histórico */}
-          <Card>
+          <Card data-tour="broadcast-history">
             <CardHeader>
               <CardTitle className="text-lg">Histórico de Disparos</CardTitle>
             </CardHeader>
@@ -940,6 +946,7 @@ export const BroadcastMessagesComponent = () => {
                         size="sm"
                         variant="ghost"
                         onClick={() => viewBroadcastDetails(broadcast)}
+                        data-tour="broadcast-details-button"
                         className="w-full mt-2 h-7 text-xs"
                       >
                         <Eye size={12} className="mr-1" />
@@ -1022,7 +1029,7 @@ export const BroadcastMessagesComponent = () => {
 
       {/* Modal de Detalhes do Histórico */}
       <Dialog open={showHistoryModal} onOpenChange={setShowHistoryModal}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto" data-tour="broadcast-details-dialog">
           <DialogHeader>
             <DialogTitle>Detalhes do Disparo</DialogTitle>
           </DialogHeader>

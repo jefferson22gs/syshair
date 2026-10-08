@@ -127,7 +127,7 @@ const ReviewsPage = () => {
     <AdminLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div>
+        <div data-tour="reviews-header">
           <h1 className="font-display text-3xl font-bold text-foreground">
             Avaliações
           </h1>
@@ -137,7 +137,7 @@ const ReviewsPage = () => {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4" data-tour="reviews-summary">
           <Card className="glass-card">
             <CardContent className="p-6">
               <div className="flex items-center gap-4">
@@ -189,7 +189,7 @@ const ReviewsPage = () => {
 
         {/* Reviews List */}
         {reviews.length === 0 ? (
-          <Card className="glass-card">
+          <Card className="glass-card" data-tour="reviews-empty">
             <CardContent className="flex flex-col items-center justify-center py-12">
               <Star size={48} className="text-muted-foreground mb-4" />
               <p className="text-muted-foreground mb-2">Nenhuma avaliação ainda</p>
@@ -199,7 +199,7 @@ const ReviewsPage = () => {
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-4" data-tour="reviews-list">
             {reviews.map((review) => (
               <Card key={review.id} className="glass-card">
                 <CardContent className="p-6">
@@ -230,7 +230,7 @@ const ReviewsPage = () => {
                   )}
 
                   {review.response ? (
-                    <div className="mt-4 p-3 rounded-lg bg-primary/10 border border-primary/20">
+                    <div className="mt-4 p-3 rounded-lg bg-primary/10 border border-primary/20" data-tour="reviews-response">
                       <p className="text-xs text-muted-foreground mb-1">Sua resposta:</p>
                       <p className="text-sm text-foreground">{review.response}</p>
                       <p className="text-xs text-muted-foreground mt-2">
@@ -240,6 +240,7 @@ const ReviewsPage = () => {
                   ) : respondingTo === review.id ? (
                     <div className="mt-4 space-y-2">
                       <Textarea
+                        data-tour="reviews-reply-text"
                         value={responseText}
                         onChange={(e) => setResponseText(e.target.value)}
                         placeholder="Escreva sua resposta..."
@@ -259,6 +260,7 @@ const ReviewsPage = () => {
                         <Button
                           variant="gold"
                           size="sm"
+                          data-tour="reviews-reply-send"
                           onClick={() => handleSubmitResponse(review.id)}
                         >
                           <Send size={14} className="mr-2" />
@@ -270,6 +272,7 @@ const ReviewsPage = () => {
                     <Button
                       variant="outline"
                       size="sm"
+                      data-tour="reviews-reply-button"
                       onClick={() => setRespondingTo(review.id)}
                     >
                       <MessageSquare size={14} className="mr-2" />

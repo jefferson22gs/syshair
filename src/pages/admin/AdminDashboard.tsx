@@ -7,8 +7,9 @@ import { AdminLayout } from "@/components/layouts/AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SalonInsights } from "@/components/admin/SalonInsights";
 import { ClientMetricsCard } from "@/components/admin/ClientMetricsCard";
-import { OnboardingWizard } from "@/components/admin/OnboardingWizard";
 import { AdminNotificationCenter } from "@/components/admin/AdminNotificationCenter";
+import { WelcomeCard } from "@/features/training/WelcomeCard";
+import { FirstStepsChecklist } from "@/features/training/FirstStepsChecklist";
 import { SkeletonDashboard } from "@/components/ui/skeleton-card";
 import {
   Calendar,
@@ -164,7 +165,7 @@ const AdminDashboard = () => {
     <AdminLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div>
+        <div data-tour="dashboard-header">
           <h1 className="font-display text-3xl font-bold text-foreground">
             Bem-vindo de volta, {displayName}!
           </h1>
@@ -173,12 +174,19 @@ const AdminDashboard = () => {
           </p>
         </div>
 
+        {hasSalon && (
+          <>
+            <WelcomeCard />
+            <FirstStepsChecklist />
+          </>
+        )}
+
         {/* Notificações */}
         {hasSalon && <AdminNotificationCenter />}
 
         {/* Welcome Card for New Users */}
         {!hasSalon && (
-          <Card className="glass-card border-primary/20">
+          <Card className="glass-card border-primary/20" data-tour="dashboard-no-salon">
             <CardContent className="p-6">
               <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
@@ -204,7 +212,7 @@ const AdminDashboard = () => {
         )}
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" data-tour="dashboard-stats">
           {statsCards.map((stat) => (
             <Card key={stat.label} className="glass-card">
               <CardContent className="p-6">
@@ -227,11 +235,11 @@ const AdminDashboard = () => {
         {/* Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Today's Appointments */}
-          <Card className="lg:col-span-2 glass-card">
+          <Card className="lg:col-span-2 glass-card" data-tour="dashboard-today">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle>Agendamentos de hoje</CardTitle>
-                <Button variant="gold-outline" size="sm" onClick={() => navigate('/admin/appointments')}>
+                <Button variant="gold-outline" size="sm" onClick={() => navigate('/admin/appointments')} data-tour="dashboard-today-all">
                   Ver todos
                 </Button>
               </div>
@@ -302,7 +310,7 @@ const AdminDashboard = () => {
             <ClientMetricsCard salonId={salonId} />
 
             {/* Quick Actions */}
-            <Card className="glass-card">
+            <Card className="glass-card" data-tour="dashboard-quick-actions">
               <CardHeader>
                 <CardTitle>Ações rápidas</CardTitle>
               </CardHeader>

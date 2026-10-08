@@ -177,24 +177,24 @@ export const RealGoalsManager = ({ salonId }: RealGoalsManagerProps) => {
     const completedGoals = goals.filter(g => g.status === 'completed' || g.status === 'failed');
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6" data-tour="advanced-goals-panel">
             {/* Metas Ativas */}
             <div className="space-y-4">
                 <div className="flex items-center justify-between">
                     <h2 className="text-xl font-bold">Metas Ativas</h2>
                     <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
                         <DialogTrigger asChild>
-                            <Button size="sm">
+                            <Button size="sm" data-tour="advanced-goals-add">
                                 <Plus className="w-4 h-4 mr-1" />
                                 Nova Meta
                             </Button>
                         </DialogTrigger>
-                        <DialogContent>
+                        <DialogContent data-tour="advanced-goals-dialog">
                             <DialogHeader>
                                 <DialogTitle>Criar Nova Meta</DialogTitle>
                             </DialogHeader>
                             <div className="space-y-4 mt-4">
-                                <div>
+                                <div data-tour="advanced-goals-type">
                                     <Label>Tipo de Meta</Label>
                                     <Select
                                         value={newGoal.type}
@@ -219,7 +219,7 @@ export const RealGoalsManager = ({ salonId }: RealGoalsManagerProps) => {
                                         placeholder="Ex: Meta de faturamento mensal"
                                     />
                                 </div>
-                                <div>
+                                <div data-tour="advanced-goals-target">
                                     <Label>Valor Alvo</Label>
                                     <Input
                                         type="number"
@@ -228,7 +228,7 @@ export const RealGoalsManager = ({ salonId }: RealGoalsManagerProps) => {
                                         placeholder={newGoal.type === 'revenue' ? 'Ex: 25000' : 'Ex: 100'}
                                     />
                                 </div>
-                                <div>
+                                <div data-tour="advanced-goals-period">
                                     <Label>Período</Label>
                                     <Select
                                         value={newGoal.period}
@@ -246,7 +246,7 @@ export const RealGoalsManager = ({ salonId }: RealGoalsManagerProps) => {
                                         </SelectContent>
                                     </Select>
                                 </div>
-                                <Button onClick={handleCreateGoal} className="w-full">
+                                <Button onClick={handleCreateGoal} className="w-full" data-tour="advanced-goals-save">
                                     Criar Meta
                                 </Button>
                             </div>
@@ -279,7 +279,7 @@ export const RealGoalsManager = ({ salonId }: RealGoalsManagerProps) => {
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: index * 0.1 }}
                             >
-                                <Card className="glass-card overflow-hidden">
+                                <Card className="glass-card overflow-hidden" data-tour="advanced-goals-progress">
                                     <CardContent className="p-4">
                                         <div className="flex items-start justify-between mb-3">
                                             <div className="flex items-center gap-3">
@@ -297,6 +297,8 @@ export const RealGoalsManager = ({ salonId }: RealGoalsManagerProps) => {
                                                 size="icon"
                                                 variant="ghost"
                                                 className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                                data-tour="advanced-goals-delete"
+                                                aria-label="Excluir meta"
                                                 onClick={() => handleDeleteGoal(goal.id)}
                                             >
                                                 <Trash2 className="w-4 h-4" />

@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { AdminLayout } from "@/components/layouts/AdminLayout";
+import { TrainingEmptyActions } from "@/features/training/TrainingEmptyActions";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Plus, Edit2, Trash2, Users, Mail, Phone, DollarSign, Calendar, Cake, Download } from "lucide-react";
@@ -187,7 +188,7 @@ const Clients = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4" data-tour="clients-header">
           <div>
             <h1 className="font-display text-3xl font-bold text-foreground">Clientes</h1>
             <p className="text-muted-foreground mt-1">Gerencie sua base de clientes</p>
@@ -196,6 +197,7 @@ const Clients = () => {
             <Button
               variant="outline"
               onClick={() => navigate('/admin/export-contacts')}
+              data-tour="clients-export"
             >
               <Download size={18} className="mr-2" />
               Exportar
@@ -205,12 +207,12 @@ const Clients = () => {
               if (!open) resetForm();
             }}>
               <DialogTrigger asChild>
-                <Button variant="gold">
+                <Button variant="gold" data-tour="clients-new-button">
                   <Plus size={18} className="mr-2" />
                   Novo Cliente
                 </Button>
               </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="sm:max-w-md" data-tour="clients-dialog">
               <DialogHeader>
                 <DialogTitle>
                   {editingClient ? "Editar Cliente" : "Novo Cliente"}
@@ -224,6 +226,7 @@ const Clients = () => {
                   <Label htmlFor="name">Nome *</Label>
                   <Input
                     id="name"
+                    data-tour="clients-name"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     placeholder="Nome do cliente"
@@ -233,6 +236,7 @@ const Clients = () => {
                   <Label htmlFor="email">E-mail</Label>
                   <Input
                     id="email"
+                    data-tour="clients-email"
                     type="email"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
@@ -243,6 +247,7 @@ const Clients = () => {
                   <Label htmlFor="phone">Telefone</Label>
                   <Input
                     id="phone"
+                    data-tour="clients-phone"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                     placeholder="(00) 00000-0000"
@@ -252,6 +257,7 @@ const Clients = () => {
                   <Label htmlFor="notes">Observações</Label>
                   <Textarea
                     id="notes"
+                    data-tour="clients-notes"
                     value={formData.notes}
                     onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                     placeholder="Preferências, alergias, etc..."
@@ -262,7 +268,7 @@ const Clients = () => {
                 <Button variant="outline" onClick={() => setDialogOpen(false)}>
                   Cancelar
                 </Button>
-                <Button variant="gold" onClick={handleSubmit}>
+                <Button variant="gold" onClick={handleSubmit} data-tour="clients-save">
                   {editingClient ? "Salvar" : "Adicionar"}
                 </Button>
               </div>
@@ -275,6 +281,7 @@ const Clients = () => {
         <div className="flex gap-4">
           <Input
             placeholder="Buscar por nome, email ou telefone..."
+            data-tour="clients-search"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="max-w-sm"
@@ -298,16 +305,17 @@ const Clients = () => {
 
         {/* Clients List */}
         {filteredClients.length === 0 ? (
-          <Card className="glass-card">
+          <Card className="glass-card" data-tour="clients-empty">
             <CardContent className="flex flex-col items-center justify-center py-12">
               <Users size={48} className="text-muted-foreground mb-4" />
               <p className="text-muted-foreground text-center">
                 {searchTerm ? "Nenhum cliente encontrado" : "Nenhum cliente cadastrado ainda"}
               </p>
+              <TrainingEmptyActions tourId="clients" className="mt-4" />
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3" data-tour="clients-list">
             {filteredClients.map((client) => (
               <Card key={client.id} className="glass-card">
                 <CardContent className="p-6">
@@ -320,6 +328,8 @@ const Clients = () => {
                         variant="ghost"
                         size="icon"
                         onClick={() => handleEdit(client)}
+                        data-tour="clients-edit"
+                        aria-label="Editar cliente"
                       >
                         <Edit2 size={16} />
                       </Button>
@@ -327,6 +337,8 @@ const Clients = () => {
                         variant="ghost"
                         size="icon"
                         onClick={() => handleDelete(client.id)}
+                        data-tour="clients-delete"
+                        aria-label="Excluir cliente"
                       >
                         <Trash2 size={16} className="text-destructive" />
                       </Button>

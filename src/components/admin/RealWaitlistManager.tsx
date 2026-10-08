@@ -192,7 +192,7 @@ export const RealWaitlistManager = ({ salonId }: RealWaitlistManagerProps) => {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between" data-tour="advanced-waitlist-panel">
                 <div>
                     <h2 className="text-2xl font-bold">Fila de Espera</h2>
                     <p className="text-muted-foreground">
@@ -201,17 +201,17 @@ export const RealWaitlistManager = ({ salonId }: RealWaitlistManagerProps) => {
                 </div>
                 <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
                     <DialogTrigger asChild>
-                        <Button>
+                        <Button data-tour="advanced-waitlist-add">
                             <Plus className="w-4 h-4 mr-2" />
                             Adicionar à Fila
                         </Button>
                     </DialogTrigger>
-                    <DialogContent>
+                    <DialogContent data-tour="advanced-waitlist-dialog">
                         <DialogHeader>
                             <DialogTitle>Adicionar à Fila de Espera</DialogTitle>
                         </DialogHeader>
                         <div className="space-y-4 mt-4">
-                            <div>
+                            <div data-tour="advanced-waitlist-name">
                                 <Label>Nome do Cliente *</Label>
                                 <Input
                                     value={newEntry.client_name}
@@ -219,7 +219,7 @@ export const RealWaitlistManager = ({ salonId }: RealWaitlistManagerProps) => {
                                     placeholder="Nome completo"
                                 />
                             </div>
-                            <div>
+                            <div data-tour="advanced-waitlist-phone">
                                 <Label>Telefone *</Label>
                                 <Input
                                     value={newEntry.client_phone}
@@ -279,7 +279,7 @@ export const RealWaitlistManager = ({ salonId }: RealWaitlistManagerProps) => {
                                     placeholder="Notas adicionais..."
                                 />
                             </div>
-                            <Button onClick={handleAddToWaitlist} className="w-full">
+                            <Button onClick={handleAddToWaitlist} className="w-full" data-tour="advanced-waitlist-save">
                                 Adicionar à Fila
                             </Button>
                         </div>
@@ -289,7 +289,7 @@ export const RealWaitlistManager = ({ salonId }: RealWaitlistManagerProps) => {
 
             {/* Lista */}
             {waitlist.length === 0 ? (
-                <Card className="glass-card">
+                <Card className="glass-card" data-tour="advanced-waitlist-empty">
                     <CardContent className="p-8 text-center">
                         <Clock className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
                         <h3 className="text-lg font-medium mb-2">Fila de espera vazia</h3>
@@ -299,7 +299,7 @@ export const RealWaitlistManager = ({ salonId }: RealWaitlistManagerProps) => {
                     </CardContent>
                 </Card>
             ) : (
-                <div className="space-y-3">
+                <div className="space-y-3" data-tour="advanced-waitlist-list">
                     <AnimatePresence>
                         {waitlist.map((item, index) => (
                             <motion.div
@@ -320,6 +320,7 @@ export const RealWaitlistManager = ({ salonId }: RealWaitlistManagerProps) => {
                                                         variant="ghost"
                                                         className="h-6 w-6"
                                                         onClick={() => handlePriorityChange(item, 'up')}
+                                                        aria-label="Subir prioridade na fila"
                                                     >
                                                         <ChevronUp className="w-4 h-4" />
                                                     </Button>
@@ -331,6 +332,7 @@ export const RealWaitlistManager = ({ salonId }: RealWaitlistManagerProps) => {
                                                         variant="ghost"
                                                         className="h-6 w-6"
                                                         onClick={() => handlePriorityChange(item, 'down')}
+                                                        aria-label="Descer prioridade na fila"
                                                     >
                                                         <ChevronDown className="w-4 h-4" />
                                                     </Button>
@@ -373,6 +375,7 @@ export const RealWaitlistManager = ({ salonId }: RealWaitlistManagerProps) => {
                                                     <Button
                                                         size="sm"
                                                         variant="outline"
+                                                        data-tour="advanced-waitlist-notify"
                                                         onClick={() => handleNotify(item)}
                                                     >
                                                         <Bell className="w-4 h-4 mr-1" />
@@ -382,6 +385,7 @@ export const RealWaitlistManager = ({ salonId }: RealWaitlistManagerProps) => {
                                                 {(item.status === 'waiting' || item.status === 'notified') && (
                                                     <Button
                                                         size="sm"
+                                                        data-tour="advanced-waitlist-schedule"
                                                         onClick={() => handleSchedule(item)}
                                                     >
                                                         <Check className="w-4 h-4 mr-1" />
@@ -393,6 +397,7 @@ export const RealWaitlistManager = ({ salonId }: RealWaitlistManagerProps) => {
                                                     variant="ghost"
                                                     className="text-destructive hover:text-destructive"
                                                     onClick={() => handleRemove(item)}
+                                                    aria-label="Remover cliente da fila"
                                                 >
                                                     <X className="w-4 h-4" />
                                                 </Button>

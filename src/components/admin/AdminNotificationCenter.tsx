@@ -287,7 +287,7 @@ export function AdminNotificationCenter() {
 
   return (
     <>
-      <Card className="relative">
+      <Card className="relative" data-tour="dashboard-notifications">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2 text-lg">

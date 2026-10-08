@@ -389,7 +389,7 @@ _Você pode cancelar ou reagendar até 2 horas antes do horário._
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-tour="appointments-calendar">
       {/* Header com navegação de data */}
       <Card>
         <CardHeader>
@@ -398,8 +398,8 @@ _Você pode cancelar ou reagendar até 2 horas antes do horário._
               <Calendar className="text-primary" />
               Agenda do Salão
             </CardTitle>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="icon" onClick={handlePreviousDay}>
+            <div className="flex items-center gap-2" data-tour="appointments-calendar-dates">
+              <Button variant="outline" size="icon" onClick={handlePreviousDay} aria-label="Dia anterior">
                 <ChevronLeft size={20} />
               </Button>
               <Button variant="outline" onClick={handleToday}>
@@ -408,7 +408,7 @@ _Você pode cancelar ou reagendar até 2 horas antes do horário._
               <div className="px-4 py-2 bg-muted rounded-lg font-semibold min-w-[200px] text-center">
                 {format(selectedDate, "EEEE, dd 'de' MMMM", { locale: ptBR })}
               </div>
-              <Button variant="outline" size="icon" onClick={handleNextDay}>
+              <Button variant="outline" size="icon" onClick={handleNextDay} aria-label="Próximo dia">
                 <ChevronRight size={20} />
               </Button>
             </div>
@@ -477,7 +477,7 @@ _Você pode cancelar ou reagendar até 2 horas antes do horário._
               </p>
             </div>
           ) : (
-            <div className="space-y-1 max-h-[600px] overflow-y-auto">
+            <div className="space-y-1 max-h-[600px] overflow-y-auto" data-tour="appointments-calendar-slots">
               {timeSlots.map((slot) => (
                 <div
                   key={slot.time}
@@ -496,6 +496,7 @@ _Você pode cancelar ou reagendar até 2 horas antes do horário._
                         variant="ghost"
                         size="sm"
                         onClick={() => openAddModal(slot.time)}
+                        data-tour="appointments-calendar-add"
                         className="w-full justify-start text-green-600 hover:text-green-700 hover:bg-green-500/10"
                       >
                         <Plus size={16} className="mr-2" />
@@ -543,7 +544,7 @@ _Você pode cancelar ou reagendar até 2 horas antes do horário._
 
       {/* Modal de adicionar agendamento */}
       <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md" data-tour="appointments-calendar-dialog">
           <DialogHeader>
             <DialogTitle>Adicionar Agendamento</DialogTitle>
           </DialogHeader>
@@ -557,6 +558,7 @@ _Você pode cancelar ou reagendar até 2 horas antes do horário._
               <Label>Nome do Cliente *</Label>
               <Input
                 placeholder="Nome completo"
+                data-tour="appointments-calendar-client"
                 value={newAppointment.client_name}
                 onChange={(e) => setNewAppointment({ ...newAppointment, client_name: e.target.value })}
               />
@@ -566,6 +568,7 @@ _Você pode cancelar ou reagendar até 2 horas antes do horário._
               <Label>Telefone *</Label>
               <Input
                 placeholder="(00) 00000-0000"
+                data-tour="appointments-calendar-phone"
                 value={newAppointment.client_phone}
                 onChange={(e) => setNewAppointment({ ...newAppointment, client_phone: e.target.value })}
               />
@@ -575,6 +578,7 @@ _Você pode cancelar ou reagendar até 2 horas antes do horário._
               <Label>Serviço *</Label>
               <select
                 className="w-full border rounded-md px-3 py-2 bg-background"
+                data-tour="appointments-calendar-service"
                 value={newAppointment.service_id}
                 onChange={(e) => setNewAppointment({ ...newAppointment, service_id: e.target.value })}
               >
@@ -591,6 +595,7 @@ _Você pode cancelar ou reagendar até 2 horas antes do horário._
               <Label>Profissional *</Label>
               <select
                 className="w-full border rounded-md px-3 py-2 bg-background"
+                data-tour="appointments-calendar-professional"
                 value={newAppointment.professional_id}
                 onChange={(e) => setNewAppointment({ ...newAppointment, professional_id: e.target.value })}
               >
@@ -607,7 +612,7 @@ _Você pode cancelar ou reagendar até 2 horas antes do horário._
             <Button variant="outline" onClick={() => setShowAddModal(false)}>
               Cancelar
             </Button>
-            <Button onClick={handleAddAppointment} disabled={saving}>
+            <Button onClick={handleAddAppointment} disabled={saving} data-tour="appointments-calendar-save">
               {saving ? (
                 <>
                   <Loader2 className="mr-2 animate-spin" size={16} />

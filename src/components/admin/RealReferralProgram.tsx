@@ -135,13 +135,13 @@ export const RealReferralProgram = ({ salonId }: RealReferralProgramProps) => {
     }
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6" data-tour="advanced-referral-panel">
             {/* Card Principal - Código do Cliente */}
             <Card className="glass-card overflow-hidden">
                 {/* Seletor de Cliente */}
                 <div className="p-4 border-b border-border">
                     <Select value={selectedClientId} onValueChange={setSelectedClientId}>
-                        <SelectTrigger>
+                        <SelectTrigger data-tour="advanced-referral-client">
                             <SelectValue placeholder="Selecione um cliente" />
                         </SelectTrigger>
                         <SelectContent>
@@ -189,6 +189,8 @@ export const RealReferralProgram = ({ salonId }: RealReferralProgramProps) => {
                                 </div>
                                 <Button
                                     size="icon"
+                                    data-tour="advanced-referral-copy-code"
+                                    aria-label="Copiar código de indicação"
                                     onClick={copyCode}
                                     className="h-14 w-14"
                                     variant={copied ? "secondary" : "default"}
@@ -201,11 +203,11 @@ export const RealReferralProgram = ({ salonId }: RealReferralProgramProps) => {
                         <div>
                             <label className="text-sm text-muted-foreground">Ou compartilhe o link</label>
                             <div className="flex gap-2 mt-1">
-                                <Button variant="outline" onClick={copyLink} className="flex-1">
+                                <Button data-tour="advanced-referral-copy-link" variant="outline" onClick={copyLink} className="flex-1">
                                     <Copy className="w-4 h-4 mr-2" />
                                     Copiar Link
                                 </Button>
-                                <Button onClick={shareWhatsApp} className="flex-1 bg-green-600 hover:bg-green-700">
+                                <Button data-tour="advanced-referral-whatsapp" onClick={shareWhatsApp} className="flex-1 bg-green-600 hover:bg-green-700">
                                     <Share2 className="w-4 h-4 mr-2" />
                                     WhatsApp
                                 </Button>

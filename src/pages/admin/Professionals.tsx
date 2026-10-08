@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { AdminLayout } from "@/components/layouts/AdminLayout";
+import { TrainingEmptyActions } from "@/features/training/TrainingEmptyActions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Plus, Edit2, Trash2, User, Mail, Phone, Percent } from "lucide-react";
@@ -181,7 +182,7 @@ const Professionals = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between" data-tour="professionals-header">
           <div>
             <h1 className="font-display text-3xl font-bold text-foreground">Profissionais</h1>
             <p className="text-muted-foreground mt-1">Gerencie a equipe do seu salão</p>
@@ -191,12 +192,12 @@ const Professionals = () => {
             if (!open) resetForm();
           }}>
             <DialogTrigger asChild>
-              <Button variant="gold">
+              <Button variant="gold" data-tour="professionals-new-button">
                 <Plus size={18} className="mr-2" />
                 Novo Profissional
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="sm:max-w-md" data-tour="professionals-dialog">
               <DialogHeader>
                 <DialogTitle>
                   {editingProfessional ? "Editar Profissional" : "Novo Profissional"}
@@ -206,7 +207,7 @@ const Professionals = () => {
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
-                <div className="space-y-2">
+                <div className="space-y-2" data-tour="professionals-name">
                   <Label htmlFor="name">Nome *</Label>
                   <Input
                     id="name"
@@ -215,7 +216,7 @@ const Professionals = () => {
                     placeholder="Nome do profissional"
                   />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2" data-tour="professionals-email">
                   <Label htmlFor="email">E-mail</Label>
                   <Input
                     id="email"
@@ -225,7 +226,7 @@ const Professionals = () => {
                     placeholder="email@exemplo.com"
                   />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2" data-tour="professionals-phone">
                   <Label htmlFor="phone">Telefone</Label>
                   <Input
                     id="phone"
@@ -234,7 +235,7 @@ const Professionals = () => {
                     placeholder="(00) 00000-0000"
                   />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2" data-tour="professionals-specialty">
                   <Label htmlFor="specialty">Especialidade</Label>
                   <Input
                     id="specialty"
@@ -243,7 +244,7 @@ const Professionals = () => {
                     placeholder="Ex: Cortes modernos, barba"
                   />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2" data-tour="professionals-commission">
                   <Label htmlFor="commission">Comissão (%)</Label>
                   <Input
                     id="commission"
@@ -260,7 +261,7 @@ const Professionals = () => {
                 <Button variant="outline" onClick={() => setDialogOpen(false)}>
                   Cancelar
                 </Button>
-                <Button variant="gold" onClick={handleSubmit}>
+                <Button variant="gold" onClick={handleSubmit} data-tour="professionals-save">
                   {editingProfessional ? "Salvar" : "Adicionar"}
                 </Button>
               </div>
@@ -269,16 +270,20 @@ const Professionals = () => {
         </div>
 
         {professionals.length === 0 ? (
-          <Card className="glass-card">
+          <Card className="glass-card" data-tour="professionals-empty">
             <CardContent className="flex flex-col items-center justify-center py-12">
               <User size={48} className="text-muted-foreground mb-4" />
               <p className="text-muted-foreground text-center">
                 Nenhum profissional cadastrado ainda
               </p>
+              <p className="text-sm text-muted-foreground text-center mt-2">
+                Cadastre quem atende no salão, com nome, contato e comissão. Depois, os profissionais aparecerão aqui para você consultar e editar.
+              </p>
+              <TrainingEmptyActions tourId="professionals" className="mt-4" />
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3" data-tour="professionals-list">
             {professionals.map((professional) => (
               <Card key={professional.id} className="glass-card">
                 <CardContent className="p-6">
@@ -291,6 +296,8 @@ const Professionals = () => {
                         variant="ghost"
                         size="icon"
                         onClick={() => handleEdit(professional)}
+                        data-tour="professionals-edit"
+                        aria-label="Editar profissional"
                       >
                         <Edit2 size={16} />
                       </Button>
@@ -298,6 +305,8 @@ const Professionals = () => {
                         variant="ghost"
                         size="icon"
                         onClick={() => handleDelete(professional.id)}
+                        data-tour="professionals-delete"
+                        aria-label="Excluir profissional"
                       >
                         <Trash2 size={16} className="text-destructive" />
                       </Button>
@@ -329,7 +338,7 @@ const Professionals = () => {
                       Comissão: {professional.commission_rate}%
                     </div>
                   </div>
-                  <div className="mt-4 pt-4 border-t border-border">
+                  <div className="mt-4 pt-4 border-t border-border" data-tour="professionals-status">
                     <span className={`text-xs font-medium px-2 py-1 rounded-full ${
                       professional.is_active 
                         ? 'bg-success/20 text-success' 

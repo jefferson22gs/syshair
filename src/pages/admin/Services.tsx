@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { AdminLayout } from "@/components/layouts/AdminLayout";
+import { TrainingEmptyActions } from "@/features/training/TrainingEmptyActions";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Plus, Edit2, Trash2, Scissors, Clock, DollarSign } from "lucide-react";
@@ -187,7 +188,7 @@ const Services = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between" data-tour="services-header">
           <div>
             <h1 className="font-display text-3xl font-bold text-foreground">Serviços</h1>
             <p className="text-muted-foreground mt-1">Gerencie os serviços oferecidos</p>
@@ -197,12 +198,12 @@ const Services = () => {
             if (!open) resetForm();
           }}>
             <DialogTrigger asChild>
-              <Button variant="gold">
+              <Button variant="gold" data-tour="services-new-button">
                 <Plus size={18} className="mr-2" />
                 Novo Serviço
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="sm:max-w-md" data-tour="services-dialog">
               <DialogHeader>
                 <DialogTitle>
                   {editingService ? "Editar Serviço" : "Novo Serviço"}
@@ -212,7 +213,7 @@ const Services = () => {
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
-                <div className="space-y-2">
+                <div className="space-y-2" data-tour="services-icon">
                   <Label>Ícone</Label>
                   <div className="flex flex-wrap gap-2">
                     {icons.map((icon) => (
@@ -233,7 +234,7 @@ const Services = () => {
                     ))}
                   </div>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2" data-tour="services-name">
                   <Label htmlFor="name">Nome *</Label>
                   <Input
                     id="name"
@@ -251,7 +252,7 @@ const Services = () => {
                     placeholder="Descreva o serviço..."
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-4" data-tour="services-price-duration">
                   <div className="space-y-2">
                     <Label htmlFor="price">Preço (R$) *</Label>
                     <Input
@@ -280,7 +281,7 @@ const Services = () => {
                 <Button variant="outline" onClick={() => setDialogOpen(false)}>
                   Cancelar
                 </Button>
-                <Button variant="gold" onClick={handleSubmit}>
+                <Button variant="gold" onClick={handleSubmit} data-tour="services-save">
                   {editingService ? "Salvar" : "Adicionar"}
                 </Button>
               </div>
@@ -289,16 +290,20 @@ const Services = () => {
         </div>
 
         {services.length === 0 ? (
-          <Card className="glass-card">
+          <Card className="glass-card" data-tour="services-empty">
             <CardContent className="flex flex-col items-center justify-center py-12">
               <Scissors size={48} className="text-muted-foreground mb-4" />
-              <p className="text-muted-foreground text-center">
+              <p className="font-medium text-foreground text-center">
                 Nenhum serviço cadastrado ainda
               </p>
+              <p className="text-sm text-muted-foreground text-center mt-1 max-w-sm">
+                Cadastre os serviços que seus clientes poderão agendar, com preço e duração.
+              </p>
+              <TrainingEmptyActions tourId="services" className="mt-4" />
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3" data-tour="services-list">
             {services.map((service) => (
               <Card key={service.id} className="glass-card">
                 <CardContent className="p-6">
@@ -311,6 +316,8 @@ const Services = () => {
                         variant="ghost"
                         size="icon"
                         onClick={() => handleEdit(service)}
+                        aria-label="Editar serviço"
+                        data-tour="services-edit"
                       >
                         <Edit2 size={16} />
                       </Button>
@@ -318,6 +325,8 @@ const Services = () => {
                         variant="ghost"
                         size="icon"
                         onClick={() => handleDelete(service.id)}
+                        aria-label="Excluir serviço"
+                        data-tour="services-delete"
                       >
                         <Trash2 size={16} className="text-destructive" />
                       </Button>

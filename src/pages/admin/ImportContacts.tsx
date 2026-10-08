@@ -398,7 +398,7 @@ const ImportContacts = () => {
     return (
         <AdminLayout>
             <div className="space-y-6">
-                <div>
+                <div data-tour="import-contacts-header">
                     <h1 className="font-display text-3xl font-bold text-foreground">
                         Importar Contatos
                     </h1>
@@ -409,9 +409,9 @@ const ImportContacts = () => {
 
                 {/* Import Methods */}
                 {parsedContacts.length === 0 ? (
-                    <div className="grid gap-6 md:grid-cols-3">
+                    <div className="grid gap-6 md:grid-cols-3" data-tour="import-contacts-methods">
                         {/* VCF File Upload */}
-                        <Card className="glass-card hover:border-primary/50 transition-colors cursor-pointer group"
+                        <Card className="glass-card hover:border-primary/50 transition-colors cursor-pointer group" data-tour="import-contacts-vcf"
                             onClick={() => fileInputRef.current?.click()}>
                             <CardHeader>
                                 <CardTitle className="flex items-center gap-2">
@@ -449,7 +449,7 @@ const ImportContacts = () => {
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>
-                                <Button variant="outline" className="w-full" onClick={handleContactPicker}>
+                                <Button variant="outline" className="w-full" onClick={handleContactPicker} data-tour="import-contacts-phone">
                                     <Users size={18} className="mr-2" />
                                     Selecionar Contatos
                                 </Button>
@@ -490,6 +490,7 @@ const ImportContacts = () => {
                                     variant="outline"
                                     className="w-full"
                                     onClick={handleEvolutionImport}
+                                    data-tour="import-contacts-whatsapp"
                                     disabled={loadingEvolution}
                                 >
                                     {loadingEvolution ? (
@@ -505,7 +506,7 @@ const ImportContacts = () => {
                 ) : (
                     <div className="space-y-4">
                         {/* Contact List Header */}
-                        <Card className="glass-card">
+                        <Card className="glass-card" data-tour="import-contacts-preview">
                             <CardHeader>
                                 <div className="flex items-center justify-between">
                                     <div>
@@ -517,7 +518,7 @@ const ImportContacts = () => {
                                             {parsedContacts.length} contatos • {selectedCount} selecionados
                                         </CardDescription>
                                     </div>
-                                    <div className="flex gap-2">
+                                    <div className="flex gap-2" data-tour="import-contacts-selection">
                                         <Button variant="outline" size="sm" onClick={() => toggleAll(true)}>
                                             Selecionar Todos
                                         </Button>
@@ -570,7 +571,7 @@ const ImportContacts = () => {
                         )}
 
                         {importResults && (
-                            <Card className="glass-card">
+                            <Card className="glass-card" data-tour="import-contacts-results">
                                 <CardContent className="py-6">
                                     <div className="flex items-center justify-center gap-8">
                                         <div className="text-center">
@@ -606,6 +607,7 @@ const ImportContacts = () => {
                                     variant="gold"
                                     size="lg"
                                     onClick={importToDatabase}
+                                    data-tour="import-contacts-save"
                                     disabled={selectedCount === 0}
                                 >
                                     <Users size={20} className="mr-2" />

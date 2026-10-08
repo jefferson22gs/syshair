@@ -94,7 +94,7 @@ export const ClientMetricsCard = ({ salonId }: ClientMetricsCardProps) => {
 
   if (loading) {
     return (
-      <Card className="glass-card">
+      <Card className="glass-card" data-tour="dashboard-client-metrics">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <TrendingUp size={20} className="text-primary" />
@@ -114,7 +114,7 @@ export const ClientMetricsCard = ({ salonId }: ClientMetricsCardProps) => {
 
   if (metrics.length === 0) {
     return (
-      <Card className="glass-card">
+      <Card className="glass-card" data-tour="dashboard-client-metrics">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <TrendingUp size={20} className="text-primary" />
@@ -134,7 +134,7 @@ export const ClientMetricsCard = ({ salonId }: ClientMetricsCardProps) => {
   }
 
   return (
-    <Card className="glass-card">
+    <Card className="glass-card" data-tour="dashboard-client-metrics">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <TrendingUp size={20} className="text-primary" />

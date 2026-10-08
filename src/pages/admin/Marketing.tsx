@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { supabase } from "@/integrations/supabase/client";
+import { AdminLayout } from "@/components/layouts/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -386,15 +387,18 @@ const Marketing = () => {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center min-h-screen">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            </div>
+            <AdminLayout>
+                <div className="flex items-center justify-center min-h-[400px]">
+                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                </div>
+            </AdminLayout>
         );
     }
 
     return (
-        <div className="container mx-auto p-6 space-y-6">
-            <div>
+        <AdminLayout>
+        <div className="space-y-6">
+            <div data-tour="marketing-header">
                 <h1 className="text-3xl font-bold text-foreground">Marketing & Notificações</h1>
                 <p className="text-muted-foreground">Envie mensagens para seus clientes</p>
             </div>
@@ -403,7 +407,7 @@ const Marketing = () => {
                 {/* Left: Message Composer */}
                 <div className="lg:col-span-2 space-y-6">
                     {/* Message Type Tabs */}
-                    <Card>
+                    <Card data-tour="marketing-composer">
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
                                 <Megaphone size={20} />
@@ -415,16 +419,16 @@ const Marketing = () => {
                         </CardHeader>
                         <CardContent>
                             <Tabs value={messageType} onValueChange={(v) => setMessageType(v as any)}>
-                                <TabsList className="grid grid-cols-3 mb-4">
-                                    <TabsTrigger value="promotional" className="flex items-center gap-2">
+                                <TabsList className="grid grid-cols-3 mb-4" data-tour="marketing-type-tabs">
+                                    <TabsTrigger value="promotional" className="flex items-center gap-2" data-tour="marketing-promotional-tab">
                                         <Gift size={16} />
                                         Promoção
                                     </TabsTrigger>
-                                    <TabsTrigger value="informative" className="flex items-center gap-2">
+                                    <TabsTrigger value="informative" className="flex items-center gap-2" data-tour="marketing-informative-tab">
                                         <Bell size={16} />
                                         Informativo
                                     </TabsTrigger>
-                                    <TabsTrigger value="coupon" className="flex items-center gap-2">
+                                    <TabsTrigger value="coupon" className="flex items-center gap-2" data-tour="marketing-coupon-tab">
                                         <Gift size={16} />
                                         Cupom
                                     </TabsTrigger>
@@ -432,7 +436,7 @@ const Marketing = () => {
 
                                 <div className="space-y-4">
                                     {/* Templates */}
-                                    <div>
+                                    <div data-tour="marketing-quick-templates">
                                         <Label className="text-sm text-muted-foreground mb-2 block">Templates Rápidos</Label>
                                         <div className="flex flex-wrap gap-2">
                                             {messageTemplates[messageType].map((template, index) => (
@@ -450,7 +454,7 @@ const Marketing = () => {
 
                                     {/* Meus Templates (Banco de Dados) */}
                                     {dbTemplates.length > 0 && (
-                                        <div className="mt-4 pt-4 border-t border-border">
+                                        <div className="mt-4 pt-4 border-t border-border" data-tour="marketing-saved-templates">
                                             <Label className="text-sm text-muted-foreground mb-2 block">Meus Templates Salvos</Label>
                                             <div className="flex flex-wrap gap-2">
                                                 {dbTemplates.map((template) => (
@@ -470,6 +474,7 @@ const Marketing = () => {
                                                             onClick={() => handleDeleteTemplate(template.id)}
                                                             className="p-1 hover:text-destructive transition-colors"
                                                             title="Excluir template"
+                                                            aria-label="Excluir template"
                                                         >
                                                             <Trash2 size={14} />
                                                         </button>
@@ -491,7 +496,7 @@ const Marketing = () => {
                                     </div>
 
                                     {/* Message */}
-                                    <div className="space-y-2">
+                                    <div className="space-y-2" data-tour="marketing-message">
                                         <Label htmlFor="message">Mensagem *</Label>
                                         <textarea
                                             id="message"
@@ -512,6 +517,7 @@ const Marketing = () => {
                                             variant="outline"
                                             size="sm"
                                             onClick={improveWithAI}
+                                            data-tour="marketing-ai-improve"
                                             disabled={isImproving || !message.trim()}
                                             className="text-primary border-primary/20 hover:bg-primary/5"
                                         >
@@ -521,12 +527,12 @@ const Marketing = () => {
 
                                         <Dialog open={showSaveTemplate} onOpenChange={setShowSaveTemplate}>
                                             <DialogTrigger asChild>
-                                                <Button variant="outline" size="sm" disabled={!message.trim()}>
+                                                <Button variant="outline" size="sm" disabled={!message.trim()} data-tour="marketing-save-template">
                                                     <Save className="w-4 h-4 mr-2" />
                                                     Salvar Template
                                                 </Button>
                                             </DialogTrigger>
-                                            <DialogContent>
+                                            <DialogContent data-tour="marketing-template-dialog">
                                                 <DialogHeader>
                                                     <DialogTitle>Salvar Template</DialogTitle>
                                                     <DialogDescription>
@@ -537,6 +543,7 @@ const Marketing = () => {
                                                     <div className="space-y-2">
                                                         <Label>Nome do Template</Label>
                                                         <Input
+                                                            data-tour="marketing-template-name"
                                                             value={newTemplateName}
                                                             onChange={(e) => setNewTemplateName(e.target.value)}
                                                             placeholder="Ex: Lembrete de Agendamento"
@@ -551,14 +558,14 @@ const Marketing = () => {
                                                 </div>
                                                 <DialogFooter>
                                                     <Button variant="ghost" onClick={() => setShowSaveTemplate(false)}>Cancelar</Button>
-                                                    <Button onClick={handleSaveTemplate} disabled={!newTemplateName.trim()}>Salvar</Button>
+                                                    <Button data-tour="marketing-template-save" onClick={handleSaveTemplate} disabled={!newTemplateName.trim()}>Salvar</Button>
                                                 </DialogFooter>
                                             </DialogContent>
                                         </Dialog>
                                     </div>
 
                                     {/* Send Via */}
-                                    <div className="space-y-2">
+                                    <div className="space-y-2" data-tour="marketing-channels">
                                         <Label>Enviar via</Label>
                                         <div className="flex gap-4">
                                             <label className="flex items-center gap-2 cursor-pointer">
@@ -593,6 +600,7 @@ const Marketing = () => {
                     {/* Send Button */}
                     <Button
                         onClick={handleSendNotification}
+                        data-tour="marketing-send"
                         disabled={sending || selectedClients.length === 0 || !message.trim()}
                         className="w-full py-6 text-lg"
                         size="lg"
@@ -613,7 +621,7 @@ const Marketing = () => {
 
                 {/* Right: Client Selection */}
                 <div>
-                    <Card className="h-fit">
+                    <Card className="h-fit" data-tour="marketing-clients">
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
                                 <Users size={20} />
@@ -625,7 +633,7 @@ const Marketing = () => {
                         </CardHeader>
                         <CardContent className="space-y-4">
                             {/* Select All */}
-                            <label className="flex items-center gap-2 p-3 bg-secondary/50 rounded-lg cursor-pointer hover:bg-secondary transition-colors">
+                            <label className="flex items-center gap-2 p-3 bg-secondary/50 rounded-lg cursor-pointer hover:bg-secondary transition-colors" data-tour="marketing-select-all">
                                 <Checkbox
                                     checked={selectAll}
                                     onCheckedChange={(checked) => handleSelectAll(!!checked)}
@@ -684,6 +692,7 @@ const Marketing = () => {
                 </div>
             </div>
         </div>
+        </AdminLayout>
     );
 };
 
