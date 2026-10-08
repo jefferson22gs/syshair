@@ -12,6 +12,7 @@ import { NotificationPrompt } from "@/components/pwa/NotificationPrompt";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { SubscriptionProvider } from "@/hooks/useSubscription";
 import { TrialWarningBanner } from "@/components/subscription/Paywall";
+import { TrainingProvider } from "@/features/training/TrainingProvider";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -52,6 +53,9 @@ const StatusScheduler = lazy(() => import("./pages/admin/StatusScheduler"));
 const WhatsAppConnection = lazy(() => import("./pages/admin/WhatsAppConnection"));
 const BroadcastMessages = lazy(() => import("./pages/admin/BroadcastMessages"));
 const ImportContacts = lazy(() => import("./pages/admin/ImportContacts"));
+const ExportContacts = lazy(() => import("./pages/admin/ExportContacts"));
+const TrainingCenter = lazy(() => import("./features/training/pages/TrainingCenter"));
+const TrainingArticle = lazy(() => import("./features/training/pages/TrainingArticle"));
 
 // Lazy loaded Professional Pages
 const ProfessionalDashboard = lazy(() => import("./pages/professional/ProfessionalDashboard"));
@@ -76,6 +80,7 @@ const App = () => (
         <AuthProvider>
           <SubscriptionProvider>
             <TrialWarningBanner />
+            <TrainingProvider>
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/login" element={<Login />} />
@@ -271,6 +276,27 @@ const App = () => (
                   </Suspense>
                 </ProtectedRoute>
               } />
+              <Route path="/admin/export-contacts" element={
+                <ProtectedRoute requiredRole="admin">
+                  <Suspense fallback={<LoadingScreen />}>
+                    <ExportContacts />
+                  </Suspense>
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/training" element={
+                <ProtectedRoute requiredRole="admin">
+                  <Suspense fallback={<LoadingScreen />}>
+                    <TrainingCenter />
+                  </Suspense>
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/training/:articleId" element={
+                <ProtectedRoute requiredRole="admin">
+                  <Suspense fallback={<LoadingScreen />}>
+                    <TrainingArticle />
+                  </Suspense>
+                </ProtectedRoute>
+              } />
 
               {/* Professional Routes */}
               <Route path="/professional" element={
@@ -292,6 +318,7 @@ const App = () => (
 
               <Route path="*" element={<NotFound />} />
             </Routes>
+            </TrainingProvider>
           </SubscriptionProvider>
         </AuthProvider>
       </BrowserRouter>

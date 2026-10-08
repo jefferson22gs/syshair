@@ -46,6 +46,9 @@ import {
   Upload
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { GraduationCap } from "lucide-react";
+import { HelpButton } from "@/features/training/HelpButton";
+import { LAYOUT_IDS, sidebarId } from "@/features/training/tourIds";
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -74,6 +77,7 @@ const menuItems = [
   { icon: Crown, label: "Minha Assinatura", path: "/admin/subscription", shortLabel: "Assinatura" },
   { icon: Megaphone, label: "Marketing", path: "/admin/marketing", shortLabel: "Marketing" },
   { icon: Settings, label: "Configurações", path: "/admin/settings", shortLabel: "Config" },
+  { icon: GraduationCap, label: "Central de Treinamento", path: "/admin/training", shortLabel: "Ajuda" },
 ];
 
 // Bottom navigation items (mobile only) - most used features
@@ -171,6 +175,7 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
           <div className="p-4">
             <button
               onClick={() => navigate('/admin/settings')}
+              data-tour={LAYOUT_IDS.salonSelector}
               className="w-full flex items-center justify-between p-3 rounded-xl bg-sidebar-accent hover:bg-sidebar-accent/80 transition-colors touch-target"
             >
               <div className="flex items-center gap-3">
@@ -199,13 +204,15 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
           )}
 
           {/* Navigation */}
-          <nav className="flex-1 px-3 py-2 overflow-y-auto momentum-scroll">
+          <nav className="flex-1 px-3 py-2 overflow-y-auto momentum-scroll" data-tour={LAYOUT_IDS.sidebar}>
             <ul className="space-y-1">
               {menuItems.map((item) => {
                 const isActive = location.pathname === item.path;
                 return (
                   <li key={item.label}>
                     <button
+                      data-tour={sidebarId(item.path)}
+                      aria-current={isActive ? "page" : undefined}
                       onClick={() => {
                         navigate(item.path);
                         setSidebarOpen(false);
@@ -249,6 +256,7 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
                 onClick={() => setSidebarOpen(true)}
                 className="lg:hidden p-2 text-foreground touch-target -ml-2"
                 aria-label="Abrir menu"
+                data-tour={LAYOUT_IDS.menuButton}
               >
                 <Menu size={24} />
               </button>
@@ -260,6 +268,7 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
             </div>
 
             <div className="flex items-center gap-2 sm:gap-3">
+              <HelpButton />
               <ThemeSelector />
 
               {/* Indicador de Notificações em Tempo Real */}
@@ -270,7 +279,9 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
                 </div>
               )}
 
-              <NotificationBell />
+              <div data-tour={LAYOUT_IDS.notifications}>
+                <NotificationBell />
+              </div>
               <div className="hidden sm:flex w-10 h-10 rounded-full bg-gradient-to-br from-primary to-gold-light items-center justify-center text-primary-foreground font-bold">
                 {displayName.charAt(0).toUpperCase()}
               </div>
@@ -288,7 +299,7 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
       </div>
 
       {/* Bottom Navigation - Mobile Only */}
-      <nav className="bottom-nav lg:hidden">
+      <nav className="bottom-nav lg:hidden" data-tour={LAYOUT_IDS.bottomNav}>
         <div className="flex items-center justify-around h-16">
           {bottomNavItems.map((item) => {
             const isActive = item.path !== "menu" && location.pathname === item.path;
@@ -297,6 +308,7 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
             return (
               <button
                 key={item.label}
+                data-tour={isMenu ? LAYOUT_IDS.bottomMenu : `bottom-${sidebarId(item.path)}`}
                 onClick={() => handleBottomNavClick(item.path)}
                 className={cn(
                   "flex flex-col items-center justify-center gap-1 px-3 py-2 min-w-[60px] touch-target",

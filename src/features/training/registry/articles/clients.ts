@@ -1,0 +1,66 @@
+import type { Article } from "../../types";
+
+export const clientsArticles: Article[] = [
+  {
+    id: "clients-register-customer",
+    version: 1,
+    title: "Como cadastrar um cliente",
+    summary: "Salve nome, contato e observações importantes do cliente.",
+    category: "clients",
+    difficulty: "fácil",
+    minutes: 4,
+    route: "/admin/clients",
+    tourId: "clients",
+    steps: [
+      {
+        text: "Abra Clientes e clique em Novo Cliente.",
+        image: { src: "/training/clients/new-button.webp", alt: "Botão Novo Cliente", pending: true },
+      },
+      { text: "Preencha o nome. Este é o único campo obrigatório." },
+      { text: "Informe telefone e e-mail quando tiver. O telefone ajuda no contato pelo WhatsApp." },
+      { text: "Use observações para preferências, alergias, cor usada ou qualquer cuidado importante." },
+      { text: "Clique em Adicionar para salvar. Se estiver só testando, cancele." },
+    ],
+    keywords: ["cliente", "cadastro", "telefone", "contato", "observação", "preferência"],
+  },
+  {
+    id: "clients-find-and-edit",
+    version: 1,
+    title: "Como encontrar e editar clientes",
+    summary: "Use busca e cartões para manter os dados em dia.",
+    category: "clients",
+    difficulty: "fácil",
+    minutes: 3,
+    route: "/admin/clients",
+    tourId: "clients",
+    steps: [
+      {
+        text: "Use a busca para procurar por nome, e-mail ou telefone.",
+        image: { src: "/training/clients/search.webp", alt: "Campo de busca de clientes", pending: true },
+      },
+      { text: "Quando encontrar o cartão do cliente, clique no lápis para editar." },
+      { text: "Ajuste os dados e salve. Isso ajuda a evitar telefone errado e informação antiga." },
+      { text: "Use excluir só quando tiver certeza. Cliente excluído sai da lista." },
+    ],
+    notes: ["Visitas e gastos são atualizados por outros fluxos de agendamento e atendimento, não por edição manual nesta tela."],
+    keywords: ["buscar cliente", "editar cliente", "apagar cliente", "telefone errado", "histórico"],
+  },
+  {
+    id: "clients-import-export",
+    version: 1,
+    title: "Como trazer ou baixar contatos de clientes",
+    summary: "Use importação para entrar com vários contatos e exportação para baixar sua lista.",
+    category: "clients",
+    difficulty: "fácil",
+    minutes: 4,
+    route: "/admin/clients",
+    tourId: "clients",
+    steps: [
+      { text: "Para trazer contatos para o SysHair, abra Importar Contatos no menu." },
+      { text: "Para baixar os contatos cadastrados, clique em Exportar na tela Clientes." },
+      { text: "Use VCF quando quiser trabalhar com contatos de celular. Use CSV quando quiser uma planilha." },
+      { text: "Depois de importar, volte em Clientes para conferir nomes e telefones." },
+    ],
+    keywords: ["importar", "exportar", "contatos", "celular", "planilha", "vcf", "csv"],
+  },
+];

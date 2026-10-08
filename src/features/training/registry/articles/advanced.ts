@@ -1,0 +1,98 @@
+import type { Article } from "../../types";
+
+export const advancedArticles: Article[] = [
+  {
+    id: "advanced-overview", version: 1, title: "Como escolher uma ferramenta avançada",
+    summary: "Conheça as seis abas e seus limites antes de usá-las.", category: "advanced", difficulty: "avançado", minutes: 3,
+    route: "/admin/advanced", tourId: "advanced",
+    steps: [
+      { text: "Abra Recursos Avançados pelo menu. As abas são BI & IA, Fidelidade, Fila de Espera, Indicações, Lookbook e Metas.", image: { src: "/training/advanced/tabs.webp", alt: "Abas dos recursos avançados", pending: true } },
+      { text: "Use BI para consultar histórico; Fidelidade para consultar pontos; Fila de Espera para organizar interessados em vagas." },
+      { text: "Indicações mostra códigos e registros; Metas acompanha objetivos. Lookbook é uma vitrine de exemplos, diferente da Galeria com trabalhos reais." },
+      { text: "Leia o guia de cada aba antes de alterar dados ou prometer benefícios ao cliente." },
+    ],
+    notes: ["Abrir Metas pode atualizar progresso e status no banco. Abrir Indicações pode criar automaticamente um código para o primeiro cliente.", "BI mistura histórico real com estimativas simples e números ilustrativos; Lookbook usa dados de exemplo."],
+    keywords: ["avançado", "abas", "ferramentas", "metas", "fila", "pontos", "indicação"],
+  },
+  {
+    id: "advanced-bi-read", version: 1, title: "Como interpretar BI & IA sem confundir estimativas com resultados",
+    summary: "Separe histórico do salão de previsão simples e sugestões ilustrativas.", category: "advanced", difficulty: "avançado", minutes: 5,
+    route: "/admin/advanced", tourId: "advanced-bi",
+    steps: [
+      { text: "Abra BI & IA e escolha Previsões. O realizado soma o total dos agendamentos concluídos dos quatro meses mostrados.", image: { src: "/training/advanced/bi-forecast.webp", alt: "Faturamento realizado e previsão simples", pending: true } },
+      { text: "A projeção dos próximos três meses parte do mês atual e aplica crescimento fixo de 5% ao mês quando há receita. Não é uma previsão de uma IA treinada." },
+      { text: "A conclusão por horário compara concluídos com agendamentos dos últimos 30 dias, entre 8h e 19h. Uma taxa alta não prova lucro maior ou agenda cheia." },
+      { text: "Risco de Churn aponta clientes sem retorno com base em dias desde a última visita. Examina até 100 clientes e mostra até cinco; Executar Ação não envia mensagem nem cria cupom." },
+      { text: "Cross-Sell sugere produtos junto aos serviços. Use só como inspiração e confira seus cadastros e preços antes de oferecer qualquer combinação." },
+    ],
+    notes: ["Executar Ação está sem função ligada.", "As chances de Cross-Sell usam Math.random, ou seja, números sorteados. O acréscimo sugerido usa preço do produto quando existe; sem produto, pode ser sorteado. As combinações não são aprendidas do histórico de compras.", "Lista de risco vazia não comprova ausência de clientes que deixaram de voltar."],
+    keywords: ["BI", "IA", "previsão", "faturamento", "risco", "cliente sumiu", "venda cruzada", "produto"],
+  },
+  {
+    id: "advanced-loyalty-points", version: 1, title: "Como consultar pontos e conceder um bônus de fidelidade",
+    summary: "Confira o cliente e entenda que os bônus alteram seu saldo de verdade.", category: "advanced", difficulty: "médio", minutes: 3,
+    route: "/admin/advanced", tourId: "advanced-loyalty",
+    steps: [
+      { text: "Abra Fidelidade e confira o cliente selecionado. A tela escolhe o primeiro cliente ao carregar." },
+      { text: "Veja pontos acumulados, nível, desconto mostrado e progresso para o próximo nível.", image: { src: "/training/advanced/loyalty-client.webp", alt: "Cliente selecionado e saldo de fidelidade", pending: true } },
+      { text: "Se decidiu conceder um bônus, confirme o nome antes de usar +100 pts ou +50 pts. Cada clique grava pontos; não existe confirmação adicional." },
+      { text: "Confira novamente o saldo e o resumo. Combine as regras do programa com o salão antes de prometer brindes ou descontos." },
+    ],
+    notes: ["Os benefícios exibidos incluem textos padrão quando não há níveis cadastrados. O cartão não comprova entrega automática de brindes, prioridade ou desconto.", "Esta aba não oferece edição das regras nem botão de resgate; os botões visíveis apenas concedem bônus manuais."],
+    keywords: ["fidelidade", "pontos", "bônus", "desconto", "cliente", "nível"],
+  },
+  {
+    id: "advanced-waitlist-use", version: 1, title: "Como organizar a fila de espera sem perder uma reserva",
+    summary: "Cadastre interessados e faça contato e agendamento fora dos botões de status.", category: "advanced", difficulty: "médio", minutes: 4,
+    route: "/admin/advanced", tourId: "advanced-waitlist",
+    steps: [
+      { text: "Abra Fila de Espera e clique em Adicionar à Fila. Informe nome e telefone; os demais campos são opcionais.", image: { src: "/training/advanced/waitlist-dialog.webp", alt: "Cadastro de interessado na fila de espera", pending: true } },
+      { text: "Preencha serviço, profissional, data preferida e observações se necessário. Adicionar à Fila salva o interessado, sem reservar horário." },
+      { text: "Use as setas para mudar prioridade. A lista mostra quem aguarda ou foi marcado como notificado, ordenado por prioridade e chegada." },
+      { text: "Faça o contato com o cliente por um canal real. Notificar apenas marca o registro como Notificado; não manda mensagem." },
+      { text: "Combine o horário e crie o atendimento na Agenda. Só depois use Agendar na fila para marcar o status; o cliente sai da lista, mas esse botão não cria atendimento." },
+    ],
+    notes: ["Notificar e Agendar apenas atualizam status e data do registro da fila. Não há envio de mensagem nem criação de agendamento nesses botões.", "Remover marca Cancelado, sem confirmação, e tira o registro da lista visível."],
+    keywords: ["fila", "espera", "vaga", "encaixe", "notificar", "agendar", "telefone"],
+  },
+  {
+    id: "advanced-referral-limits", version: 1, title: "Como consultar códigos de indicação com os cuidados desta versão",
+    summary: "Veja códigos e registros sem prometer links ou descontos automáticos incompletos.", category: "advanced", difficulty: "avançado", minutes: 4,
+    route: "/admin/advanced", tourId: "advanced-referral",
+    steps: [
+      { text: "Antes de abrir Indicações, saiba que a tela seleciona o primeiro cliente e cria um código se ele ainda não tiver. Trocar o cliente também pode criar seu código." },
+      { text: "Confira o cliente no seletor e consulte o código. O botão ao lado copia somente esse código.", image: { src: "/training/advanced/referral-code.webp", alt: "Cliente selecionado e código de indicação", pending: true } },
+      { text: "Consulte as indicações do cliente, os totais e o ranking. Eles mostram registros existentes, não comprovam descontos aplicados." },
+      { text: "Não divulgue Copiar Link nesta versão: ele monta /ref/ seguido do código, mas falta a página de destino. WhatsApp abre um texto para revisão e envio manual, com esse mesmo link e promessa de desconto." },
+    ],
+    notes: ["A criação de código grava no banco ao abrir a aba ou selecionar um cliente sem código.", "A rota /ref/:code não está registrada. As páginas de agendamento lidas não integram o uso desses códigos; a aplicação automática dos descontos anunciados não está confirmada.", "15% e 10% são textos fixos da tela, não uma garantia de benefício configurado e aplicado."],
+    keywords: ["indicação", "indique", "amigo", "código", "link", "WhatsApp", "desconto"],
+  },
+  {
+    id: "advanced-lookbook-demo", version: 1, title: "Como conhecer o Lookbook demonstrativo",
+    summary: "Explore o comparador de fotos de exemplo e identifique botões sem função.", category: "advanced", difficulty: "fácil", minutes: 2,
+    route: "/admin/advanced", tourId: "advanced-lookbook",
+    steps: [
+      { text: "Abra Lookbook. Os três trabalhos mostrados são exemplos, com imagens externas, nomes, valores e contagens fictícios." },
+      { text: "Clique em uma foto para abrir os detalhes. Passe o mouse ou o dedo sobre a imagem para comparar antes e depois.", image: { src: "/training/advanced/lookbook-detail.webp", alt: "Comparador antes e depois do Lookbook demonstrativo", pending: true } },
+      { text: "Não use Novo Post, comentar, compartilhar, Agendar agora ou Ver perfil como funções prontas: esses botões não têm ação ligada." },
+      { text: "Para registrar fotos de seus clientes, abra Galeria no menu. O Lookbook não carrega esses registros." },
+    ],
+    notes: ["Lookbook usa mockPosts, não os dados do salão. Curtidas só alteram o estado da tela, sem salvar ou publicar."],
+    keywords: ["Lookbook", "vitrine", "fotos", "antes depois", "post", "exemplo", "galeria"],
+  },
+  {
+    id: "advanced-goals-create", version: 1, title: "Como criar uma meta e acompanhar seu progresso",
+    summary: "Defina tipo, alvo e período sabendo que abrir a aba pode atualizar metas existentes.", category: "advanced", difficulty: "médio", minutes: 4,
+    route: "/admin/advanced", tourId: "advanced-goals",
+    steps: [
+      { text: "Abra Metas com cuidado: o carregamento recalcula as metas ativas e pode gravar progresso ou alterar o status." },
+      { text: "Clique em Nova Meta. Escolha Faturamento, Agendamentos, Novos Clientes ou Avaliação Média; dê um nome e informe um alvo positivo.", image: { src: "/training/advanced/goals-dialog.webp", alt: "Formulário de nova meta", pending: true } },
+      { text: "Escolha o período, de diário a anual. O sistema usa as datas do período atual, não datas escolhidas livremente." },
+      { text: "Quando decidir, clique em Criar Meta. Consulte valor atual, alvo e progresso nas metas ativas; concluídas ou não atingidas ficam no histórico." },
+      { text: "Só use a lixeira se realmente quiser excluir a meta. Ela exclui diretamente, sem confirmação." },
+    ],
+    notes: ["Abrir a aba não é apenas consulta: recalculateGoals pode escrever no banco e encerrar metas vencidas.", "O cálculo depende dos dados registrados. Faturamento usa total_price de concluídos; agendamentos conta status scheduled e completed. Não confunda esses resultados com todos os estados da Agenda.", "Para avaliação média, prefira alvo entre 1 e 5; o formulário não impõe essa faixa."],
+    keywords: ["meta", "objetivo", "alvo", "faturamento", "progresso", "período", "resultado"],
+  },
+];

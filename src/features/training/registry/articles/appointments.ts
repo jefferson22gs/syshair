@@ -1,0 +1,73 @@
+import type { Article } from "../../types";
+
+export const appointmentsArticles: Article[] = [
+  {
+    id: "appointments-manage-day",
+    version: 1,
+    title: "Como acompanhar os agendamentos do dia",
+    summary: "Veja quem está marcado, em qual horário e com qual status.",
+    category: "agenda",
+    difficulty: "fácil",
+    minutes: 4,
+    route: "/admin/appointments",
+    tourId: "appointments",
+    steps: [
+      {
+        text: "Abra Agendamentos no menu. A tela mostra a lista do dia selecionado.",
+        image: { src: "/training/appointments/list.webp", alt: "Lista de agendamentos do dia", pending: true },
+      },
+      { text: "Use as setas ou o campo de data para trocar o dia. Assim você confere ontem, hoje ou os próximos dias." },
+      { text: "Leia cada cartão: horário, cliente, serviço, profissional, status e valor ficam juntos." },
+      { text: "Use os três pontinhos do cartão para mudar o status quando o atendimento avançar." },
+      { text: "Se a lista estiver vazia, não há agendamento naquela data. Você pode criar um novo pelo botão no topo." },
+    ],
+    notes: ["Mudar status pode enviar uma notificação de avaliação quando o atendimento for marcado como concluído."],
+    keywords: ["agenda", "horário", "agendamento", "status", "confirmado", "cancelado", "cliente"],
+  },
+  {
+    id: "appointments-create-new",
+    version: 1,
+    title: "Como criar um agendamento manual",
+    summary: "Cadastre um horário pelo painel quando o cliente pedir pelo telefone ou balcão.",
+    category: "agenda",
+    difficulty: "fácil",
+    minutes: 5,
+    route: "/admin/appointments",
+    tourId: "appointments-new",
+    steps: [
+      {
+        text: "Clique em Novo Agendamento. O formulário abre por cima da agenda.",
+        image: { src: "/training/appointments/new-dialog.webp", alt: "Formulário de novo agendamento", pending: true },
+      },
+      { text: "Informe o nome do cliente. Se tiver o telefone, preencha também para facilitar o contato." },
+      { text: "Escolha o serviço. O sistema usa a duração do serviço para calcular o horário final." },
+      { text: "Escolha o profissional que vai atender. Se não aparecer ninguém, cadastre a equipe primeiro." },
+      { text: "Confira data e horário. Só salve quando tudo estiver certo." },
+      { text: "Clique em Criar. O agendamento aparece na lista da data escolhida." },
+    ],
+    keywords: ["criar agendamento", "marcar horário", "novo horário", "cliente", "serviço", "profissional"],
+  },
+  {
+    id: "appointments-calendar-view",
+    version: 1,
+    title: "Como usar a agenda completa",
+    summary: "Veja horários livres e ocupados em formato de grade.",
+    category: "agenda",
+    difficulty: "fácil",
+    minutes: 4,
+    route: "/admin/appointments",
+    tourId: "appointments",
+    steps: [
+      { text: "Abra a aba Agenda Completa. Ela mostra os horários do dia em sequência." },
+      {
+        text: "Use Hoje ou as setas para trocar de dia sem sair da tela.",
+        image: { src: "/training/appointments/calendar.webp", alt: "Agenda completa com horários do dia", pending: true },
+      },
+      { text: "Horários vagos aparecem como disponíveis. Clique em um horário livre quando quiser agendar alguém." },
+      { text: "Horários ocupados mostram cliente, serviço, profissional, telefone e duração." },
+      { text: "Se o salão aparecer fechado, confira os horários de funcionamento nas configurações." },
+    ],
+    notes: ["Criar pela agenda completa também pode tentar enviar confirmação pelo WhatsApp se a conexão estiver disponível."],
+    keywords: ["agenda completa", "horários vagos", "horário livre", "grade", "encaixe"],
+  },
+];
