@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "training:demo": "vite --config vite.config.training.ts --mode training",
+    "training:check": "node scripts/training-check.cjs",
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
