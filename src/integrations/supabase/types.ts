@@ -1485,6 +1485,59 @@ export type Database = {
           },
         ]
       }
+      user_training_progress: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          current_step: number
+          id: string
+          item_key: string
+          item_version: number
+          kind: string
+          metadata: Json
+          salon_id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          current_step?: number
+          id?: string
+          item_key: string
+          item_version?: number
+          kind: string
+          metadata?: Json
+          salon_id: string
+          status: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          current_step?: number
+          id?: string
+          item_key?: string
+          item_version?: number
+          kind?: string
+          metadata?: Json
+          salon_id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_training_progress_salon_id_fkey"
+            columns: ["salon_id"]
+            isOneToOne: false
+            referencedRelation: "salons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
