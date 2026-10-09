@@ -72,8 +72,10 @@ function useCurrentSalonId(userId: string | undefined, enabled: boolean, pathnam
 export function TrainingProvider({ children }: { children: ReactNode }) {
   const { user, isAdmin, loading } = useAuth();
   const location = useLocation();
-  const isAdminArea = /^\/admin(?:\/|$)/.test(location.pathname) && Boolean(user) && isAdmin && !loading;
-  const { data: salonId = null } = useCurrentSalonId(user?.id, isAdminArea, location.pathname);
+  const onAdminPath = /^\/admin(?:\/|$)/.test(location.pathname) && Boolean(user) && !loading;
+  const { data: salonId = null } = useCurrentSalonId(user?.id, onAdminPath, location.pathname);
+  // Dono do salão também administra: contas antigas ficaram com papel "client" mesmo sendo donas.
+  const isAdminArea = onAdminPath && (isAdmin || Boolean(salonId));
   const progress = useTrainingProgress(isAdminArea ? user?.id : undefined, salonId);
   const { save } = progress;
   const [active, setActive] = useState<ActiveTourState | null>(null);

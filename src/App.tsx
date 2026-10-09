@@ -277,21 +277,21 @@ const App = () => (
                 </ProtectedRoute>
               } />
               <Route path="/admin/export-contacts" element={
-                <ProtectedRoute requiredRole="admin">
+                <ProtectedRoute>
                   <Suspense fallback={<LoadingScreen />}>
                     <ExportContacts />
                   </Suspense>
                 </ProtectedRoute>
               } />
               <Route path="/admin/training" element={
-                <ProtectedRoute requiredRole="admin">
+                <ProtectedRoute>
                   <Suspense fallback={<LoadingScreen />}>
                     <TrainingCenter />
                   </Suspense>
                 </ProtectedRoute>
               } />
               <Route path="/admin/training/:articleId" element={
-                <ProtectedRoute requiredRole="admin">
+                <ProtectedRoute>
                   <Suspense fallback={<LoadingScreen />}>
                     <TrainingArticle />
                   </Suspense>
