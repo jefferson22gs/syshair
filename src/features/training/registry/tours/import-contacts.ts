@@ -26,7 +26,7 @@ export const importContactsTour: TourDef = {
     {
       target: "import-contacts-whatsapp",
       title: "WhatsApp",
-      body: "Esta opção busca contatos de uma conexão Evolution configurada aqui. Use apenas se você souber esses dados de conexão.",
+      body: "Esta opção busca contatos do WhatsApp conectado ao salão. Você não precisa informar chaves ou dados técnicos aqui.",
     },
     {
       target: "import-contacts-preview",

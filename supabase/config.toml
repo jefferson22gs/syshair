@@ -40,11 +40,16 @@ enable_signup = false
 [functions.generate-image-caption]
 verify_jwt = false
 
+# JWT do usuário é validado internamente via Auth getUser; vínculo do salão no servidor.
 [functions.whatsapp-instances]
 verify_jwt = false
 
+# Webhook valida segredo privado por instância; não recebe JWT Supabase do provedor.
 [functions.evolution-webhook]
 verify_jwt = false
+
+[functions.whatsapp-dispatch]
+verify_jwt = true
 
 [functions.broadcast-messages]
 verify_jwt = false

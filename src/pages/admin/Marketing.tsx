@@ -1,3 +1,4 @@
+import { normalizePhone } from "@/features/whatsapp/contacts/phone";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
@@ -206,99 +207,24 @@ const Marketing = () => {
             return;
         }
 
+        if (!window.confirm(`Confirmar envio para ${selectedClients.length} clientes selecionados? Envie marketing somente a quem autorizou.`)) return;
         setSending(true);
 
         try {
             const selectedClientData = clients.filter(c => selectedClients.includes(c.id));
 
             if (sendVia.whatsapp) {
-                // Try to send via Evolution API (connected WhatsApp instance)
-                try {
-                    // Get WhatsApp instance for this salon
-                    const { data: whatsappInstance } = await supabase
-                        .from('whatsapp_instances')
-                        .select('instance_name, status')
-                        .eq('salon_id', salon?.id)
-                        .eq('status', 'connected')
-                        .maybeSingle();
-
-                    if (whatsappInstance) {
-                        // Send via Evolution API in bulk
-                        const phones: string[] = [];
-                        const personalizedMessages: string[] = [];
-
-                        for (const client of selectedClientData) {
-                            if (client.phone) {
-                                phones.push(client.phone);
-                                personalizedMessages.push(
-                                    message.replace('{nome}', client.name.split(' ')[0])
-                                );
-                            }
-                        }
-
-                        if (phones.length > 0) {
-                            const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-                            const SUPABASE_ANON_KEY_LOCAL = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-                            const session = (await supabase.auth.getSession()).data.session;
-                            const authToken = session?.access_token || SUPABASE_ANON_KEY_LOCAL;
-
-                            const response = await fetch(`${SUPABASE_URL}/functions/v1/whatsapp-instances`, {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'Authorization': `Bearer ${authToken}`,
-                                },
-                                body: JSON.stringify({
-                                    action: 'sendBulk',
-                                    instanceName: whatsappInstance.instance_name,
-                                    phones: phones,
-                                    messages: personalizedMessages,
-                                }),
-                            });
-
-                            const result = await response.json();
-
-                            if (result.success) {
-                                toast.success(
-                                    `✅ ${result.sent} mensagem(ns) enviada(s) com sucesso!`,
-                                    {
-                                        description: result.failed > 0
-                                            ? `${result.failed} falharam. Verifique se os números estão corretos.`
-                                            : 'Todas as mensagens foram entregues.',
-                                    }
-                                );
-                            } else {
-                                throw new Error(result.error || 'Erro ao enviar mensagens');
-                            }
-                        }
-                    } else {
-                        // Fallback: open wa.me links (limited by browser popup blocking)
-                        let openedCount = 0;
-                        for (const client of selectedClientData) {
-                            if (client.phone) {
-                                const phone = client.phone.replace(/\D/g, '');
-                                const personalizedMessage = message.replace('{nome}', client.name.split(' ')[0]);
-                                const whatsappUrl = `https://wa.me/55${phone}?text=${encodeURIComponent(personalizedMessage)}`;
-
-                                window.open(whatsappUrl, '_blank');
-                                openedCount++;
-
-                                await new Promise(resolve => setTimeout(resolve, 500));
-                            }
-                        }
-
-                        toast.info(
-                            `⚠️ WhatsApp não conectado na plataforma`,
-                            {
-                                description: `${openedCount} link(s) aberto(s) no navegador. Para envio automático, conecte seu WhatsApp na aba "WhatsApp".`,
-                            }
-                        );
-                    }
-                } catch (whatsappError: any) {
-                    console.error('WhatsApp send error:', whatsappError);
-                    toast.error("Erro ao enviar via WhatsApp: " + (whatsappError.message || whatsappError));
-                }
+                const recipients = selectedClientData.filter(c => c.phone).map(c => {
+                    const phone = normalizePhone(c.phone!);
+                    if (!phone) throw new Error('Há telefone inválido na seleção. Confira antes de enviar.');
+                    return { phone, name: c.name };
+                });
+                const { data, error } = await supabase.functions.invoke('broadcast-messages-v2', { body: {
+                    action: 'create_broadcast', salonId: salon?.id, message,
+                    recipients, submissionId: crypto.randomUUID(), confirmed: true, consentAcknowledged: true,
+                }});
+                if (error || !data?.success) throw new Error('Não foi possível registrar a campanha. Confira a conexão WhatsApp.');
+                toast.success('Campanha registrada na fila.', { description: 'Acompanhe os envios no Disparador. Isso não confirma entrega.' });
             }
 
             if (sendVia.push) {
@@ -347,15 +273,6 @@ const Marketing = () => {
                     toast.error("Erro ao enviar push: " + (pushError.message || pushError));
                 }
             }
-
-            // Log the notification attempt (could save to database for history)
-            console.log("Notification sent:", {
-                type: messageType,
-                title,
-                message,
-                clientsCount: selectedClientData.length,
-                channels: sendVia
-            });
 
         } catch (error: any) {
             console.error("Error:", error);

@@ -213,12 +213,6 @@ const SalonSettings = () => {
 
         if (error) throw error;
 
-        // Update user role to admin
-        await supabase
-          .from('user_roles')
-          .update({ role: 'admin', salon_id: data.id })
-          .eq('user_id', user.id);
-
         setSalon({ ...salon, id: data.id });
         setIsNew(false);
         toast.success("Salão criado com sucesso!");

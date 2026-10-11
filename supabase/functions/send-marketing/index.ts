@@ -1,3 +1,4 @@
+import { authorizeSalon, authorizeWorker } from "../_shared/whatsapp/auth.ts";
 // Edge Function: send-marketing
 // Envia notificações de marketing para múltiplos clientes
 // Chamada pela página de Marketing do Admin
@@ -32,6 +33,16 @@ serve(async (req) => {
         )
 
         const body: SendMarketingRequest = await req.json()
+        await authorizeSalon(req, supabase, body.salon_id);
+
+        // WhatsApp de marketing passa pela fila de campanhas (opt-out, rate control, idempotência).
+        // Aqui o registro era marcado "sent" sem envio real.
+        if (body.channel === 'whatsapp') {
+            return new Response(
+                JSON.stringify({ success: false, error: 'Use o Disparador para campanhas pelo WhatsApp.' }),
+                { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 410 }
+            )
+        }
 
         if (!body.salon_id || !body.client_ids || body.client_ids.length === 0 || !body.message) {
             return new Response(

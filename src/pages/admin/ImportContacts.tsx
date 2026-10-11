@@ -1,625 +1,122 @@
-import { useState, useRef, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { AdminLayout } from "@/components/layouts/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
-import { AdminLayout } from "@/components/layouts/AdminLayout";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-    Upload,
-    Smartphone,
-    MessageCircle,
-    Users,
-    FileText,
-    Check,
-    X,
-    Loader2,
-    Download,
-    AlertCircle
-} from "lucide-react";
-import { Progress } from "@/components/ui/progress";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Loader2, Upload, Smartphone, MessageCircle } from "lucide-react";
+import { toast } from "sonner";
+import { contactPreview, mapCsv, parseVcf, readCsv, MAX_FILE_BYTES, type CsvData, type PreviewContact, type RawContact } from "@/features/whatsapp/contacts/parse";
 
-interface ParsedContact {
-    name: string;
-    phone: string;
-    selected: boolean;
-}
-
-// Helper to decode QUOTED-PRINTABLE
-const decodeQuotedPrintable = (str: string): string => {
+interface PickedContact { name?: string[]; tel?: string[]; email?: string[] }
+interface ContactPicker { select: (fields: string[], options: { multiple: boolean }) => Promise<PickedContact[]> }
+export default function ImportContacts() {
+  const { user } = useAuth();
+  const [salonId, setSalonId] = useState<string | null>(null);
+  const [existing, setExisting] = useState<string[]>([]);
+  const [contacts, setContacts] = useState<PreviewContact[]>([]);
+  const [csv, setCsv] = useState<CsvData | null>(null);
+  const [mapping, setMapping] = useState({ name: "", phone: "", email: "" });
+  const [search, setSearch] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      if (!user) return;
+      const { data: salon, error } = await supabase.from("salons").select("id").eq("owner_id", user.id).limit(1).maybeSingle();
+      if (cancelled) return;
+      if (error || !salon) { toast.error("Configure seu salão antes de importar contatos."); return; }
+      setSalonId(salon.id);
+      const phones: string[] = [];
+      for (let offset = 0; offset < 100_000; offset += 1000) {
+        const { data, error: queryError } = await supabase.from("clients").select("phone").eq("salon_id", salon.id).order("id").range(offset, offset + 999);
+        if (queryError) { toast.error("Não foi possível conferir os clientes existentes."); return; }
+        phones.push(...(data ?? []).map(c => c.phone ?? ""));
+        if (!data || data.length < 1000) break;
+      }
+      if (!cancelled) setExisting(phones);
+    }
+    void load();
+    return () => { cancelled = true; };
+  }, [user]);
+  const preview = (raw: RawContact[]) => { setContacts(contactPreview(raw, existing)); setResult(null); };
+  async function fileSelected(file?: File) {
+    if (!file) return;
+    setBusy(true); setCsv(null);
     try {
-        return str.replace(/=([0-9A-F]{2})/gi, (_, hex) => {
-            return String.fromCharCode(parseInt(hex, 16));
+      if (file.size > MAX_FILE_BYTES) throw new Error("Envie arquivo de até 5 MB.");
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      let text: string;
+      try { text = new TextDecoder("utf-8", { fatal: true }).decode(bytes); }
+      catch { text = new TextDecoder("windows-1252").decode(bytes); }
+      if (/\.vcf$/i.test(file.name)) preview(parseVcf(text));
+      else if (/\.csv$/i.test(file.name)) { const data = readCsv(text); setCsv(data); setMapping(data.detected); setContacts([]); }
+      else throw new Error("Formatos disponíveis: VCF e CSV.");
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Arquivo inválido."); }
+    finally { setBusy(false); if (fileRef.current) fileRef.current.value = ""; }
+  }
+  async function fromPhone() {
+    const picker = (navigator as Navigator & { contacts?: ContactPicker }).contacts;
+    if (!picker) { toast.error("Este navegador não oferece seleção de contatos. Exporte VCF pelo celular."); return; }
+    try {
+      const data = await picker.select(["name", "tel", "email"], { multiple: true });
+      preview(data.map(c => ({ name: c.name?.[0] ?? "", phones: c.tel ?? [], email: c.email?.[0] })));
+    } catch { toast.error("Seleção cancelada ou indisponível."); }
+  }
+  async function fromWhatsApp() {
+    if (!salonId) return;
+    setBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("whatsapp-instances", { body: { action: "contacts", salonId } });
+      if (error || !data?.success || !Array.isArray(data.contacts)) throw new Error("Conecte o WhatsApp do salão e tente novamente.");
+      preview(data.contacts.map((c: { name: string; phone: string }) => ({ name: c.name, phones: [c.phone] })));
+      if (data.truncated) toast.warning("A conexão retornou mais de 10.000 contatos. A lista foi limitada; não é uma sincronização completa.");
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível buscar contatos."); }
+    finally { setBusy(false); }
+  }
+  const selected = contacts.filter(c => c.selected && c.status === "new" && c.phone);
+  async function importSelected() {
+    if (!salonId || !selected.length || busy) return;
+    if (!window.confirm(`Importar ${selected.length} contatos selecionados como clientes? Isso não autoriza campanhas de marketing.`)) return;
+    setBusy(true);
+    let imported = 0, already = 0;
+    try {
+      for (let offset = 0; offset < selected.length; offset += 500) {
+        const { data, error } = await supabase.rpc("whatsapp_import_contacts", {
+          p_salon_id: salonId, p_contacts: selected.slice(offset, offset + 500).map(c => ({ phone: c.phone!, name: c.name, email: c.email ?? null })),
         });
-    } catch {
-        return str;
-    }
-};
-
-// Helper to normalize phone numbers
-const normalizePhone = (phone: string): string => {
-    // Remove all non-digit characters except +
-    let cleaned = phone.replace(/[^\d+]/g, '');
-
-    // If starts with +, keep it, otherwise add +55 (Brazil)
-    if (!cleaned.startsWith('+')) {
-        // Add Brazil code if not present
-        if (cleaned.length === 11 || cleaned.length === 10) {
-            cleaned = '+55' + cleaned;
-        } else if (cleaned.length === 9 || cleaned.length === 8) {
-            // Assume São Paulo DDD 11
-            cleaned = '+5511' + cleaned;
-        }
-    }
-
-    return cleaned;
-};
-
-// Parse VCF file content
-const parseVCF = (content: string): ParsedContact[] => {
-    const contacts: ParsedContact[] = [];
-    const vcards = content.split(/BEGIN:VCARD/i).filter(v => v.trim());
-
-    for (const vcard of vcards) {
-        let name = '';
-        let phone = '';
-
-        // Parse FN (Full Name)
-        const fnMatch = vcard.match(/FN(?:;[^:]*)?:(.+)/i);
-        if (fnMatch) {
-            let fnValue = fnMatch[1].trim();
-            // Check if it's encoded
-            if (fnMatch[0].includes('QUOTED-PRINTABLE')) {
-                fnValue = decodeQuotedPrintable(fnValue);
-            }
-            // Decode UTF-8 bytes
-            try {
-                fnValue = decodeURIComponent(escape(fnValue));
-            } catch { }
-            name = fnValue;
-        }
-
-        // Parse TEL (Phone)
-        const telMatches = vcard.match(/TEL[^:]*:([^\r\n]+)/gi);
-        if (telMatches && telMatches.length > 0) {
-            // Get the first phone number
-            const telMatch = telMatches[0].match(/TEL[^:]*:([^\r\n]+)/i);
-            if (telMatch) {
-                phone = normalizePhone(telMatch[1].trim());
-            }
-        }
-
-        if (name && phone && phone.length >= 10) {
-            contacts.push({ name, phone, selected: true });
-        }
-    }
-
-    // Remove duplicates by phone
-    const uniqueContacts = contacts.reduce((acc, current) => {
-        const exists = acc.find(c => c.phone === current.phone);
-        if (!exists) {
-            acc.push(current);
-        }
-        return acc;
-    }, [] as ParsedContact[]);
-
-    return uniqueContacts;
-};
-
-const ImportContacts = () => {
-    const { user } = useAuth();
-    const fileInputRef = useRef<HTMLInputElement>(null);
-
-    const [salonId, setSalonId] = useState<string | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [importing, setImporting] = useState(false);
-    const [progress, setProgress] = useState(0);
-
-    const [parsedContacts, setParsedContacts] = useState<ParsedContact[]>([]);
-    const [importResults, setImportResults] = useState<{ success: number; duplicates: number; errors: number } | null>(null);
-
-    // Evolution API config
-    const [evolutionUrl, setEvolutionUrl] = useState('');
-    const [evolutionApiKey, setEvolutionApiKey] = useState('');
-    const [evolutionInstance, setEvolutionInstance] = useState('');
-    const [loadingEvolution, setLoadingEvolution] = useState(false);
-
-    useEffect(() => {
-        fetchSalon();
-    }, [user]);
-
-    const fetchSalon = async () => {
-        if (!user) return;
-
-        try {
-            const { data, error } = await supabase
-                .from('salons')
-                .select('id')
-                .eq('owner_id', user.id)
-                .maybeSingle();
-
-            if (error) throw error;
-            if (data) setSalonId(data.id);
-        } catch (error) {
-            console.error('Error fetching salon:', error);
-            toast.error('Erro ao carregar salão');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    // Handle VCF file upload
-    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (!file) return;
-
-        if (!file.name.toLowerCase().endsWith('.vcf')) {
-            toast.error('Por favor, selecione um arquivo VCF válido');
-            return;
-        }
-
-        try {
-            const content = await file.text();
-            const contacts = parseVCF(content);
-
-            if (contacts.length === 0) {
-                toast.error('Nenhum contato válido encontrado no arquivo');
-                return;
-            }
-
-            setParsedContacts(contacts);
-            toast.success(`${contacts.length} contatos encontrados!`);
-        } catch (error) {
-            console.error('Error parsing VCF:', error);
-            toast.error('Erro ao processar arquivo VCF');
-        }
-    };
-
-    // Handle Contact Picker API (browser)
-    const handleContactPicker = async () => {
-        // Check if Contact Picker API is supported
-        if (!('contacts' in navigator && 'ContactsManager' in window)) {
-            toast.error('Seu navegador não suporta a importação de contatos. Tente no Chrome para Android.');
-            return;
-        }
-
-        try {
-            const props = ['name', 'tel'];
-            const opts = { multiple: true };
-
-            // @ts-ignore - Contact Picker API types
-            const contacts = await navigator.contacts.select(props, opts);
-
-            const parsedContacts: ParsedContact[] = contacts
-                .filter((c: any) => c.tel && c.tel.length > 0)
-                .map((c: any) => ({
-                    name: c.name?.[0] || 'Sem nome',
-                    phone: normalizePhone(c.tel[0]),
-                    selected: true
-                }));
-
-            if (parsedContacts.length === 0) {
-                toast.error('Nenhum contato com número de telefone selecionado');
-                return;
-            }
-
-            setParsedContacts(parsedContacts);
-            toast.success(`${parsedContacts.length} contatos selecionados!`);
-        } catch (error: any) {
-            if (error.name === 'SecurityError') {
-                toast.error('Permissão negada para acessar contatos');
-            } else {
-                console.error('Error accessing contacts:', error);
-                toast.error('Erro ao acessar contatos do dispositivo');
-            }
-        }
-    };
-
-    // Handle Evolution API import
-    const handleEvolutionImport = async () => {
-        if (!evolutionUrl || !evolutionApiKey || !evolutionInstance) {
-            toast.error('Preencha todos os campos da Evolution API');
-            return;
-        }
-
-        setLoadingEvolution(true);
-        try {
-            // Fetch contacts from Evolution API
-            const response = await fetch(`${evolutionUrl}/chat/findContacts/${evolutionInstance}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'apikey': evolutionApiKey
-                },
-                body: JSON.stringify({})
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
-
-            const data = await response.json();
-
-            // Parse Evolution contacts
-            const contacts: ParsedContact[] = [];
-
-            if (Array.isArray(data)) {
-                for (const contact of data) {
-                    const phone = contact.id?.replace('@s.whatsapp.net', '') || contact.remoteJid?.replace('@s.whatsapp.net', '');
-                    const name = contact.pushName || contact.name || contact.notify || phone;
-
-                    if (phone && phone.length >= 10 && !phone.includes('-')) {
-                        contacts.push({
-                            name: name || 'Sem nome',
-                            phone: normalizePhone(phone),
-                            selected: true
-                        });
-                    }
-                }
-            }
-
-            if (contacts.length === 0) {
-                toast.error('Nenhum contato encontrado na Evolution API');
-                return;
-            }
-
-            // Remove duplicates
-            const uniqueContacts = contacts.reduce((acc, current) => {
-                const exists = acc.find(c => c.phone === current.phone);
-                if (!exists) acc.push(current);
-                return acc;
-            }, [] as ParsedContact[]);
-
-            setParsedContacts(uniqueContacts);
-            toast.success(`${uniqueContacts.length} contatos encontrados no WhatsApp!`);
-        } catch (error: any) {
-            console.error('Error fetching Evolution contacts:', error);
-            toast.error('Erro ao buscar contatos da Evolution API. Verifique a URL e credenciais.');
-        } finally {
-            setLoadingEvolution(false);
-        }
-    };
-
-    // Toggle contact selection
-    const toggleContact = (index: number) => {
-        setParsedContacts(prev => prev.map((c, i) =>
-            i === index ? { ...c, selected: !c.selected } : c
-        ));
-    };
-
-    // Select/Deselect all
-    const toggleAll = (selected: boolean) => {
-        setParsedContacts(prev => prev.map(c => ({ ...c, selected })));
-    };
-
-    // Import selected contacts to database
-    const importToDatabase = async () => {
-        if (!salonId) {
-            toast.error('Salão não encontrado');
-            return;
-        }
-
-        const selectedContacts = parsedContacts.filter(c => c.selected);
-        if (selectedContacts.length === 0) {
-            toast.error('Selecione pelo menos um contato para importar');
-            return;
-        }
-
-        setImporting(true);
-        setProgress(0);
-        setImportResults(null);
-
-        let success = 0;
-        let duplicates = 0;
-        let errors = 0;
-
-        const batchSize = 50;
-        const batches = Math.ceil(selectedContacts.length / batchSize);
-
-        for (let i = 0; i < batches; i++) {
-            const batch = selectedContacts.slice(i * batchSize, (i + 1) * batchSize);
-
-            for (const contact of batch) {
-                try {
-                    // Check if client already exists
-                    const { data: existing } = await supabase
-                        .from('clients')
-                        .select('id')
-                        .eq('salon_id', salonId)
-                        .eq('phone', contact.phone)
-                        .maybeSingle();
-
-                    if (existing) {
-                        duplicates++;
-                    } else {
-                        // Insert new client
-                        const { error } = await supabase
-                            .from('clients')
-                            .insert({
-                                salon_id: salonId,
-                                name: contact.name,
-                                phone: contact.phone,
-                                notes: 'Importado automaticamente'
-                            });
-
-                        if (error) {
-                            errors++;
-                        } else {
-                            success++;
-                        }
-                    }
-                } catch (error) {
-                    errors++;
-                }
-            }
-
-            setProgress(Math.round(((i + 1) / batches) * 100));
-        }
-
-        setImporting(false);
-        setImportResults({ success, duplicates, errors });
-
-        if (success > 0) {
-            toast.success(`${success} contatos importados com sucesso!`);
-        }
-        if (duplicates > 0) {
-            toast.info(`${duplicates} contatos já existiam`);
-        }
-        if (errors > 0) {
-            toast.error(`${errors} erros durante a importação`);
-        }
-    };
-
-    // Clear parsed contacts
-    const clearContacts = () => {
-        setParsedContacts([]);
-        setImportResults(null);
-        if (fileInputRef.current) {
-            fileInputRef.current.value = '';
-        }
-    };
-
-    const selectedCount = parsedContacts.filter(c => c.selected).length;
-
-    if (loading) {
-        return (
-            <AdminLayout>
-                <div className="flex items-center justify-center h-64">
-                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                </div>
-            </AdminLayout>
-        );
-    }
-
-    return (
-        <AdminLayout>
-            <div className="space-y-6">
-                <div data-tour="import-contacts-header">
-                    <h1 className="font-display text-3xl font-bold text-foreground">
-                        Importar Contatos
-                    </h1>
-                    <p className="text-muted-foreground mt-1">
-                        Importe contatos do celular, WhatsApp ou arquivo VCF para sua lista de clientes
-                    </p>
-                </div>
-
-                {/* Import Methods */}
-                {parsedContacts.length === 0 ? (
-                    <div className="grid gap-6 md:grid-cols-3" data-tour="import-contacts-methods">
-                        {/* VCF File Upload */}
-                        <Card className="glass-card hover:border-primary/50 transition-colors cursor-pointer group" data-tour="import-contacts-vcf"
-                            onClick={() => fileInputRef.current?.click()}>
-                            <CardHeader>
-                                <CardTitle className="flex items-center gap-2">
-                                    <FileText size={24} className="text-primary" />
-                                    Arquivo VCF
-                                </CardTitle>
-                                <CardDescription>
-                                    Importe contatos de um arquivo .vcf exportado de outro dispositivo
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <input
-                                    ref={fileInputRef}
-                                    type="file"
-                                    accept=".vcf"
-                                    onChange={handleFileUpload}
-                                    className="hidden"
-                                />
-                                <Button variant="outline" className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-                                    <Upload size={18} className="mr-2" />
-                                    Selecionar Arquivo
-                                </Button>
-                            </CardContent>
-                        </Card>
-
-                        {/* Contact Picker (Mobile) */}
-                        <Card className="glass-card hover:border-primary/50 transition-colors">
-                            <CardHeader>
-                                <CardTitle className="flex items-center gap-2">
-                                    <Smartphone size={24} className="text-green-500" />
-                                    Contatos do Celular
-                                </CardTitle>
-                                <CardDescription>
-                                    Importe diretamente dos contatos salvos no seu dispositivo (Android)
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <Button variant="outline" className="w-full" onClick={handleContactPicker} data-tour="import-contacts-phone">
-                                    <Users size={18} className="mr-2" />
-                                    Selecionar Contatos
-                                </Button>
-                            </CardContent>
-                        </Card>
-
-                        {/* Evolution API */}
-                        <Card className="glass-card hover:border-primary/50 transition-colors">
-                            <CardHeader>
-                                <CardTitle className="flex items-center gap-2">
-                                    <MessageCircle size={24} className="text-[#25D366]" />
-                                    WhatsApp (Evolution)
-                                </CardTitle>
-                                <CardDescription>
-                                    Importe contatos diretamente do WhatsApp via Evolution API
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-3">
-                                <div className="space-y-2">
-                                    <Input
-                                        placeholder="URL da API (ex: https://api.exemplo.com)"
-                                        value={evolutionUrl}
-                                        onChange={(e) => setEvolutionUrl(e.target.value)}
-                                    />
-                                    <Input
-                                        placeholder="API Key"
-                                        type="password"
-                                        value={evolutionApiKey}
-                                        onChange={(e) => setEvolutionApiKey(e.target.value)}
-                                    />
-                                    <Input
-                                        placeholder="Nome da Instância"
-                                        value={evolutionInstance}
-                                        onChange={(e) => setEvolutionInstance(e.target.value)}
-                                    />
-                                </div>
-                                <Button
-                                    variant="outline"
-                                    className="w-full"
-                                    onClick={handleEvolutionImport}
-                                    data-tour="import-contacts-whatsapp"
-                                    disabled={loadingEvolution}
-                                >
-                                    {loadingEvolution ? (
-                                        <Loader2 size={18} className="mr-2 animate-spin" />
-                                    ) : (
-                                        <Download size={18} className="mr-2" />
-                                    )}
-                                    Buscar Contatos
-                                </Button>
-                            </CardContent>
-                        </Card>
-                    </div>
-                ) : (
-                    <div className="space-y-4">
-                        {/* Contact List Header */}
-                        <Card className="glass-card" data-tour="import-contacts-preview">
-                            <CardHeader>
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <CardTitle className="flex items-center gap-2">
-                                            <Users size={24} className="text-primary" />
-                                            Contatos Encontrados
-                                        </CardTitle>
-                                        <CardDescription>
-                                            {parsedContacts.length} contatos • {selectedCount} selecionados
-                                        </CardDescription>
-                                    </div>
-                                    <div className="flex gap-2" data-tour="import-contacts-selection">
-                                        <Button variant="outline" size="sm" onClick={() => toggleAll(true)}>
-                                            Selecionar Todos
-                                        </Button>
-                                        <Button variant="outline" size="sm" onClick={() => toggleAll(false)}>
-                                            Desmarcar Todos
-                                        </Button>
-                                        <Button variant="ghost" size="sm" onClick={clearContacts}>
-                                            <X size={18} className="mr-1" />
-                                            Limpar
-                                        </Button>
-                                    </div>
-                                </div>
-                            </CardHeader>
-                            <CardContent>
-                                <ScrollArea className="h-[400px]">
-                                    <div className="space-y-1">
-                                        {parsedContacts.map((contact, index) => (
-                                            <div
-                                                key={index}
-                                                className={`flex items-center gap-3 p-2 rounded-lg transition-colors cursor-pointer hover:bg-secondary/50 ${contact.selected ? 'bg-primary/10' : ''
-                                                    }`}
-                                                onClick={() => toggleContact(index)}
-                                            >
-                                                <Checkbox checked={contact.selected} />
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="font-medium truncate">{contact.name}</p>
-                                                    <p className="text-sm text-muted-foreground">{contact.phone}</p>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </ScrollArea>
-                            </CardContent>
-                        </Card>
-
-                        {/* Import Progress & Results */}
-                        {importing && (
-                            <Card className="glass-card">
-                                <CardContent className="py-6">
-                                    <div className="space-y-4">
-                                        <div className="flex items-center justify-center gap-2">
-                                            <Loader2 size={20} className="animate-spin text-primary" />
-                                            <span>Importando contatos...</span>
-                                        </div>
-                                        <Progress value={progress} className="h-2" />
-                                        <p className="text-center text-sm text-muted-foreground">{progress}%</p>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        )}
-
-                        {importResults && (
-                            <Card className="glass-card" data-tour="import-contacts-results">
-                                <CardContent className="py-6">
-                                    <div className="flex items-center justify-center gap-8">
-                                        <div className="text-center">
-                                            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-green-500/20 mx-auto mb-2">
-                                                <Check size={24} className="text-green-500" />
-                                            </div>
-                                            <p className="text-2xl font-bold">{importResults.success}</p>
-                                            <p className="text-sm text-muted-foreground">Importados</p>
-                                        </div>
-                                        <div className="text-center">
-                                            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-yellow-500/20 mx-auto mb-2">
-                                                <AlertCircle size={24} className="text-yellow-500" />
-                                            </div>
-                                            <p className="text-2xl font-bold">{importResults.duplicates}</p>
-                                            <p className="text-sm text-muted-foreground">Duplicados</p>
-                                        </div>
-                                        <div className="text-center">
-                                            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-red-500/20 mx-auto mb-2">
-                                                <X size={24} className="text-red-500" />
-                                            </div>
-                                            <p className="text-2xl font-bold">{importResults.errors}</p>
-                                            <p className="text-sm text-muted-foreground">Erros</p>
-                                        </div>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        )}
-
-                        {/* Import Button */}
-                        {!importing && (
-                            <div className="flex justify-center">
-                                <Button
-                                    variant="gold"
-                                    size="lg"
-                                    onClick={importToDatabase}
-                                    data-tour="import-contacts-save"
-                                    disabled={selectedCount === 0}
-                                >
-                                    <Users size={20} className="mr-2" />
-                                    Importar {selectedCount} Contatos
-                                </Button>
-                            </div>
-                        )}
-                    </div>
-                )}
-            </div>
-        </AdminLayout>
-    );
-};
-
-export default ImportContacts;
+        if (error) throw new Error("Não foi possível concluir a importação. Lotes já concluídos foram preservados; repetir não duplica os contatos.");
+        const summary = data as unknown as { imported: number; existing: number };
+        imported += summary.imported; already += summary.existing;
+      }
+      setResult(`${imported} contatos importados; ${already} já cadastrados.`);
+      setExisting(prev => [...prev, ...selected.map(c => c.phone!)]);
+      setContacts(prev => prev.map(c => c.selected ? { ...c, status: "existing", selected: false } : c));
+      toast.success("Importação concluída.");
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível importar."); }
+    finally { setBusy(false); }
+  }
+  const filtered = contacts.map((contact, index) => ({ contact, index })).filter(({ contact }) => `${contact.name} ${contact.phone ?? ""}`.toLowerCase().includes(search.toLowerCase()));
+  const counts = (status: PreviewContact["status"]) => contacts.filter(c => c.status === status).length;
+  return <AdminLayout><div className="max-w-5xl mx-auto space-y-6">
+    <header data-tour="import-contacts-header"><h1 className="text-3xl font-bold">Importar contatos</h1><p className="text-muted-foreground mt-2">Confira a prévia antes de salvar. Importar um contato não significa consentimento para marketing.</p></header>
+    <div className="grid gap-4 md:grid-cols-3" data-tour="import-contacts-methods">
+      <Card data-tour="import-contacts-vcf"><CardHeader><CardTitle>Arquivo VCF ou CSV</CardTitle><CardDescription>Até 5 MB e 10.000 números. VCF 2.1, 3.0 e 4.0; CSV com mapeamento de colunas.</CardDescription></CardHeader><CardContent><input ref={fileRef} type="file" accept=".vcf,.csv" className="hidden" onChange={e => void fileSelected(e.target.files?.[0])} /><Button disabled={busy || !salonId} onClick={() => fileRef.current?.click()}><Upload size={16} className="mr-2" />Escolher arquivo</Button></CardContent></Card>
+      <Card data-tour="import-contacts-phone"><CardHeader><CardTitle>Contatos do celular</CardTitle><CardDescription>Escolha pelo navegador compatível; nenhum acesso silencioso à agenda.</CardDescription></CardHeader><CardContent><Button variant="outline" disabled={busy || !salonId} onClick={() => void fromPhone()}><Smartphone size={16} className="mr-2" />Selecionar contatos</Button></CardContent></Card>
+      <Card data-tour="import-contacts-whatsapp"><CardHeader><CardTitle>WhatsApp do salão</CardTitle><CardDescription>Use a conexão existente. Grupos e status não entram como clientes.</CardDescription></CardHeader><CardContent><Button variant="outline" disabled={busy || !salonId} onClick={() => void fromWhatsApp()}><MessageCircle size={16} className="mr-2" />Buscar contatos</Button></CardContent></Card>
+    </div>
+    {csv && <Card><CardHeader><CardTitle>Escolha as colunas do CSV</CardTitle></CardHeader><CardContent className="space-y-3">{(["name", "phone", "email"] as const).map(key => <div key={key}><Label>{key === "name" ? "Nome" : key === "phone" ? "Telefone (obrigatório)" : "E-mail (opcional)"}</Label><select className="block w-full border rounded p-2 bg-background" value={mapping[key]} onChange={e => setMapping(prev => ({ ...prev, [key]: e.target.value }))}><option value="">Não informado</option>{csv.headers.map(h => <option key={h}>{h}</option>)}</select></div>)}<Button onClick={() => { try { preview(mapCsv(csv, mapping)); } catch(error) { toast.error(error instanceof Error ? error.message : "Mapeamento inválido."); } }}>Gerar prévia</Button></CardContent></Card>}
+    {busy && <p className="flex gap-2 items-center" role="status"><Loader2 className="animate-spin" />Processando…</p>}
+    {result && <p className="rounded-lg border p-4" role="status" data-tour="import-contacts-results">{result}</p>}
+    {contacts.length > 0 && <Card data-tour="import-contacts-preview"><CardHeader><CardTitle>{contacts.length} números encontrados</CardTitle><CardDescription>{counts("new")} novos · {counts("existing")} cadastrados · {counts("duplicate")} repetidos · {counts("invalid")} inválidos</CardDescription></CardHeader><CardContent className="space-y-4">
+      <div className="flex flex-wrap gap-2" data-tour="import-contacts-selection"><Input className="flex-1" placeholder="Buscar nome ou telefone" value={search} onChange={e => setSearch(e.target.value)} /><Button variant="outline" onClick={() => setContacts(prev => prev.map(c => ({ ...c, selected: c.status === "new" })))}>Selecionar novos</Button><Button variant="ghost" onClick={() => setContacts(prev => prev.map(c => ({ ...c, selected: false })))}>Nenhum</Button></div>
+      <ul className="max-h-96 overflow-y-auto space-y-2">{filtered.map(({ contact: c, index }) => <li key={index} className="flex gap-3 p-3 rounded border"><Checkbox aria-label={`Selecionar ${c.name}`} disabled={c.status !== "new" || busy} checked={c.selected} onCheckedChange={checked => setContacts(prev => prev.map((item,i) => i === index ? { ...item, selected: checked === true } : item))} /><div><p className="font-medium">{c.name}</p><p className="text-sm text-muted-foreground">{c.phone ?? c.reason} · {c.status === "new" ? "Novo" : c.status === "existing" ? "Já cadastrado" : c.status === "duplicate" ? "Repetido no arquivo" : "Inválido"}</p></div></li>)}</ul>
+      <Button disabled={busy || !selected.length} onClick={() => void importSelected()} data-tour="import-contacts-save">Importar {selected.length} selecionados</Button>
+    </CardContent></Card>}
+  </div></AdminLayout>;
+}

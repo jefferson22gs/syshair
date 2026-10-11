@@ -57,7 +57,7 @@ export const importContactsArticles: Article[] = [
     tourId: "import-contacts",
     steps: [
       {
-        text: "Este método ainda exige configuração técnica. Peça ao suporte para preparar a conexão; não copie nem compartilhe informações sigilosas em prints. Se preferir, use um arquivo VCF exportado do celular.",
+        text: "Conecte primeiro o WhatsApp do salão na tela WhatsApp. Depois abra Importar contatos e escolha Buscar contatos. Não é necessário informar chaves nesta tela.",
       },
       { text: "Clique em Buscar Contatos. O sistema tenta buscar contatos ligados a essa conexão." },
       { text: "Confira a lista encontrada e desmarque o que não quiser salvar." },

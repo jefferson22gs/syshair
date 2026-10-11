@@ -20,7 +20,6 @@ import { Badge } from "@/components/ui/badge";
 import { Logo } from "@/components/icons/Logo";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
-import { getAppointmentManageLink } from "@/lib/appointmentLink";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { Input } from "@/components/ui/input";
@@ -163,71 +162,7 @@ const PublicBookingAdvanced = () => {
             if (error) throw error;
 
             if (appointment) {
-                // Gerar link de gerenciamento
-                const manageLink = getAppointmentManageLink(appointment);
-
-                // Enviar WhatsApp com link de gerenciamento
-                try {
-                    const salonName = salon.name;
-                    const phoneNumber = clientPhone.trim().replace(/\D/g, '');
-
-                    console.log('📱 ===== ENVIANDO WHATSAPP =====');
-                    console.log('📞 Telefone original:', clientPhone);
-                    console.log('📞 Telefone formatado:', phoneNumber);
-                    console.log('🆔 Appointment ID:', appointment.id);
-                    console.log('🔗 Link de gerenciamento:', manageLink);
-
-                    const whatsappMessage = `
-🎉 *Agendamento Confirmado!*
-
-📍 *Salão:* ${salonName}
-✂️ *Serviço:* ${selectedService.name}
-👤 *Profissional:* ${selectedProfessional?.name || 'Qualquer disponível'}
-📅 *Data:* ${format(selectedDate, 'dd/MM/yyyy')}
-⏰ *Horário:* ${selectedTime}
-
-🔗 *Gerenciar agendamento:*
-${manageLink}
-
-_Você pode cancelar ou reagendar até 2 horas antes do horário._
-                    `.trim();
-
-                    console.log('📝 Mensagem:', whatsappMessage);
-
-                    // Enviar via Evolution API
-                    const response = await fetch('https://api.tubaraoemprestimo.com.br/message/sendText/syshair_daniel_cabelos_1777c2a7', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'apikey': 'B8959800-F546-407C-99E8-C40306E747F5'
-                        },
-                        body: JSON.stringify({
-                            number: phoneNumber,
-                            text: whatsappMessage
-                        })
-                    });
-
-                    console.log('📊 Status da resposta:', response.status);
-                    console.log('📊 Status OK?:', response.ok);
-
-                    const responseData = await response.json();
-                    console.log('📦 Resposta da API:', responseData);
-
-                    if (!response.ok) {
-                        throw new Error(`Erro ${response.status}: ${JSON.stringify(responseData)}`);
-                    }
-
-                    console.log('✅ WhatsApp enviado com sucesso!');
-                    toast.success("WhatsApp enviado com sucesso!");
-                } catch (whatsappError: any) {
-                    console.error('❌ ===== ERRO AO ENVIAR WHATSAPP =====');
-                    console.error('❌ Erro:', whatsappError);
-                    console.error('❌ Mensagem:', whatsappError.message);
-                    console.error('❌ Stack:', whatsappError.stack);
-
-                    toast.error("Agendamento criado, mas não foi possível enviar WhatsApp");
-                    // Não bloquear o fluxo se o WhatsApp falhar
-                }
+      // Notificações são enfileiradas no servidor, nunca enviadas pelo navegador.
 
                 toast.success("Agendamento confirmado!");
 

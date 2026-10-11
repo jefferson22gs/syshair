@@ -1,4 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { parsePhoneNumberFromString } from "libphonenumber-js/min";
+import { Temporal } from "@js-temporal/polyfill";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -50,7 +52,7 @@ interface Broadcast {
   total_recipients: number;
   sent_count: number;
   failed_count: number;
-  status: 'pending' | 'processing' | 'completed' | 'stopped' | 'failed';
+  status: 'pending' | 'scheduled' | 'processing' | 'completed' | 'stopped' | 'failed' | 'uncertain';
   created_at: string;
   completed_at?: string;
   error_message?: string;
@@ -90,6 +92,11 @@ export const BroadcastMessagesComponent = () => {
   // Estados do disparo
   const [message, setMessage] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [showSendConfirmation, setShowSendConfirmation] = useState(false);
+  const [consentAcknowledged, setConsentAcknowledged] = useState(false);
+  const [scheduledLocal, setScheduledLocal] = useState("");
+  const [timezone, setTimezone] = useState("America/Sao_Paulo");
+  const submission = useRef<string | null>(null);
   const [broadcasts, setBroadcasts] = useState<Broadcast[]>([]);
   const [templates, setTemplates] = useState<BroadcastTemplate[]>([]);
   const [activeBroadcastId, setActiveBroadcastId] = useState<string | null>(null);
@@ -275,12 +282,11 @@ export const BroadcastMessagesComponent = () => {
 
   const stopBroadcast = async (broadcastId: string) => {
     try {
-      const { error } = await supabase
-        .from("broadcasts")
-        .update({ status: "stopped" })
-        .eq("id", broadcastId);
-
-      if (error) throw error;
+      if (!window.confirm("Interromper os itens ainda pendentes? Mensagens já aceitas não podem ser recolhidas.")) return;
+      const { data, error } = await supabase.functions.invoke("broadcast-messages-v2", {
+        body: { action: "stop_broadcast", salonId, broadcastId },
+      });
+      if (error || !data?.success) throw new Error("Não foi possível interromper a campanha.");
 
       toast({
         title: "Disparo interrompido",
@@ -542,14 +548,26 @@ export const BroadcastMessagesComponent = () => {
 
     setIsSending(true);
     try {
-      const recipients = selectedContacts.map(c => c.phone);
+      if (!consentAcknowledged) throw new Error("Confirme que os contatos autorizaram receber a campanha.");
+      const recipients = selectedContacts.map(c => {
+        const explicit = c.phone.startsWith("+") ? c.phone : c.phone.replace(/\D/g, "").length > 11 ? `+${c.phone.replace(/\D/g, "")}` : c.phone;
+        const phone = parsePhoneNumberFromString(explicit, "BR");
+        if (!phone?.isValid()) throw new Error("Há telefone inválido na seleção. Confira os contatos.");
+        return { phone: phone.number, name: c.name };
+      });
+      const scheduledFor = scheduledLocal ? Temporal.PlainDateTime.from(scheduledLocal).toZonedDateTime(timezone, { disambiguation: "reject" }).toInstant().toString() : undefined;
+      submission.current ??= crypto.randomUUID();
 
       const response = await supabase.functions.invoke('broadcast-messages-v2', {
         body: {
           action: 'create_broadcast',
           salonId,
           message: message.trim(),
-          recipients: recipients
+          recipients,
+          scheduledFor,
+          submissionId: submission.current,
+          confirmed: true,
+          consentAcknowledged: true,
         }
       });
 
@@ -572,6 +590,10 @@ export const BroadcastMessagesComponent = () => {
           duration: 10000,
         });
 
+        submission.current = null;
+        setShowSendConfirmation(false);
+        setScheduledLocal("");
+        setConsentAcknowledged(false);
         // Limpar seleção
         setContacts(prev => prev.map(c => ({ ...c, selected: false })));
         setMessage("");
@@ -614,6 +636,10 @@ export const BroadcastMessagesComponent = () => {
         return <Badge className="bg-orange-500/20 text-orange-400"><AlertTriangle size={12} className="mr-1" /> Parado</Badge>;
       case 'failed':
         return <Badge className="bg-red-500/20 text-red-400"><XCircle size={12} className="mr-1" /> Falhou</Badge>;
+      case 'scheduled':
+        return <Badge className="bg-purple-500/20 text-purple-400"><Clock size={12} className="mr-1" /> Agendado</Badge>;
+      case 'uncertain':
+        return <Badge className="bg-amber-500/20 text-amber-400"><AlertTriangle size={12} className="mr-1" /> Verificar</Badge>;
       default:
         return <Badge className="bg-gray-500/20 text-gray-400"><Clock size={12} className="mr-1" /> Pendente</Badge>;
     }
@@ -796,6 +822,7 @@ export const BroadcastMessagesComponent = () => {
                     >
                       <Checkbox
                         checked={contact.selected}
+                        onClick={(e) => e.stopPropagation()}
                         onCheckedChange={() => toggleContact(contact.phone)}
                       />
                       <div className="flex-1 min-w-0">
@@ -875,7 +902,7 @@ export const BroadcastMessagesComponent = () => {
               <Button
                 className="w-full"
                 size="lg"
-                onClick={sendBroadcast}
+                onClick={() => { submission.current = null; setShowSendConfirmation(true); }}
                 data-tour="broadcast-send"
                 disabled={isSending || selectedCount === 0 || !message.trim()}
               >
@@ -920,7 +947,7 @@ export const BroadcastMessagesComponent = () => {
                       <div className="flex justify-between items-start mb-2">
                         <div className="flex items-center gap-2">
                           {getStatusBadge(broadcast.status)}
-                          {broadcast.status === 'processing' && (
+                          {(broadcast.status === 'processing' || broadcast.status === 'scheduled') && (
                             <Button
                               size="sm"
                               variant="destructive"
@@ -960,6 +987,22 @@ export const BroadcastMessagesComponent = () => {
           </Card>
         </div>
       </div>
+
+      <Dialog open={showSendConfirmation} onOpenChange={(open) => { if (!isSending) setShowSendConfirmation(open); }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Conferir campanha</DialogTitle></DialogHeader>
+          <p className="text-sm">Você está prestes a enviar para <strong>{selectedCount} contatos</strong>. Confira a mensagem e os destinatários antes de confirmar.</p>
+          <p className="text-sm rounded-lg bg-muted p-3 whitespace-pre-wrap">{message}</p>
+          <Label htmlFor="campaign-schedule">Agendar (deixe vazio para enviar agora)</Label>
+          <Input id="campaign-schedule" type="datetime-local" value={scheduledLocal} onChange={(e) => { setScheduledLocal(e.target.value); submission.current = null; }} />
+          <Label htmlFor="campaign-timezone">Fuso do envio</Label>
+          <select id="campaign-timezone" className="border rounded-md p-2 bg-background" value={timezone} onChange={(e) => setTimezone(e.target.value)}>
+            {["America/Sao_Paulo", "America/Manaus", "America/Rio_Branco", "America/Noronha"].map((zone) => <option key={zone}>{zone}</option>)}
+          </select>
+          <label className="flex gap-2 items-start text-sm"><Checkbox checked={consentAcknowledged} onCheckedChange={(checked) => setConsentAcknowledged(checked === true)} /><span>Estes contatos autorizaram receber mensagens do salão. Não enviarei comunicação não solicitada.</span></label>
+          <DialogFooter><Button variant="outline" disabled={isSending} onClick={() => setShowSendConfirmation(false)}>Voltar</Button><Button disabled={isSending || !consentAcknowledged} onClick={sendBroadcast}>{isSending ? "Registrando…" : scheduledLocal ? "Confirmar agendamento" : "Confirmar envio"}</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Modal adicionar números */}
       <Dialog open={showAddManual} onOpenChange={setShowAddManual}>

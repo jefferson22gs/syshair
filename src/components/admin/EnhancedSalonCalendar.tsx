@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { getAppointmentManageLink } from "@/lib/appointmentLink";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -296,55 +295,11 @@ export function EnhancedSalonCalendar() {
 
       if (error) throw error;
 
-      // Enviar WhatsApp com link de gerenciamento
-      if (appointment) {
-        try {
-          // Buscar nome do salão
-          const { data: salonData } = await supabase
-            .from("salons")
-            .select("name")
-            .eq("id", salonId)
-            .single();
-
-          const salonName = salonData?.name || "Salão";
-          const manageLink = getAppointmentManageLink(appointment);
-
-          const whatsappMessage = `
-🎉 *Agendamento Confirmado!*
-
-📍 *Salão:* ${salonName}
-✂️ *Serviço:* ${selectedService.name}
-👤 *Profissional:* ${selectedProfessional?.name || 'Profissional'}
-📅 *Data:* ${format(selectedDate, 'dd/MM/yyyy')}
-⏰ *Horário:* ${selectedTime}
-
-🔗 *Gerenciar agendamento:*
-${manageLink}
-
-_Você pode cancelar ou reagendar até 2 horas antes do horário._
-          `.trim();
-
-          // Enviar via Evolution API
-          await fetch('https://api.tubaraoemprestimo.com.br/message/sendText/syshair_daniel_cabelos_1777c2a7', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'apikey': 'B8959800-F546-407C-99E8-C40306E747F5'
-            },
-            body: JSON.stringify({
-              number: newAppointment.client_phone.trim().replace(/\D/g, ''),
-              text: whatsappMessage
-            })
-          });
-        } catch (whatsappError) {
-          console.error('Erro ao enviar WhatsApp:', whatsappError);
-          // Não bloquear o fluxo se o WhatsApp falhar
-        }
-      }
+      // Notificações são enfileiradas no servidor, nunca enviadas pelo navegador.
 
       toast({
         title: "Agendamento criado",
-        description: "O agendamento foi adicionado e o cliente receberá uma confirmação via WhatsApp",
+        description: "O agendamento foi adicionado. O envio de avisos depende das automações configuradas no salão.",
       });
 
       setShowAddModal(false);
