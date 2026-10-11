@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from "react";
+import { Temporal } from "@js-temporal/polyfill";
+import { validateMedia, MIME_EXTENSIONS } from "@/features/whatsapp/media";
 import {
     Calendar,
     Clock,
@@ -60,6 +62,8 @@ interface ScheduledPost {
     text_content: string;
     media_url: string;
     media_filename: string;
+    media_path?: string | null;
+    timezone?: string;
     scheduled_at: string;
     recurrence_type: 'once' | 'daily' | 'weekly' | 'monthly';
     recurrence_days: number[];
@@ -94,6 +98,8 @@ const StatusScheduler = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [salonId, setSalonId] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState('calendar');
+    const [timezone, setTimezone] = useState('America/Sao_Paulo');
+    const postSubmission = useRef<string | null>(null);
 
     // Estados dos posts
     const [posts, setPosts] = useState<ScheduledPost[]>([]);
@@ -135,12 +141,13 @@ const StatusScheduler = () => {
 
             const { data: salon } = await supabase
                 .from('salons')
-                .select('id')
+                .select('id,timezone')
                 .eq('owner_id', user.id)
                 .single();
 
             if (!salon) return;
             setSalonId(salon.id);
+            if (salon.timezone) setTimezone(salon.timezone);
 
             // Buscar instância WhatsApp
             const { data: instanceData } = await supabase
@@ -174,7 +181,12 @@ const StatusScheduler = () => {
             .order('scheduled_at', { ascending: true });
 
         if (data) {
-            setPosts(data as ScheduledPost[]);
+            const withPreviews = await Promise.all((data as ScheduledPost[]).map(async post => {
+                if (!post.media_path || !post.media_path.startsWith(`${id}/`)) return post;
+                const { data: signed } = await supabase.storage.from('whatsapp-media').createSignedUrl(post.media_path, 300);
+                return { ...post, media_url: signed?.signedUrl ?? '' };
+            }));
+            setPosts(withPreviews);
         }
     };
 
@@ -209,127 +221,22 @@ const StatusScheduler = () => {
     };
 
     const generateCaption = async () => {
-        if (!formData.media_preview && !editingPost?.media_url) {
-            toast({
-                title: "Nenhuma imagem",
-                description: "Adicione uma imagem primeiro para gerar a legenda.",
-                variant: "destructive",
-            });
-            return;
-        }
-
         setGeneratingCaption(true);
         try {
-            // Buscar API Key ativa do banco de dados
-            const { data: apiKeyData, error: apiKeyError } = await supabase
-                .from("ai_provider_keys")
-                .select("*")
-                .eq("provider", "gemini")
-                .eq("is_active", true)
-                .maybeSingle();
-
-            if (apiKeyError || !apiKeyData) {
-                throw new Error("Nenhuma chave de API Gemini ativa encontrada. Configure no Super Admin.");
-            }
-
-            // Obter base64 da imagem
-            let imageBase64 = formData.media_preview;
-
-            // Se for URL (editando post), baixar e converter para base64
-            if (!imageBase64 && editingPost?.media_url) {
-                const response = await fetch(editingPost.media_url);
-                const blob = await response.blob();
-                imageBase64 = await new Promise<string>((resolve) => {
-                    const reader = new FileReader();
-                    reader.onloadend = () => resolve(reader.result as string);
-                    reader.readAsDataURL(blob);
-                });
-            }
-
-            if (!imageBase64) {
-                throw new Error("Não foi possível processar a imagem");
-            }
-
-            // Remover header do base64 (data:image/jpeg;base64,)
-            const base64Data = imageBase64.includes(',')
-                ? imageBase64.split(',')[1]
-                : imageBase64;
-
-            // Prompt especializado para salão de beleza
-            const prompt = `
-                Atue como um Criador de Conteúdo para Redes Sociais de um Salão de Beleza/Barbearia.
-
-                Sua tarefa: Analisar a imagem anexada e criar uma legenda PERFEITA
-                para postar no Status do WhatsApp/Stories.
-
-                1. Identifique o que acontece na imagem (Cenário, Texto, Pessoas, Emoção).
-                2. Crie uma frase curta, impactante e criativa sobre ESSE CONTEÚDO.
-
-                Regras:
-                - SEJA NATURAL. Não pareça um robô.
-                - Use 2-4 Emojis que combinem com a foto (💇‍♀️✨💅💈).
-                - Se a imagem tiver texto, complemente a mensagem do texto.
-                - Se for transformação/antes-depois, destaque o resultado.
-                - MÁXIMO 2 linhas.
-                - Tom inspirador e positivo.
-
-                Retorne APENAS o texto da legenda, sem aspas ou explicações.
-            `;
-
-            // Chamar Gemini API com a chave do banco
-            const response = await fetch(
-                `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKeyData.api_key}`,
-                {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [{
-                            parts: [
-                                { text: prompt },
-                                {
-                                    inline_data: {
-                                        mime_type: "image/jpeg",
-                                        data: base64Data
-                                    }
-                                }
-                            ]
-                        }]
-                    })
-                }
-            );
-
-            const data = await response.json();
-            console.log("Gemini response:", data);
-
-            if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
-                const caption = data.candidates[0].content.parts[0].text.trim();
-                setFormData(prev => ({ ...prev, text_content: caption }));
-                toast({
-                    title: "✨ Legenda gerada!",
-                    description: "A IA criou uma legenda para sua imagem.",
-                });
-            } else if (data.error) {
-                throw new Error(data.error.message || "Erro na API do Gemini");
-            } else {
-                throw new Error("Não foi possível gerar a legenda");
-            }
-        } catch (error: any) {
-            console.error("Error generating caption:", error);
-            toast({
-                title: "Erro ao gerar legenda",
-                description: error.message || "Tente novamente.",
-                variant: "destructive",
+            const { data, error } = await supabase.functions.invoke('generate-image-caption', {
+                body: { salonId, imageBase64: formData.media_preview, context: 'Legenda curta para o salão' },
             });
-        } finally {
-            setGeneratingCaption(false);
-        }
+            if (error || !data?.caption) throw new Error('Não foi possível gerar a legenda. Você pode escrever manualmente.');
+            setFormData(prev => ({ ...prev, text_content: data.caption }));
+        } catch { toast({ title: 'Legenda indisponível', description: 'Escreva a legenda manualmente ou tente depois.', variant: 'destructive' }); }
+        finally { setGeneratingCaption(false); }
     };
 
     const handleSubmit = async () => {
         if (!salonId) return;
 
         // Validações
-        if (formData.content_type !== 'text' && !formData.media_file && !editingPost?.media_url) {
+        if (formData.content_type !== 'text' && !formData.media_file && !editingPost?.media_path) {
             toast({
                 title: "Mídia obrigatória",
                 description: "Selecione uma imagem ou vídeo.",
@@ -341,66 +248,27 @@ const StatusScheduler = () => {
         setIsSubmitting(true);
 
         try {
-            let mediaUrl = editingPost?.media_url || '';
-
-            // Upload do arquivo se houver
+            if (instance?.status !== 'connected') throw new Error('Conecte o WhatsApp do salão antes de agendar.');
+            let mediaPath = editingPost?.media_path ?? null;
             if (formData.media_file) {
-                const fileName = `${salonId}/${Date.now()}_${formData.media_file.name}`;
-                const { data: uploadData, error: uploadError } = await supabase.storage
-                    .from('status-media')
-                    .upload(fileName, formData.media_file);
-
-                if (uploadError) throw uploadError;
-
-                const { data: urlData } = supabase.storage
-                    .from('status-media')
-                    .getPublicUrl(fileName);
-
-                mediaUrl = urlData.publicUrl;
+                await validateMedia(formData.media_file);
+                mediaPath = `${salonId}/${crypto.randomUUID()}.${MIME_EXTENSIONS[formData.media_file.type]}`;
+                const { error: uploadError } = await supabase.storage.from('whatsapp-media').upload(mediaPath, formData.media_file, { upsert: false, contentType: formData.media_file.type });
+                if (uploadError) throw new Error('Não foi possível salvar a mídia.');
             }
-
-            // Montar data/hora agendada
-            const scheduledAt = new Date(`${formData.scheduled_date}T${formData.scheduled_time}:00`);
-
-            const postData = {
-                salon_id: salonId,
-                content_type: formData.content_type,
-                text_content: formData.text_content,
-                media_url: mediaUrl,
-                media_filename: formData.media_file?.name || editingPost?.media_filename,
-                scheduled_at: scheduledAt.toISOString(),
-                recurrence_type: formData.recurrence_type,
-                recurrence_days: formData.recurrence_days,
-                recurrence_end_date: formData.recurrence_end_date || null,
-                status: 'scheduled' as const,
-            };
-
-            if (editingPost) {
-                // Atualizar
-                const { error } = await supabase
-                    .from('scheduled_posts')
-                    .update(postData)
-                    .eq('id', editingPost.id);
-
-                if (error) throw error;
-
-                toast({
-                    title: "Post atualizado!",
-                    description: "O agendamento foi atualizado com sucesso.",
-                });
-            } else {
-                // Criar novo
-                const { error } = await supabase
-                    .from('scheduled_posts')
-                    .insert(postData);
-
-                if (error) throw error;
-
-                toast({
-                    title: "Post agendado!",
-                    description: `Será publicado em ${format(scheduledAt, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`,
-                });
-            }
+            if (formData.content_type !== 'text' && !mediaPath) throw new Error('Envie novamente a mídia antiga para o armazenamento privado.');
+            postSubmission.current ??= editingPost?.id ?? crypto.randomUUID();
+            const { data, error } = await supabase.functions.invoke('whatsapp-status', { body: {
+                action: 'save', id: postSubmission.current, salonId,
+                contentType: formData.content_type, text: formData.text_content,
+                mediaPath, mediaFilename: formData.media_file?.name ?? editingPost?.media_filename,
+                localDateTime: `${formData.scheduled_date}T${formData.scheduled_time}:00`, timezone,
+                recurrenceType: formData.recurrence_type, recurrenceDays: formData.recurrence_days,
+                endDate: formData.recurrence_end_date || null,
+            }});
+            if (error || !data?.success) throw new Error('Não foi possível agendar. Confira conexão, data, fuso e mídia.');
+            postSubmission.current = null;
+            toast({ title: 'Post agendado', description: `${formData.scheduled_date} às ${formData.scheduled_time} (${timezone}). Acompanhe o resultado na lista.` });
 
             // Recarregar posts e fechar modal
             await loadPosts();
@@ -418,31 +286,28 @@ const StatusScheduler = () => {
     };
 
     const handleDelete = async (postId: string) => {
+        if (!salonId || !window.confirm('Cancelar este agendamento e suas próximas recorrências?')) return;
         try {
-            const { error } = await supabase
-                .from('scheduled_posts')
-                .delete()
-                .eq('id', postId);
-
-            if (error) throw error;
-
-            setPosts(prev => prev.filter(p => p.id !== postId));
-            toast({ title: "Post removido!", description: "O agendamento foi cancelado." });
-        } catch (error: any) {
-            toast({ title: "Erro", description: error.message, variant: "destructive" });
-        }
+            const { error } = await supabase.rpc('whatsapp_cancel_status', { p_post_id: postId, p_salon_id: salonId });
+            if (error) throw new Error('Não foi possível cancelar.');
+            await loadPosts();
+            toast({ title: 'Agendamento cancelado', description: 'Publicações já aceitas não podem ser recolhidas.' });
+        } catch { toast({ title: 'Erro', description: 'Não foi possível cancelar o agendamento.', variant: 'destructive' }); }
     };
 
     const handleEdit = (post: ScheduledPost) => {
-        const scheduledDate = new Date(post.scheduled_at);
+        if (post.status !== 'scheduled') { toast({ title: 'Este post não pode mais ser editado.' }); return; }
+        const zone = post.timezone ?? timezone;
+        const local = Temporal.Instant.from(post.scheduled_at).toZonedDateTimeISO(zone);
+        postSubmission.current = post.id;
         setEditingPost(post);
         setFormData({
             content_type: post.content_type,
             text_content: post.text_content || '',
             media_file: null,
             media_preview: post.media_url || '',
-            scheduled_date: format(scheduledDate, 'yyyy-MM-dd'),
-            scheduled_time: format(scheduledDate, 'HH:mm'),
+            scheduled_date: local.toPlainDate().toString(),
+            scheduled_time: local.toPlainTime().toString().slice(0, 5),
             recurrence_type: post.recurrence_type,
             recurrence_days: post.recurrence_days || [],
             recurrence_end_date: post.recurrence_end_date || '',
@@ -451,6 +316,7 @@ const StatusScheduler = () => {
     };
 
     const handleCloseModal = () => {
+        postSubmission.current = null;
         setIsModalOpen(false);
         setEditingPost(null);
         setFormData({
@@ -483,8 +349,11 @@ const StatusScheduler = () => {
 
     // Filtrar posts por dia
     const getPostsForDay = (date: Date) => {
-        return posts.filter(post => isSameDay(parseISO(post.scheduled_at), date));
+        const day = format(date, 'yyyy-MM-dd');
+        return posts.filter(post => Temporal.Instant.from(post.scheduled_at).toZonedDateTimeISO(post.timezone ?? timezone).toPlainDate().toString() === day);
     };
+    const postTime = (post: ScheduledPost) => Temporal.Instant.from(post.scheduled_at).toZonedDateTimeISO(post.timezone ?? timezone).toPlainTime().toString().slice(0, 5);
+    const postDateTime = (post: ScheduledPost) => `${Temporal.Instant.from(post.scheduled_at).toZonedDateTimeISO(post.timezone ?? timezone).toPlainDate().toString()} às ${postTime(post)} (${post.timezone ?? timezone})`;
 
     const getStatusBadge = (status: string) => {
         switch (status) {
@@ -559,7 +428,7 @@ const StatusScheduler = () => {
                                     Conecte seu WhatsApp para que os posts sejam publicados automaticamente.
                                 </p>
                             </div>
-                            <Button variant="outline">Conectar WhatsApp</Button>
+                            <Button variant="outline" onClick={() => window.location.assign("/admin/whatsapp")}>Conectar WhatsApp</Button>
                         </CardContent>
                     </Card>
                 )}
@@ -660,7 +529,7 @@ const StatusScheduler = () => {
                                                             {post.content_type === 'video' && <Video size={10} />}
                                                             {post.content_type === 'text' && <Type size={10} />}
                                                             <span className="truncate">
-                                                                {format(parseISO(post.scheduled_at), 'HH:mm')}
+                                                                {postTime(post)}
                                                             </span>
                                                         </div>
                                                     ))}
@@ -733,7 +602,7 @@ const StatusScheduler = () => {
                                                     </p>
                                                     <p className="text-xs text-muted-foreground flex items-center gap-1">
                                                         <Clock size={12} />
-                                                        {format(parseISO(post.scheduled_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                                                        {postDateTime(post)}
                                                     </p>
                                                 </div>
 
@@ -809,7 +678,7 @@ const StatusScheduler = () => {
                                     <input
                                         ref={fileInputRef}
                                         type="file"
-                                        accept={formData.content_type === 'image' ? 'image/*' : 'video/*'}
+                                        accept={formData.content_type === 'image' ? 'image/jpeg,image/png,image/webp' : 'video/mp4'}
                                         className="hidden"
                                         onChange={handleFileSelect}
                                     />
@@ -850,7 +719,7 @@ const StatusScheduler = () => {
                                             <Upload size={32} />
                                             <p>Clique para fazer upload</p>
                                             <p className="text-xs">
-                                                {formData.content_type === 'image' ? 'JPG, PNG, GIF' : 'MP4, MOV, AVI'}
+                                                {formData.content_type === 'image' ? 'JPG, PNG, WebP até 5 MB' : 'MP4 até 16 MB; compatibilidade depende do WhatsApp'}
                                             </p>
                                         </div>
                                     )}
@@ -912,6 +781,7 @@ const StatusScheduler = () => {
                                 </div>
                             </div>
 
+                            <p className="text-sm text-muted-foreground">Horário no fuso do salão: <strong>{timezone}</strong> (altere em Configurações do salão).</p>
                             {/* Recorrência */}
                             <div className="space-y-4" data-tour="status-scheduler-recurrence">
                                 <div className="space-y-2">

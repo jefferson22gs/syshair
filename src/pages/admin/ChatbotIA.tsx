@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import {
     Bot,
     Settings,
@@ -145,6 +146,7 @@ const ChatbotIA = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [salonId, setSalonId] = useState<string | null>(null);
+    const [whatsappConnected, setWhatsappConnected] = useState<boolean | null>(null);
 
     // Estados das configurações
     const [settings, setSettings] = useState<ChatbotSettings>(DEFAULT_SETTINGS);
@@ -183,6 +185,9 @@ const ChatbotIA = () => {
 
             if (!salon) return;
             setSalonId(salon.id);
+
+            const { data: instance } = await supabase.from('whatsapp_instances').select('status').eq('salon_id', salon.id).maybeSingle();
+            setWhatsappConnected(instance?.status === 'connected');
 
             // Buscar configurações do chatbot
             const { data: chatbotSettings, error: chatbotError } = await supabase
@@ -272,7 +277,7 @@ const ChatbotIA = () => {
                 enabled: settingsWithoutId.enabled,
                 ai_provider: settingsWithoutId.ai_provider,
                 ai_model: settingsWithoutId.ai_model,
-                api_key: settingsWithoutId.api_key,
+                api_key: null,
                 bot_name: settingsWithoutId.bot_name,
                 welcome_message: settingsWithoutId.welcome_message,
                 system_prompt: settingsWithoutId.system_prompt,
@@ -293,6 +298,11 @@ const ChatbotIA = () => {
                 .upsert(payload, { onConflict: 'salon_id' });
 
             if (error) throw error;
+            if (settings.api_key?.trim()) {
+                const { data: savedKey, error: keyError } = await supabase.functions.invoke('whatsapp-chatbot', { body: { action: 'save_key', salonId, key: settings.api_key.trim() } });
+                if (keyError || !savedKey?.success) throw new Error('Não foi possível guardar a credencial privada.');
+                setSettings(prev => ({ ...prev, api_key: '' }));
+            }
 
             toast({
                 title: "Configurações salvas!",
@@ -311,7 +321,7 @@ const ChatbotIA = () => {
     };
 
     const handleTestMessage = async () => {
-        if (!testInput.trim() || !settings.api_key) return;
+        if (!testInput.trim() || !salonId) return;
 
         const userMessage: ChatMessage = {
             id: Date.now().toString(),
@@ -325,14 +335,11 @@ const ChatbotIA = () => {
         setIsTesting(true);
 
         try {
-            // Simular resposta da IA (em produção, chamar a API real)
-            await new Promise(resolve => setTimeout(resolve, 1500));
-
+            const { data, error } = await supabase.functions.invoke('whatsapp-chatbot', { body: { action: 'test', salonId, text: userMessage.content } });
+            if (error || !data?.success) throw new Error('Teste indisponível. Salve a configuração e confira o provedor.');
             const aiResponse: ChatMessage = {
-                id: (Date.now() + 1).toString(),
-                role: 'assistant',
-                content: `[Simulação] Resposta da IA usando ${settings.ai_provider}/${settings.ai_model}: "${testInput}"`,
-                timestamp: new Date(),
+                id: crypto.randomUUID(), role: 'assistant',
+                content: data.text, timestamp: new Date(),
             };
 
             setTestMessages(prev => [...prev, aiResponse]);
@@ -418,6 +425,14 @@ const ChatbotIA = () => {
     return (
         <AdminLayout>
             <div className="space-y-6">
+                {whatsappConnected === false && (
+                    <Card className="border-amber-500/40 bg-amber-500/10">
+                        <CardContent className="p-4 flex flex-wrap items-center justify-between gap-3">
+                            <div className="flex items-center gap-2"><AlertCircle className="w-5 h-5 text-amber-500" /><span>Seu WhatsApp está desconectado. O chatbot só responde clientes com o WhatsApp conectado.</span></div>
+                            <Button asChild variant="outline" size="sm"><Link to="/admin/whatsapp">Conectar WhatsApp</Link></Button>
+                        </CardContent>
+                    </Card>
+                )}
                 {/* Header */}
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4" data-tour="chatbot-header">
                     <div>
@@ -946,24 +961,19 @@ const ChatbotIA = () => {
                                         value={testInput}
                                         onChange={(e) => setTestInput(e.target.value)}
                                         onKeyPress={(e) => e.key === 'Enter' && handleTestMessage()}
-                                        disabled={isTesting || !settings.api_key}
+                                        disabled={isTesting}
                                     />
                                     <Button
                                         onClick={handleTestMessage}
                                         data-tour="chatbot-test-send"
                                         aria-label="Enviar mensagem de teste"
-                                        disabled={isTesting || !testInput.trim() || !settings.api_key}
+                                        disabled={isTesting || !testInput.trim()}
                                     >
                                         <Send size={16} />
                                     </Button>
                                 </div>
 
-                                {!settings.api_key && (
-                                    <p className="text-xs text-orange-500 mt-2 flex items-center gap-1">
-                                        <AlertCircle size={12} />
-                                        Configure sua API Key nas configurações para testar
-                                    </p>
-                                )}
+                                <p className="text-xs text-muted-foreground mt-2">Teste usa a configuração salva e o provedor real, mas não envia WhatsApp nem cria agendamento. Credenciais são guardadas somente no servidor.</p>
                             </CardContent>
                         </Card>
                     </TabsContent>
@@ -1034,6 +1044,18 @@ const ChatbotIA = () => {
                                                         </span>
                                                     </div>
                                                     <p className="text-sm text-muted-foreground truncate">{conv.content}</p>
+                                                    {conv.direction === 'incoming' && <div className="flex gap-2 mt-2">
+                                                        <Button size="sm" variant="outline" onClick={async () => {
+                                                            if (!salonId) return;
+                                                            const { error } = await supabase.rpc('whatsapp_conversation_takeover', { p_salon_id: salonId, p_phone: conv.client_phone, p_pause: true });
+                                                            toast({ title: error ? 'Não foi possível pausar.' : 'Conversa pausada para atendimento humano.' });
+                                                        }}>Assumir conversa</Button>
+                                                        <Button size="sm" variant="ghost" onClick={async () => {
+                                                            if (!salonId || !window.confirm('Retomar o assistente automático nesta conversa?')) return;
+                                                            const { error } = await supabase.rpc('whatsapp_conversation_takeover', { p_salon_id: salonId, p_phone: conv.client_phone, p_pause: false });
+                                                            toast({ title: error ? 'Não foi possível retomar.' : 'Assistente retomado.' });
+                                                        }}>Retomar assistente</Button>
+                                                    </div>}
                                                 </div>
                                             </div>
                                         ))}

@@ -1167,6 +1167,7 @@ export type Database = {
           public_booking_enabled: boolean | null
           slug: string | null
           state: string | null
+          timezone: string
           updated_at: string
           whatsapp: string | null
           working_days: number[] | null
@@ -1196,6 +1197,7 @@ export type Database = {
           public_booking_enabled?: boolean | null
           slug?: string | null
           state?: string | null
+          timezone?: string
           updated_at?: string
           whatsapp?: string | null
           working_days?: number[] | null
@@ -1225,6 +1227,7 @@ export type Database = {
           public_booking_enabled?: boolean | null
           slug?: string | null
           state?: string | null
+          timezone?: string
           updated_at?: string
           whatsapp?: string | null
           working_days?: number[] | null
@@ -1647,6 +1650,50 @@ export type Database = {
           },
         ]
       }
+      whatsapp_automation_settings: {
+        Row: {
+          birthday_enabled: boolean
+          cancellation_enabled: boolean
+          chatbot_booking_enabled: boolean
+          confirmation_enabled: boolean
+          reminder_minutes: number[]
+          reminders_enabled: boolean
+          reschedule_enabled: boolean
+          salon_id: string
+          updated_at: string
+        }
+        Insert: {
+          birthday_enabled?: boolean
+          cancellation_enabled?: boolean
+          chatbot_booking_enabled?: boolean
+          confirmation_enabled?: boolean
+          reminder_minutes?: number[]
+          reminders_enabled?: boolean
+          reschedule_enabled?: boolean
+          salon_id: string
+          updated_at?: string
+        }
+        Update: {
+          birthday_enabled?: boolean
+          cancellation_enabled?: boolean
+          chatbot_booking_enabled?: boolean
+          confirmation_enabled?: boolean
+          reminder_minutes?: number[]
+          reminders_enabled?: boolean
+          reschedule_enabled?: boolean
+          salon_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_automation_settings_salon_id_fkey"
+            columns: ["salon_id"]
+            isOneToOne: true
+            referencedRelation: "salons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       whatsapp_instances: {
         Row: {
           id: string
@@ -1898,6 +1945,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      whatsapp_conversation_takeover: {
+        Args: { p_salon_id: string; p_phone: string; p_pause: boolean }
+        Returns: undefined
+      }
+      whatsapp_cancel_status: {
+        Args: { p_post_id: string; p_salon_id: string }
+        Returns: undefined
+      }
+      whatsapp_import_contacts: {
+        Args: { p_salon_id: string; p_contacts: Json }
+        Returns: Json
+      }
       calculate_client_metrics: {
         Args: { p_client_id: string }
         Returns: undefined
