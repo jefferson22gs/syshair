@@ -31,9 +31,24 @@ export async function authorizeSalon(req: Request, db: SupabaseClient, salonId: 
   if (!roles?.length) throw new WhatsAppError("forbidden", 403);
   return userId;
 }
+// Projeto migrou para chaves sb_secret_* mas o cron (Vault) ainda envia a service role JWT legada.
+// Aceita qualquer chave secreta do próprio projeto; nunca decodifica claims sem verificar.
+function workerKeys(): string[] {
+  const keys = [Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"), Deno.env.get("WORKER_LEGACY_SERVICE_ROLE_KEY")];
+  try {
+    const parsed = JSON.parse(Deno.env.get("SUPABASE_SECRET_KEYS") ?? "{}");
+    if (parsed && typeof parsed === "object") keys.push(...Object.values(parsed).map(String));
+  } catch { /* formato inesperado: ignora */ }
+  return keys.filter((k): k is string => typeof k === "string" && k.length >= 32);
+}
 /** Workers não aceitam JWT de cliente nem confiam em um claim role não verificado. */
 export function authorizeWorker(req: Request): void {
-  if (!safeEqual(bearer(req), requiredEnv("SUPABASE_SERVICE_ROLE_KEY"))) throw new WhatsAppError("forbidden", 403);
+  const token = bearer(req);
+  const keys = workerKeys();
+  if (!keys.length) throw new WhatsAppError("configuration_missing", 503);
+  let ok = false;
+  for (const key of keys) ok = safeEqual(token, key) || ok;
+  if (!ok) throw new WhatsAppError("forbidden", 403);
 }
 export function safeEqual(a: string, b: string): boolean {
   const aa = new TextEncoder().encode(a), bb = new TextEncoder().encode(b);
