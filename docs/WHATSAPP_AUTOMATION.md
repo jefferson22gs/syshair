@@ -142,7 +142,9 @@ Fluxo: webhook → `whatsapp_webhook_events` (idempotente por `instance + tipo +
 - Pausa por conversa (`whatsapp_conversation_state.human_takeover`): cliente pede atendente/humano ou dono pausa pela aba Histórico; retomar pela mesma aba.
 - Fora do horário configurado: mensagem de ausência.
 - Contexto: prompt do salão + base de conhecimento (20 itens) + últimas 10 mensagens.
-- Ferramentas (`chatbot-domain.ts`), todas presas ao salão do evento autenticado: serviços/preços, profissionais, horários disponíveis (`get_available_time_slots`), meus agendamentos (só do próprio telefone), `prepare_booking`.
+- Ferramentas (`chatbot-domain.ts`), todas presas ao salão do evento autenticado: serviços/preços, profissionais, horários disponíveis (`get_available_time_slots`), meus agendamentos (só do próprio telefone), `prepare_booking`, `prepare_cancel`, `prepare_reschedule`.
+- Cancelar/remarcar: só agendamentos ativos do próprio telefone, com ≥ 24h de antecedência (atual e novo horário), novo horário precisa estar livre com o mesmo profissional. Bot propõe → cliente responde **CONFIRMAR** → `whatsapp_change_appointment` faz um único UPDATE (o horário antigo só é liberado se o novo for aceito pelo trigger de conflito).
+- Mensagens de número verificado do dono com comandos de relatório vão para o SysHair Insights (ver `docs/INSIGHTS.md`) antes do chatbot.
 - Criar agendamento exige `prepare_booking` → cliente responde **CONFIRMAR** → `whatsapp_book_appointment` (idempotente por chave de pedido), e o recurso precisa estar ligado em Mensagens automáticas. Agendamento nasce `pending` para o salão confirmar.
 - Privacidade: nunca recebe SQL nem lista de clientes; ferramenta de agenda retorna apenas horários livres.
 - Provedores: OpenAI/Groq/Grok com ferramentas; Perplexity/Gemini sem ferramentas de agenda (respondem só com fatos públicos).

@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { objectValue, WhatsAppError } from "./errors.ts";
 import { validUuid } from "./auth.ts";
+import { Temporal } from "npm:@js-temporal/polyfill@0.5.1";
 
 export interface BotContext { db: SupabaseClient; salonId: string; phone: string; eventId?: string; preview: boolean }
 export const tools = [
@@ -10,7 +11,37 @@ export const tools = [
   { type: "function", function: { name: "available_slots", description: "Horários disponíveis. Só retorna horários, nunca dados de outros clientes.", parameters: { type: "object", properties: { serviceId: { type: "string" }, professionalId: { type: "string" }, date: { type: "string", description: "YYYY-MM-DD" } }, required: ["serviceId", "professionalId", "date"], additionalProperties: false } } },
   { type: "function", function: { name: "prepare_booking", description: "Prepara proposta sem criar reserva. A pessoa precisa responder CONFIRMAR para finalizar.", parameters: { type: "object", properties: { serviceId: { type: "string" }, professionalId: { type: "string" }, date: { type: "string" }, start: { type: "string", description: "HH:mm" }, name: { type: "string" } }, required: ["serviceId", "professionalId", "date", "start", "name"], additionalProperties: false } } },
   { type: "function", function: { name: "my_appointments", description: "Somente agendamentos futuros do remetente desta conversa.", parameters: { type: "object", properties: {}, additionalProperties: false } } },
+  { type: "function", function: { name: "prepare_cancel", description: "Prepara cancelamento de um agendamento do próprio remetente (id vindo de my_appointments). Não cancela: a pessoa precisa responder CONFIRMAR.", parameters: { type: "object", properties: { appointmentId: { type: "string" } }, required: ["appointmentId"], additionalProperties: false } } },
+  { type: "function", function: { name: "prepare_reschedule", description: "Prepara remarcação de um agendamento do próprio remetente para um horário livre (consulte available_slots antes). O horário atual é mantido até a pessoa responder CONFIRMAR.", parameters: { type: "object", properties: { appointmentId: { type: "string" }, date: { type: "string", description: "YYYY-MM-DD" }, start: { type: "string", description: "HH:mm" } }, required: ["appointmentId", "date", "start"], additionalProperties: false } } },
 ] as const;
+
+const CHANGE_DEADLINE_HOURS = 24;
+
+// Busca só agendamento ativo do próprio telefone; nunca aceita telefone/salão do modelo.
+async function ownAppointment(ctx: BotContext, id: unknown) {
+  if (!validUuid(id)) return null;
+  const { data, error } = await ctx.db.from("appointments")
+    .select("id,date,start_time,status,service_id,professional_id,services(name),professionals(name)")
+    .eq("id", id).eq("salon_id", ctx.salonId).eq("client_phone", ctx.phone).in("status", ["pending", "confirmed"]).maybeSingle();
+  if (error) throw new WhatsAppError("persistence_failed", 503);
+  return data;
+}
+
+async function withinDeadline(ctx: BotContext, date: string, start: string): Promise<boolean> {
+  const { data, error } = await ctx.db.from("salons").select("timezone").eq("id", ctx.salonId).single();
+  if (error) throw new WhatsAppError("persistence_failed", 503);
+  const tz = String(data.timezone || "America/Sao_Paulo");
+  const appt = Temporal.PlainDateTime.from(`${date}T${start.slice(0, 5)}`).toZonedDateTime(tz).toInstant();
+  return Temporal.Instant.compare(appt, Temporal.Now.instant().add({ hours: CHANGE_DEADLINE_HOURS })) <= 0;
+}
+
+async function savePending(ctx: BotContext, proposal: Record<string, unknown>) {
+  if (ctx.preview) return;
+  const { error } = await ctx.db.from("whatsapp_conversation_state").upsert({ salon_id: ctx.salonId, phone: ctx.phone, pending_action: proposal, pending_action_expires_at: new Date(Date.now() + 600_000).toISOString() }, { onConflict: "salon_id,phone" });
+  if (error) throw new WhatsAppError("persistence_failed", 503);
+}
+
+const nameOf = (rel: unknown) => (Array.isArray(rel) ? rel[0] : rel as { name?: string } | null)?.name ?? "";
 
 function dateArg(value: unknown): string {
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value) || new Date(`${value}T12:00:00Z`).toISOString().slice(0, 10) !== value) throw new WhatsAppError("invalid_request");
@@ -19,7 +50,7 @@ function dateArg(value: unknown): string {
 export async function executeBotTool(ctx: BotContext, name: string, raw: unknown): Promise<unknown> {
   const args = objectValue(raw);
   // Nenhum salon_id, telefone alvo, SQL ou campo extra é aceito de um modelo.
-  const allowed: Record<string, string[]> = { salon_info: [], services: [], professionals: [], available_slots: ["serviceId", "professionalId", "date"], prepare_booking: ["serviceId", "professionalId", "date", "start", "name"], my_appointments: [] };
+  const allowed: Record<string, string[]> = { salon_info: [], services: [], professionals: [], available_slots: ["serviceId", "professionalId", "date"], prepare_booking: ["serviceId", "professionalId", "date", "start", "name"], my_appointments: [], prepare_cancel: ["appointmentId"], prepare_reschedule: ["appointmentId", "date", "start"] };
   if (!allowed[name] || Object.keys(args).some(k => !allowed[name].includes(k))) throw new WhatsAppError("invalid_request");
   if (name === "salon_info") {
     const { data, error } = await ctx.db.from("salons").select("name,address,city,state,phone,working_hours,opening_time,closing_time,timezone").eq("id", ctx.salonId).single();
@@ -31,8 +62,30 @@ export async function executeBotTool(ctx: BotContext, name: string, raw: unknown
   }
   if (name === "my_appointments") {
     if (ctx.preview) return { notice: "Teste não consulta agendamentos de clientes reais." };
-    const { data, error } = await ctx.db.from("appointments").select("id,date,start_time,status,services(name),professionals(name)").eq("salon_id", ctx.salonId).eq("client_phone", ctx.phone).in("status", ["pending", "confirmed"]).gte("date", new Date().toISOString().slice(0, 10)).limit(5);
+    const { data: salon, error: tzError } = await ctx.db.from("salons").select("timezone").eq("id", ctx.salonId).single();
+    if (tzError) throw new WhatsAppError("persistence_failed", 503);
+    const today = Temporal.Now.plainDateISO(String(salon.timezone || "America/Sao_Paulo")).toString();
+    const { data, error } = await ctx.db.from("appointments").select("id,date,start_time,status,services(name),professionals(name)").eq("salon_id", ctx.salonId).eq("client_phone", ctx.phone).in("status", ["pending", "confirmed"]).gte("date", today).order("date").order("start_time").limit(5);
     if (error) throw new WhatsAppError("persistence_failed", 503); return data;
+  }
+  if (name === "prepare_cancel" || name === "prepare_reschedule") {
+    if (ctx.preview) return { notice: "Teste não altera agendamentos de clientes reais." };
+    const appt = await ownAppointment(ctx, args.appointmentId);
+    if (!appt) return { error: "Agendamento não encontrado entre os horários ativos desta pessoa. Use my_appointments e pergunte qual deles." };
+    const current = `${nameOf(appt.services)} com ${nameOf(appt.professionals)}, ${appt.date} às ${String(appt.start_time).slice(0, 5)}`;
+    if (await withinDeadline(ctx, appt.date, String(appt.start_time))) return { error: `Alterações pelo WhatsApp só até ${CHANGE_DEADLINE_HOURS}h antes. Encaminhe para a equipe.` };
+    if (name === "prepare_cancel") {
+      await savePending(ctx, { kind: "cancel", appointmentId: appt.id, summary: current });
+      return { proposal: true, summary: `Cancelar: ${current}.`, instructions: "Peça para a pessoa responder CONFIRMAR. Nada foi cancelado ainda." };
+    }
+    const date = dateArg(args.date);
+    if (typeof args.start !== "string" || !/^\d{2}:\d{2}$/.test(args.start)) return { error: "Horário inválido. Consulte available_slots." };
+    if (await withinDeadline(ctx, date, args.start)) return { error: `O novo horário precisa ser com pelo menos ${CHANGE_DEADLINE_HOURS}h de antecedência.` };
+    const { data: slots, error: slotError } = await ctx.db.rpc("get_available_time_slots", { p_salon_id: ctx.salonId, p_service_id: appt.service_id, p_professional_id: appt.professional_id, p_date: date, p_exclude_appointment_id: appt.id });
+    if (slotError) throw new WhatsAppError("persistence_failed", 503);
+    if (!Array.isArray(slots) || !slots.includes(args.start)) return { error: "Esse horário não está disponível com o mesmo profissional. Ofereça outros horários de available_slots.", slots: slots ?? [] };
+    await savePending(ctx, { kind: "reschedule", appointmentId: appt.id, date, start: args.start, summary: current });
+    return { proposal: true, summary: `Remarcar ${current} para ${date} às ${args.start}.`, instructions: "Peça para a pessoa responder CONFIRMAR. O horário atual continua reservado até lá." };
   }
   if (!validUuid(args.serviceId) || !validUuid(args.professionalId)) throw new WhatsAppError("invalid_request");
   const date = dateArg(args.date);

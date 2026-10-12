@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { AutomationSettings } from "@/features/whatsapp/AutomationSettings";
+import { InsightsSettings } from "@/features/whatsapp/InsightsSettings";
 
 interface WhatsAppInstance {
   id: string;
@@ -151,6 +152,7 @@ export default function WhatsAppConnection() {
               <CardContent className="flex flex-col items-center"><div className="p-4 bg-white rounded-xl"><img src={qrCode} alt="Código temporário para conectar o WhatsApp do salão" className="w-64 h-64" /></div><p className="text-xs text-muted-foreground mt-3">Não compartilhe este código.</p><Button className="mt-4" variant="outline" disabled={!!busy} onClick={() => void run("connect")} data-tour="whatsapp-new-qrcode">Gerar novo QR Code</Button></CardContent>
             </Card>}
             {salonId && <AutomationSettings salonId={salonId} />}
+            {salonId && <InsightsSettings salonId={salonId} />}
             <Card data-tour="whatsapp-tips"><CardContent className="p-6 flex gap-3"><AlertCircle className="text-primary flex-shrink-0" /><div><h3 className="font-semibold">Mantenha sua conexão funcionando</h3><p className="text-sm text-muted-foreground mt-2">Confira o status antes de usar automações. Se desconectar, escaneie um novo código. O chatbot responde apenas quando você o habilita.</p></div></CardContent></Card>
             <div className="flex justify-end"><Button variant="ghost" className="text-destructive" disabled={!!busy} onClick={() => void run("delete")} data-tour="whatsapp-delete"><Trash2 size={16} className="mr-2" />Excluir conexão</Button></div>
           </>

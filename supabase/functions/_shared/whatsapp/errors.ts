@@ -7,6 +7,7 @@ const messages: Record<string, string> = {
   invalid_request: "Confira os dados informados.",
   configuration_missing: "A integração precisa ser configurada pela equipe.",
   instance_missing: "Conecte o WhatsApp do salão primeiro.",
+  recipient_missing: "Cadastre e verifique um número para receber os relatórios.",
   disconnected: "Seu WhatsApp está desconectado. Reconecte para continuar.",
   provider_rejected: "O WhatsApp não aceitou esta operação.",
   provider_unavailable: "A conexão com o WhatsApp está indisponível.",
